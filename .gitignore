@@ -1,0 +1,6 @@
+.env
+.env.txt
+profile.json
+__pycache__/
+*.pyc
+.DS_Store

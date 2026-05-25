@@ -4,9 +4,15 @@ import google.generativeai as genai
 import json
 import os
 import html as _html
+import datetime
+import urllib.request
 from dotenv import load_dotenv
+import screen3_plan
+import screen4_career
 
 load_dotenv()
+
+SCREEN3_ENABLED = True
 
 SYSTEM_PROMPT = """
 당신은 "AI 인생 시나리오 플래너"의 핵심 분석 엔진입니다.
@@ -313,6 +319,66 @@ RESPONSE_SCHEMA = {
     "required": ["summary", "scenarios", "recommendation", "final_message"]
 }
 
+COMPARE_SYSTEM_PROMPT = """
+당신은 AI 인생 시나리오 비교 분석 엔진입니다.
+과거에 저장된 시나리오 데이터와 현재 입력값을 비교하여 사용자의 변화를 분석합니다.
+
+응답은 반드시 단일 JSON 객체 하나만 반환합니다. 코드펜스·설명·공백 줄바꿈 외 어떤 문자도 추가 금지.
+
+분석 지침:
+1. changes: Q2(만족도), Q5(저축), Q6(가족지지), Q3(버틸 기간) 등 핵심 항목과 텍스트 항목 변화를 분석합니다.
+   direction은 "up"(긍정적 변화), "down"(부정적 변화), "same"(변화 없음), "changed"(내용 변경) 중 하나.
+2. recommendation_change: 과거 AI 추천 타입과 현재 입력값 기준으로 추천할 타입을 분석합니다.
+   after_type은 반드시 현실형/도전형/파격형 중 하나.
+3. checklist: 과거 추천 시나리오의 next_steps 항목들이 현재 입력값 변화를 근거로 달성됐을 가능성을 평가합니다.
+   likely_done은 true(달성 가능성 높음) 또는 false(미달성 가능성 높음).
+4. overall_analysis: 3~4문장. 핵심 변화를 요약하고 현재 상황에서 다음 방향을 구체적으로 제시합니다.
+"""
+
+COMPARE_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "changes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "label":     {"type": "string"},
+                    "before":    {"type": "string"},
+                    "after":     {"type": "string"},
+                    "direction": {"type": "string"},
+                    "comment":   {"type": "string"},
+                },
+                "required": ["label", "before", "after", "direction", "comment"],
+            },
+        },
+        "recommendation_change": {
+            "type": "object",
+            "properties": {
+                "before_type": {"type": "string"},
+                "after_type":  {"type": "string"},
+                "analysis":    {"type": "string"},
+            },
+            "required": ["before_type", "after_type", "analysis"],
+        },
+        "checklist": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item":        {"type": "string"},
+                    "category":    {"type": "string"},
+                    "likely_done": {"type": "boolean"},
+                    "reason":      {"type": "string"},
+                },
+                "required": ["item", "category", "likely_done", "reason"],
+            },
+        },
+        "overall_analysis": {"type": "string"},
+    },
+    "required": ["changes", "recommendation_change", "checklist", "overall_analysis"],
+}
+
 PROFILE_PATH = "profile.json"
 
 Q3_OPTIONS = ["3개월 미만", "6개월", "1년", "1년 이상"]
@@ -330,25 +396,77 @@ INCOME_OPTIONS = [
     "월급 600만원 이상",
     "직접 입력",
 ]
+AGE_OPTIONS    = ["20대 초반", "20대 후반", "30대 초반", "30대 후반", "40대 초반", "40대 후반", "50대 초반", "50대 후반", "60대 이상"]
+GENDER_OPTIONS = ["남성", "여성", "선택 안 함"]
+TIME_OPTIONS   = ["1시간 미만", "1~2시간", "2~3시간", "3시간 이상"]
 
-QUESTIONS = [
-    {"key": "Q1",     "label": "Q1. 현재 직업·역할",           "type": "text",          "placeholder": "예) 중소기업 영업부장 15년차, 프리랜서 디자이너 10년차"},
-    {"key": "INCOME", "label": "현재 연봉 또는 월급",           "type": "income_select", "options": INCOME_OPTIONS},
-    {"key": "Q2",     "label": "Q2. 현 상황 만족도",           "type": "slider"},
-    {"key": "Q3",  "label": "Q3. 버틸 수 있는 기간",        "type": "select",   "options": Q3_OPTIONS},
-    {"key": "Q4",  "label": "Q4. 돈 받고 팔 수 있는 기술",  "type": "text",     "placeholder": "예) 영업·협상 경험, 엑셀·데이터 분석, 콘텐츠 기획"},
-    {"key": "Q5",  "label": "Q5. 매달 저축 가능 금액",      "type": "select",   "options": Q5_OPTIONS},
-    {"key": "Q6",  "label": "Q6. 가족의 지지",              "type": "select",   "options": Q6_OPTIONS},
-    {"key": "Q7",  "label": "Q7. 절대 포기할 수 없는 것",   "type": "text",     "placeholder": "예) 가족과의 저녁 시간, 주말 취미 생활, 건강 관리"},
-    {"key": "Q8",  "label": "Q8. 가장 두려운 것",           "type": "text",     "placeholder": "예) 50대에 직장 잃는 것, 노후 준비 없이 나이 드는 것"},
-    {"key": "Q9",  "label": "Q9. 롤모델·닮고 싶은 삶",      "type": "text",     "placeholder": "예) 자기 회사 차린 선배, 자유롭게 일하는 프리랜서 지인"},
-    {"key": "Q10", "label": "Q10. 10년 후 목표",            "type": "text",     "placeholder": "예) 내 회사 운영, 안정적인 부업 수입 월 300만, 조기 은퇴"},
-    {"key": "Q11", "label": "Q11. 죽기 전 반드시 할 일",    "type": "text",     "placeholder": "예) 세계여행, 책 한 권 출판, 자녀 결혼 다 시키기"},
-    {"key": "Q12", "label": "Q12. 5년 전과 달라진 점",      "type": "text",     "placeholder": "예) 이직 2번 했음, 아이가 생겼음, 부모님 간병 시작"},
-    {"key": "Q13", "label": "Q13. 현재 가장 큰 고민",       "type": "text",     "placeholder": "예) 지금 직장 계속 다닐지 이직할지 모르겠다"},
-    {"key": "Q14", "label": "Q14. 지금 바꿀 수 있는 것",    "type": "text",     "placeholder": "예) 퇴근 후 유튜브 보는 2시간을 자기계발로 바꾸기"},
-    {"key": "Q15", "label": "Q15. 리포트 보고 첫 행동",     "type": "text",     "placeholder": "예) 통장 잔액 확인, 이직 사이트 둘러보기, 지인에게 연락"},
+SECTIONS = [
+    {
+        "title": "현재 상황",
+        "desc": "지금 어디에 있나요? 현재 직업·재정·환경을 파악합니다",
+        "questions": [
+            {"id": "job",           "label": "현재 직업·역할",        "type": "text",         "placeholder": "예) 중소기업 영업부장 15년차, 프리랜서 디자이너"},
+            {"id": "satisfaction",  "label": "현 상황 만족도",         "type": "slider"},
+            {"id": "endurance",     "label": "버틸 수 있는 기간",      "type": "select",       "options": Q3_OPTIONS},
+            {"id": "saving",        "label": "매달 저축 가능 금액",    "type": "select",       "options": Q5_OPTIONS},
+            {"id": "family_support","label": "가족의 지지 여부",       "type": "select",       "options": Q6_OPTIONS},
+        ],
+    },
+    {
+        "title": "내 자산·역량",
+        "desc": "무엇을 가지고 있나요? 활용 가능한 기술과 자원을 확인합니다",
+        "questions": [
+            {"id": "age",       "label": "연령대",                    "type": "select",        "options": AGE_OPTIONS},
+            {"id": "gender",    "label": "성별",                      "type": "select",        "options": GENDER_OPTIONS},
+            {"id": "skill",     "label": "돈 받고 팔 수 있는 기술",   "type": "text",          "placeholder": "예) 영업·협상 경험, 엑셀 분석, 콘텐츠 기획"},
+            {"id": "income",    "label": "현재 연봉 또는 월급",       "type": "income_select", "options": INCOME_OPTIONS},
+            {"id": "free_time", "label": "하루 평균 여유시간",        "type": "select",        "options": TIME_OPTIONS},
+        ],
+    },
+    {
+        "title": "가치관·두려움",
+        "desc": "무엇이 중요한가요? 포기할 수 없는 것과 두려움을 솔직하게 적어주세요",
+        "questions": [
+            {"id": "priority",  "label": "절대 포기할 수 없는 것", "type": "text", "placeholder": "예) 가족과의 저녁 시간, 주말 취미 생활, 건강 관리"},
+            {"id": "fear",      "label": "가장 두려운 것",         "type": "text", "placeholder": "예) 50대에 직장 잃는 것, 노후 준비 없이 나이 드는 것"},
+            {"id": "rolemodel", "label": "롤모델·닮고 싶은 삶",    "type": "text", "placeholder": "예) 자기 회사 차린 선배, 자유롭게 일하는 프리랜서 지인"},
+        ],
+    },
+    {
+        "title": "미래 비전",
+        "desc": "어디로 가고 싶나요? 10년 후 모습과 인생에서 반드시 이룰 것을 적어주세요",
+        "questions": [
+            {"id": "goal",       "label": "10년 후 목표",              "type": "textarea", "placeholder": "예) 내 회사 운영, 안정적인 부업 수입 월 300만"},
+            {"id": "bucketlist", "label": "죽기 전 반드시 하고 싶은 일", "type": "text",  "placeholder": "예) 세계여행, 책 한 권 출판, 자녀 결혼 다 시키기"},
+        ],
+    },
+    {
+        "title": "변화·행동",
+        "desc": "무엇을 바꿀 건가요? 현재 고민과 지금 당장 실행 가능한 것을 적어주세요",
+        "questions": [
+            {"id": "change_5y",  "label": "5년 전과 달라진 점",    "type": "textarea", "placeholder": "예) 이직 2번 했음, 아이가 생겼음, 부모님 간병 시작"},
+            {"id": "worry",      "label": "현재 가장 큰 고민",     "type": "textarea", "placeholder": "예) 지금 직장 계속 다닐지 이직할지 모르겠다"},
+            {"id": "changeable", "label": "지금 바꿀 수 있는 것",  "type": "text",     "placeholder": "예) 퇴근 후 유튜브 2시간을 자기계발로 바꾸기"},
+        ],
+    },
 ]
+
+QUESTIONS = [q for s in SECTIONS for q in s["questions"]]
+
+ID_TO_Q = {
+    "job": 1, "satisfaction": 2, "endurance": 3, "skill": 4,
+    "saving": 5, "family_support": 6, "priority": 7, "fear": 8,
+    "rolemodel": 9, "goal": 10, "bucketlist": 11, "change_5y": 12,
+    "worry": 13, "changeable": 14,
+}
+
+OLD_KEY_MIGRATION = {
+    "Q1": "job", "Q2": "satisfaction", "Q3": "endurance", "Q4": "skill",
+    "Q5": "saving", "Q6": "family_support", "Q7": "priority", "Q8": "fear",
+    "Q9": "rolemodel", "Q10": "goal", "Q11": "bucketlist", "Q12": "change_5y",
+    "Q13": "worry", "Q14": "changeable",
+    "AGE": "age", "GENDER": "gender", "TIME": "free_time",
+}
 
 
 def get_model():
@@ -368,25 +486,37 @@ def get_model():
     )
 
 
-def build_user_message(inputs: dict, correction: str = "") -> str:
+def _inputs_to_q_lines(inputs: dict) -> list:
+    """inputs dict(id 기반 또는 구형 Q번호 기반) → Q1~Q15 형식 라인 목록."""
     lines = []
-    for i in range(1, 16):
-        key = f"Q{i}"
-        value = inputs.get(key, "입력 없음")
-        lines.append(f"Q{i}: {value}")
-        if i == 1:
+    for id_key, q_num in sorted(ID_TO_Q.items(), key=lambda x: x[1]):
+        value = inputs.get(id_key, inputs.get(f"Q{q_num}", "입력 없음"))
+        lines.append(f"Q{q_num}: {value}")
+        if q_num == 1:
             income_sel = inputs.get("INCOME_SELECT", "직접 입력 안 함")
             income_txt = inputs.get("INCOME_TEXT", "")
             if income_sel == "직접 입력" and income_txt:
                 lines.append(f"현재 소득: {income_txt}")
             elif income_sel not in ("직접 입력 안 함", "직접 입력", ""):
                 lines.append(f"현재 소득: {income_sel}")
-    msg = "\n".join(lines)
+    lines.append("Q15: 입력 없음")
+    for id_key, old_key, label in [
+        ("age", "AGE", "연령대"), ("gender", "GENDER", "성별"),
+        ("free_time", "TIME", "하루 평균 여유시간"),
+    ]:
+        val = inputs.get(id_key, inputs.get(old_key, ""))
+        if val:
+            lines.append(f"{label}: {val}")
+    return lines
+
+
+def build_user_message(inputs: dict, correction: str = "") -> str:
+    msg = "\n".join(_inputs_to_q_lines(inputs))
     if correction and correction.strip():
         msg += (
             "\n\n===수정 요청===\n"
             "사용자가 아래 내용이 실제와 다르다고 합니다.\n"
-            "이를 반영해서 시나리오를 다시 작성해주세요:\n"
+            "반드시 반영해서 시나리오를 다시 작성해주세요:\n"
             + correction.strip()
         )
     return msg
@@ -398,7 +528,10 @@ def generate_scenarios(inputs: dict, correction: str = "") -> dict:
         raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
     user_message = build_user_message(inputs, correction)
     response = model.generate_content(user_message)
-    return json.loads(response.text)
+    try:
+        return json.loads(response.text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}") from e
 
 
 def save_profile(inputs: dict):
@@ -413,13 +546,514 @@ def load_profile() -> dict:
         return json.load(f)
 
 
+def save_history(inputs: dict, result: dict) -> str:
+    today = datetime.date.today().strftime("%Y%m%d")
+    base = f"history_{today}"
+    path = f"{base}.json"
+    counter = 2
+    while os.path.exists(path):
+        path = f"{base}_{counter}.json"
+        counter += 1
+    data = {
+        "date": datetime.date.today().isoformat(),
+        "saved_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "inputs": inputs,
+        "result": result,
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return path
+
+
+def list_history() -> list:
+    import glob
+    files = sorted(glob.glob("history_*.json"), reverse=True)
+    items = []
+    for f in files:
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            saved_at = data.get("saved_at", data.get("date", ""))[:16].replace("T", " ")
+            inp = data.get("inputs", {})
+            q1 = inp.get("job", inp.get("Q1", ""))
+            label = f"{saved_at}  |  {q1[:25]}" if q1 else saved_at
+            items.append({"filename": f, "label": label, "data": data})
+        except Exception:
+            continue
+    return items
+
+
+def get_user_status() -> int:
+    """저장 파일 유무로 사용자 상태를 판단한다.
+    1: 신규  2: 설문완료·플랜미시작  3: 플랜진행중
+    """
+    import glob as _glob
+    try:
+        has_history   = bool(_glob.glob("history_*.json"))
+        has_checklist = bool(_glob.glob("checklist_career_*.json"))
+        if has_history and has_checklist:
+            return 3
+        if has_history:
+            return 2
+        return 1
+    except Exception:
+        return 1
+
+
+def _load_latest_history() -> dict:
+    """최신 history_*.json 데이터 반환. 실패 시 빈 dict."""
+    import glob as _glob
+    try:
+        files = sorted(_glob.glob("history_*.json"), reverse=True)
+        if not files:
+            return {}
+        with open(files[0], "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _load_latest_career_checklist() -> dict:
+    """최신 checklist_career_*.json 데이터 반환. 실패 시 빈 dict."""
+    import glob as _glob
+    try:
+        files = sorted(_glob.glob("checklist_career_*.json"), reverse=True)
+        if not files:
+            return {}
+        with open(files[0], "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def get_compare_model():
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return None
+    genai.configure(api_key=api_key)
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json",
+        response_schema=COMPARE_RESPONSE_SCHEMA,
+        temperature=0.7,
+    )
+    return genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        system_instruction=COMPARE_SYSTEM_PROMPT,
+        generation_config=generation_config,
+    )
+
+
+def build_compare_message(old_data: dict, new_inputs: dict) -> str:
+    old_inputs = old_data.get("inputs", {})
+    old_result = old_data.get("result", {})
+    old_date = old_data.get("saved_at", old_data.get("date", ""))[:10]
+    old_rec = old_result.get("recommendation", {})
+    old_rec_type = old_rec.get("type", "")
+    old_scenarios = old_result.get("scenarios", [])
+    old_rec_sc = next((s for s in old_scenarios if s.get("type") == old_rec_type), {})
+    old_ns = old_rec_sc.get("next_steps", {})
+
+    lines = [f"=== 과거 입력값 ({old_date}) ==="]
+    lines.extend(_inputs_to_q_lines(old_inputs))
+
+    lines.append("")
+    lines.append(f"=== 과거 AI 추천 ({old_rec_type}) ===")
+    lines.append(old_rec.get("reason", ""))
+
+    lines.append("")
+    lines.append("=== 과거 추천 시나리오 next_steps ===")
+    for ns_key, ns_label in [
+        ("this_week", "이번 주"), ("one_month", "1개월 내"),
+        ("three_months", "3개월 내"), ("must_prepare", "반드시 갖춰야 할 것"),
+        ("must_avoid", "반드시 피해야 할 것"),
+    ]:
+        items = old_ns.get(ns_key, [])
+        if items:
+            lines.append(f"{ns_label}: {' / '.join(items)}")
+    coach = old_ns.get("coach_message", "")
+    if coach:
+        lines.append(f"AI 코치 메시지: {coach}")
+
+    lines.append("")
+    lines.append("=== 현재 입력값 ===")
+    lines.extend(_inputs_to_q_lines(new_inputs))
+
+    return "\n".join(lines)
+
+
+def generate_comparison(old_data: dict, new_inputs: dict) -> dict:
+    model = get_compare_model()
+    if model is None:
+        raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
+    msg = build_compare_message(old_data, new_inputs)
+    response = model.generate_content(msg)
+    try:
+        return json.loads(response.text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}") from e
+
+
+def get_korean_font_path():
+    """한국어 TTF/TTC 폰트 경로 반환. 없으면 다운로드 시도, 실패 시 None."""
+    base = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(base, "fonts", "NanumGothic.ttf"),
+        "/Library/Fonts/NanumGothic.ttf",
+        os.path.expanduser("~/Library/Fonts/NanumGothic.ttf"),
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        "/usr/local/share/fonts/NanumGothic.ttf",
+        "C:/Windows/Fonts/malgun.ttf",
+        "C:/Windows/Fonts/NanumGothic.ttf",
+        # macOS 시스템 폰트
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
+    ]
+    for p in candidates:
+        if p and os.path.exists(p):
+            return p
+    cache = os.path.join(base, "fonts", "NanumGothic.ttf")
+    if os.path.exists(cache):
+        return cache
+    try:
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
+        url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
+        urllib.request.urlretrieve(url, cache)
+        if os.path.getsize(cache) > 10000:
+            return cache
+    except Exception:
+        pass
+    return None
+
+
+def generate_pdf(result: dict, inputs: dict, screen3_data: dict = None, screen4_data: dict = None) -> bytes:
+    """Gemini 결과를 fpdf2로 PDF 변환. 한국어 폰트 자동 적용."""
+    from fpdf import FPDF
+
+    font_path = get_korean_font_path()
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=25)
+    pdf.set_margins(20, 20, 20)
+
+    use_kr = False
+    if font_path:
+        try:
+            pdf.add_font("KR", fname=font_path)
+            pdf.add_font("KR", style="B", fname=font_path)
+            use_kr = True
+        except Exception:
+            pass
+
+    def sf(size=10):
+        pdf.set_font("KR" if use_kr else "Helvetica", size=size)
+
+    def sfb(size=10):
+        if use_kr:
+            try:
+                pdf.set_font("KR", style="B", size=size)
+            except Exception:
+                pdf.set_font("KR", size=size)
+        else:
+            pdf.set_font("Helvetica", style="B", size=size)
+
+    def wl(text, size=10, bold=False, color=(30, 30, 30), lh=6):
+        (sfb if bold else sf)(size)
+        pdf.set_text_color(*color)
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(pdf.epw, lh, str(text) if text else "")
+        pdf.set_text_color(30, 30, 30)
+
+    def section(title, color=(59, 130, 246)):
+        pdf.ln(5)
+        sfb(12)
+        pdf.set_text_color(*color)
+        pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_draw_color(*color)
+        pdf.line(20, pdf.get_y(), 190, pdf.get_y())
+        pdf.set_draw_color(0, 0, 0)
+        pdf.ln(4)
+        pdf.set_text_color(30, 30, 30)
+
+    summary   = result.get("summary", {})
+    scenarios = result.get("scenarios", [])
+    rec       = result.get("recommendation", {})
+    rec_type  = rec.get("type", "")
+    final_msg = result.get("final_message", "")
+    color_rgb = {"blue": (59, 130, 246), "green": (16, 185, 129), "purple": (139, 92, 246)}
+
+    # ── 표지 + 요약
+    pdf.add_page()
+    sfb(20)
+    pdf.set_text_color(30, 30, 30)
+    pdf.cell(0, 12, "AI 인생 시나리오 리포트", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(2)
+    sf(10)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 6, datetime.date.today().strftime("%Y년 %m월 %d일"), new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(8)
+
+    section("입력 정보 요약")
+    for key, label in [("job","직업·역할"),("satisfaction","현 상황 만족도"),("age","연령대"),("gender","성별"),("free_time","하루 평균 여유시간")]:
+        val = inputs.get(key, "")
+        if val and val != "입력 없음":
+            suffix = "/10" if key == "Q2" else ""
+            wl(f"  {label}: {val}{suffix}")
+    income_sel = inputs.get("INCOME_SELECT", "")
+    income_txt = inputs.get("INCOME_TEXT", "")
+    if income_sel == "직접 입력" and income_txt:
+        wl(f"  현재 소득: {income_txt}")
+    elif income_sel not in ("직접 입력 안 함", "직접 입력", "", None):
+        wl(f"  현재 소득: {income_sel}")
+
+    section("핵심 인사이트")
+    wl(summary.get("insight", ""), lh=7)
+    pdf.ln(2)
+    wl(f"핵심 갈등: {summary.get('conflict','')}", color=(160, 90, 0), lh=7)
+
+    # ── 시나리오별 페이지
+    for sc in scenarios:
+        pdf.add_page()
+        sc_type = sc.get("type", "")
+        c_rgb   = color_rgb.get(sc.get("color", "blue"), (60, 60, 60))
+        is_rec  = sc_type == rec_type
+
+        sfb(14)
+        pdf.set_text_color(*c_rgb)
+        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 9, f"시나리오  {sc_type}{'  ★ AI 추천' if is_rec else ''}")
+        sfb(13)
+        pdf.set_text_color(30, 30, 30)
+        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 8, sc.get("title", ""))
+        pdf.ln(2)
+        wl(sc.get("description", ""), lh=7)
+        pdf.ln(3)
+
+        sfb(10); pdf.set_text_color(80, 80, 80)
+        pdf.cell(0, 6, "마일스톤", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(30, 30, 30)
+        ms = sc.get("milestones", {})
+        for yr, lbl in [("1y","1년"),("3y","3년"),("5y","5년"),("10y","10년")]:
+            wl(f"  {lbl}: {ms.get(yr,'')}", lh=6)
+        pdf.ln(3)
+
+        sfb(10); pdf.set_text_color(80, 80, 80)
+        pdf.cell(0, 6, "두려움 분석", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(70, 70, 100)
+        sf(9); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, sc.get("fear_response", ""))
+        pdf.set_text_color(30, 30, 30); pdf.ln(2)
+
+        trf = sc.get("tradeoff", {})
+        sf(10)
+        pdf.set_text_color(0, 130, 80)
+        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"▲ 얻는 것: {trf.get('gain','')}")
+        pdf.set_text_color(180, 60, 0)
+        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"▼ 잃는 것: {trf.get('lose','')}")
+        pdf.set_text_color(30, 30, 30)
+
+        if is_rec:
+            ns = sc.get("next_steps", {})
+            pdf.ln(6)
+            sfb(13); pdf.set_text_color(*c_rgb)
+            pdf.cell(0, 8, "실행 계획 (AI 추천 시나리오)", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(30, 30, 30); pdf.ln(2)
+            for ns_title, ns_key in [
+                ("이번 주 바로 할 것","this_week"),
+                ("1개월 내 준비 사항","one_month"),
+                ("3개월 내 이룰 것","three_months"),
+                ("반드시 갖춰야 할 것","must_prepare"),
+                ("반드시 피해야 할 것","must_avoid"),
+            ]:
+                items = ns.get(ns_key, [])
+                if items:
+                    sfb(10); pdf.set_text_color(80, 80, 80)
+                    pdf.cell(0, 7, ns_title, new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_text_color(30, 30, 30); sf(10)
+                    for it in items:
+                        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"  • {it}")
+                    pdf.ln(2)
+            coach = ns.get("coach_message", "")
+            if coach:
+                sfb(10); pdf.set_text_color(80, 80, 80)
+                pdf.cell(0, 7, "AI 코치 한 마디", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(60, 60, 100); sf(10)
+                pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, coach)
+
+    # ── 마지막 페이지: 추천 이유 + 최종 메시지
+    pdf.add_page()
+    section("AI 추천 이유", color=(16, 185, 129))
+    sfb(11); pdf.set_text_color(16, 185, 129)
+    pdf.cell(0, 7, f"추천 시나리오: {rec_type}", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(30, 30, 30); sf(10)
+    pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, rec.get("reason", ""))
+
+    section("AI 최종 메시지")
+    sf(10); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, final_msg)
+
+    # ── 화면3 실행 계획 페이지 (screen3_data 있을 때만)
+    if screen3_data:
+        sc3 = screen3_data.get("scenario", {})
+        checks = screen3_data.get("checks", {})
+        ns3 = sc3.get("next_steps", {})
+        ev = screen3_data.get("eval_result")
+
+        pdf.add_page()
+        section("실행 계획 체크리스트", color=(139, 92, 246))
+        sfb(11); pdf.set_text_color(80, 80, 80)
+        pdf.cell(0, 7, f"선택 시나리오: {sc3.get('type','')} — {sc3.get('title','')}", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(30, 30, 30); pdf.ln(3)
+
+        sec_map = [
+            ("이번 주 바로 할 것", "this_week",    "week"),
+            ("1개월 내 준비 사항", "one_month",    "month"),
+            ("3개월 내 이룰 것",   "three_months", "3month"),
+            ("반드시 갖춰야 할 것", "must_prepare", "prepare"),
+            ("반드시 피해야 할 것", "must_avoid",   "avoid"),
+        ]
+        for sec_lbl, ns_key, key_pfx in sec_map:
+            items = ns3.get(ns_key, [])
+            if not items:
+                continue
+            sfb(10); pdf.set_text_color(100, 100, 120)
+            pdf.cell(0, 7, sec_lbl, new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(30, 30, 30); sf(9)
+            for idx, item in enumerate(items):
+                mark = "✅" if checks.get(f"check_{key_pfx}_{idx}", False) else "⬜"
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(pdf.epw, 6, f"  {mark} {item}")
+            pdf.ln(2)
+
+        if ev:
+            pdf.ln(4)
+            section("AI 실행 평가", color=(139, 92, 246))
+            ev_inner = ev.get("evaluation", {})
+            for lbl, key in [("실행력", "execution"), ("속도", "speed"), ("방향성", "direction")]:
+                wl(f"  {lbl}: {ev_inner.get(key, '-')}", lh=6)
+            pdf.ln(2)
+            wl("AI 평가 메시지:", bold=True)
+            sf(9); pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(pdf.epw, 6, ev.get("message", ""))
+
+    # ── 화면4 커리어 설계 페이지 (screen4_data 있을 때만)
+    if screen4_data:
+        pdf.add_page()
+        section("3년 후 커리어 설계 계획", color=(108, 99, 255))
+
+        goal_role   = screen4_data.get("goal_role", "")
+        goal_income = screen4_data.get("goal_income", "")
+        goal_skills = screen4_data.get("goal_skills", "")
+        if goal_role:
+            wl(f"  목표 직책·역할: {goal_role}")
+        if goal_income:
+            wl(f"  목표 연 수입: {goal_income}")
+        if goal_skills:
+            wl(f"  핵심 보유 예정 기술: {goal_skills[:200]}")
+        pdf.ln(3)
+
+        gap = screen4_data.get("gap_result", {})
+        req_skills  = gap.get("required_skills", [])
+        pref_skills = gap.get("preferred_skills", [])
+        have        = gap.get("have", [])
+        lack        = gap.get("lack", [])
+        gap_comment = gap.get("gap_comment", "")
+
+        if req_skills:
+            sfb(10); pdf.set_text_color(80, 80, 80)
+            pdf.cell(0, 7, "요구 역량 TOP 5", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(30, 30, 30); sf(9)
+            for s in req_skills:
+                pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"  • {s}")
+            pdf.ln(2)
+        if pref_skills:
+            sfb(10); pdf.set_text_color(80, 80, 80)
+            pdf.cell(0, 7, "우대사항 TOP 5", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(30, 30, 30); sf(9)
+            for s in pref_skills:
+                pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"  • {s}")
+            pdf.ln(2)
+
+        if have or lack:
+            sfb(10); pdf.set_text_color(80, 80, 80)
+            pdf.cell(0, 7, "갭 분석", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(30, 30, 30); sf(9)
+            if have:
+                pdf.set_text_color(0, 130, 80)
+                pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, "현재 보유:")
+                pdf.set_text_color(30, 30, 30)
+                for s in have:
+                    pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"  ✅ {s}")
+            if lack:
+                pdf.set_text_color(180, 60, 0)
+                pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, "부족한 것:")
+                pdf.set_text_color(30, 30, 30)
+                for s in lack:
+                    pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"  ❌ {s}")
+            if gap_comment:
+                pdf.ln(2); sf(9); pdf.set_text_color(70, 70, 120)
+                pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"💡 {gap_comment}")
+                pdf.set_text_color(30, 30, 30)
+            pdf.ln(3)
+
+        roadmap = screen4_data.get("roadmap", {})
+        if roadmap:
+            sfb(10); pdf.set_text_color(80, 80, 80)
+            pdf.cell(0, 7, "3년 로드맵", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(30, 30, 30); sf(9)
+            for yr_key, yr_label in [("y1", "1년차"), ("y2", "2년차"), ("y3", "3년차")]:
+                tasks = roadmap.get(yr_key, [])
+                if tasks:
+                    sfb(9); pdf.set_text_color(60, 60, 160)
+                    pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"{yr_label}:")
+                    pdf.set_text_color(30, 30, 30); sf(9)
+                    for t in tasks:
+                        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"  • {t}")
+            pdf.ln(3)
+
+        monthly_plan = screen4_data.get("monthly_plan", [])
+        checks       = screen4_data.get("checks", {})
+        if monthly_plan:
+            pdf.add_page()
+            section("월별 실행 계획 체크현황 (36개월)", color=(108, 99, 255))
+            sf(9)
+            for p in monthly_plan[:36]:
+                month   = p.get("month", "?")
+                task    = p.get("task", "").strip()
+                if not task:
+                    continue
+                done = checks.get(f"s4_check_{month}", False)
+                mark = "✅" if done else "⬜"
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(pdf.epw, 6, f"  {mark} {month}개월차: {task}")
+
+    return bytes(pdf.output())
+
+
 def init_session():
     if "inputs" not in st.session_state:
         st.session_state.inputs = {}
     if "result" not in st.session_state:
         st.session_state.result = None
     if "page" not in st.session_state:
-        st.session_state.page = "input"
+        st.session_state.page = "home"
+    if "theme" not in st.session_state:
+        st.session_state.theme = "dark"
+    if "compare_mode" not in st.session_state:
+        st.session_state.compare_mode = False
+    if "compare_result" not in st.session_state:
+        st.session_state.compare_result = None
+    if "compare_old_data" not in st.session_state:
+        st.session_state.compare_old_data = None
+    if "selected_scenario" not in st.session_state:
+        st.session_state.selected_scenario = None
+    if "eval_result" not in st.session_state:
+        st.session_state.eval_result = None
+    if "coach_chat" not in st.session_state:
+        st.session_state.coach_chat = []
+    if "coach_error" not in st.session_state:
+        st.session_state.coach_error = None
+    if "coach_pending_msg" not in st.session_state:
+        st.session_state.coach_pending_msg = None
+    if "career_result" not in st.session_state:
+        st.session_state.career_result = None
+    if "career_grounding_used" not in st.session_state:
+        st.session_state.career_grounding_used = False
 
 
 def _e(s):
@@ -434,7 +1068,7 @@ def _li(lst):
     return "".join(f"<li>{_e(x)}</li>" for x in (lst or []))
 
 
-def build_result_html(result: dict, inputs: dict) -> str:
+def build_result_html(result: dict, inputs: dict, theme: str = "dark") -> str:
     summary      = result.get("summary", {})
     scenarios    = result.get("scenarios", [])
     rec          = result.get("recommendation", {})
@@ -446,19 +1080,19 @@ def build_result_html(result: dict, inputs: dict) -> str:
 
     # ── badges
     badges = ""
-    if inputs.get("Q1") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">직업 <b>{_e(inputs["Q1"])}</b></div>'
-    if inputs.get("Q2") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">만족도 <b>{_e(inputs["Q2"])} / 10</b></div>'
-    if inputs.get("Q3") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">버틸 수 있는 기간 <b>{_e(inputs["Q3"])}</b></div>'
-    if inputs.get("Q6") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">가족 지지 <b>{_e(inputs["Q6"])}</b></div>'
+    if inputs.get("job") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">직업 <b>{_e(inputs["job"])}</b></div>'
+    if inputs.get("satisfaction") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">만족도 <b>{_e(inputs["satisfaction"])} / 10</b></div>'
+    if inputs.get("endurance") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">버틸 수 있는 기간 <b>{_e(inputs["endurance"])}</b></div>'
+    if inputs.get("family_support") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">가족 지지 <b>{_e(inputs["family_support"])}</b></div>'
 
-    # ── cards + panels
-    cards_html  = ""
-    panels_html = ""
+    # ── cards + panels (card-wrap 단위로 합쳐서 세로 스택)
+    cards_html = ""
     inc = {"r": [0]*5, "c": [0]*5, "p": [0]*5}
+    rec_idx = next((i for i, sc in enumerate(scenarios) if sc.get("type") == rec_type), 0)
 
     for i, sc in enumerate(scenarios):
         color    = sc.get("color", "blue")
@@ -483,27 +1117,29 @@ def build_result_html(result: dict, inputs: dict) -> str:
         ai_bdg     = '<span class="ai-bdg">🤖 AI 추천</span>' if is_rec else ""
         rec_border = f' style="border-color:var(--{cvar})"' if is_rec else ""
 
-        cards_html += f"""
-  <div class="card card-{cls}" id="card-{i}"{rec_border}>
-    <div class="card-top"><span class="type-lbl">{_e(sc_type)}</span>{ai_bdg}</div>
-    <div class="card-title">{_e(sc.get("title",""))}</div>
-    <div class="card-desc">{_nl2br(sc.get("description",""))}</div>
-    <div class="tags">{tags_html}</div>
-    <div class="tl-hd">마일스톤</div>
-    <div class="tl">{tl_rows}</div>
-    <div class="fear">
-      <div class="fear-hd">두려움 분석</div>
-      <div class="fear-tx">{_nl2br(sc.get("fear_response",""))}</div>
-    </div>
-    <div class="trf">
-      <div class="trf-box trf-g">{_e(trf.get("gain",""))}</div>
-      <div class="trf-box trf-l">{_e(trf.get("lose",""))}</div>
-    </div>
-    <button class="sel-btn" onclick="pick({i})">이 시나리오 선택</button>
-  </div>"""
-
         ns = sc.get("next_steps", {})
-        panels_html += f"""
+        cards_html += f"""
+  <div class="card-wrap">
+    <div class="card card-{cls}" id="card-{i}"{rec_border}>
+      <div class="card-top"><span class="type-lbl">{_e(sc_type)}</span>{ai_bdg}</div>
+      <div class="card-title">{_e(sc.get("title",""))}</div>
+      <div class="card-desc">{_nl2br(sc.get("description",""))}</div>
+      <div class="tags">{tags_html}</div>
+      <div class="tl-hd">마일스톤</div>
+      <div class="tl">{tl_rows}</div>
+      <div class="fear">
+        <div class="fear-hd">두려움 분석</div>
+        <div class="fear-tx">{_nl2br(sc.get("fear_response",""))}</div>
+      </div>
+      <div class="trf">
+        <div class="trf-box trf-g">{_e(trf.get("gain",""))}</div>
+        <div class="trf-box trf-l">{_e(trf.get("lose",""))}</div>
+      </div>
+      <div class="card-actions">
+        <button class="toggle-btn" id="toggle-{i}" onclick="togglePanel({i})">▼ 실행 계획 보기</button>
+        <button class="sel-btn" onclick="pick({i})">이 시나리오 선택</button>
+      </div>
+    </div>
     <div class="panel panel-{cls}" id="panel-{i}">
       <div class="panel-inner">
         <div class="pg">
@@ -521,19 +1157,78 @@ def build_result_html(result: dict, inputs: dict) -> str:
           <div class="coach-tx">{_nl2br(ns.get("coach_message",""))}</div>
         </div>
       </div>
-    </div>"""
+    </div>
+  </div>"""
 
     # ── chart data
     max_inc = max(max(inc["r"]), max(inc["c"]), max(inc["p"]), 1)
 
-    CSS = """
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
+    # ── kakao share text
+    kakao_lines = ["[AI 인생 시나리오 리포트]"]
+    for sc in scenarios:
+        rec_mark = " ⭐ AI추천" if sc.get("type","") == rec_type else ""
+        kakao_lines.append(f"[{sc.get('type','')}] {sc.get('title','')}{rec_mark}")
+    kakao_lines.append(f"\nAI 추천: {rec_type}")
+    kakao_lines.append(f"\n{final_msg}")
+    kakao_share_js = json.dumps("\n".join(kakao_lines))
+
+    DARK_VARS = """:root{
   --bg:#0d1117;--surface:#161b27;--border:#1f2a3c;--text:#e2e8f0;--muted:#8892a4;
   --blue:#3b82f6;--blue-dark:#1e3a5f;--blue-dim:#0f1e33;
   --green:#10b981;--green-dark:#0d3d2a;--green-dim:#081e14;
   --purple:#8b5cf6;--purple-dark:#2d1b5e;--purple-dim:#16102e;
-}
+}"""
+    LIGHT_VARS = """:root{
+  --bg:#F8F9FA;--surface:#FFFFFF;--border:#E2E8F0;--text:#222222;--muted:#64748B;
+  --blue:#1A5FA8;--blue-dark:#DBEAFE;--blue-dim:#EFF6FF;
+  --green:#0D6B52;--green-dark:#D1FAE5;--green-dim:#ECFDF5;
+  --purple:#5043B0;--purple-dark:#EDE9FE;--purple-dim:#F5F3FF;
+}"""
+    LIGHT_OVERRIDES = """
+.hdr-title{color:#1e293b}
+.bdg{background:#F1F5F9;border-color:#E2E8F0}
+.bdg b{color:#1e293b}
+.insight{background:#F8FAFC;color:#475569}
+.conflict{background:#FFFBEB;border-color:#FDE68A;color:#92400E}
+.conflict::before{color:#92400E}
+.card-r{background:var(--blue-dim);border-color:#BFDBFE}
+.card-c{background:var(--green-dim);border-color:#A7F3D0}
+.card-p{background:var(--purple-dim);border-color:#DDD6FE}
+.card-title{color:#1e293b}
+.card-desc{color:#475569}
+.tl-tx{color:#475569}
+.tl-row::before{box-shadow:0 0 0 2px #F8F9FA}
+.fear-tx{color:#475569}
+.trf-g{background:#F0FDF4;border-color:#BBF7D0;color:#065F46}
+.trf-g::before{color:#0D6B52}
+.trf-l{background:#FFF7ED;border-color:#FED7AA;color:#9A3412}
+.trf-l::before{color:#C2410C}
+.toggle-btn{border-color:#E2E8F0;color:#64748B}
+.toggle-btn:hover{background:#F1F5F9;color:#1e293b}
+.panel-r .panel-inner{background:#F0F7FF;border-color:#BFDBFE}
+.panel-c .panel-inner{background:#F0FDF8;border-color:#A7F3D0}
+.panel-p .panel-inner{background:#F8F5FF;border-color:#DDD6FE}
+.pb li{color:#475569}
+.avoid-wrap{background:#FFF5F5;border-color:#FECACA}
+.avoid-wrap li{color:#9B1C1C}
+.panel-r .coach{background:#F0F7FF;border-color:#BFDBFE}
+.panel-c .coach{background:#F0FDF8;border-color:#A7F3D0}
+.panel-p .coach{background:#F8F5FF;border-color:#DDD6FE}
+.coach-tx{color:#334155}
+.sec{background:var(--surface);border-color:var(--border)}
+.sec-title{color:#1e293b}
+.bar:hover::after{background:#F1F5F9;color:#1e293b;border-color:#CBD5E1}
+.final{background:linear-gradient(135deg,#EFF6FF 0%,#F5F3FF 50%,#ECFDF5 100%);border-color:#BFDBFE}
+.final-tx{color:#334155}
+.rec{background:var(--green-dim);border-color:#A7F3D0}
+.rec-tx{color:#065F46}
+.cu{color:#94A3B8}
+"""
+    CSS_VARS   = LIGHT_VARS   if theme == "light" else DARK_VARS
+    CSS_EXTRA  = LIGHT_OVERRIDES if theme == "light" else ""
+
+    CSS = CSS_VARS + """
+*{box-sizing:border-box;margin:0;padding:0}
 html{font-size:14px}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;min-height:100vh;padding:28px 20px 64px;line-height:1.6}
 .wrap{max-width:1400px;margin:0 auto}
@@ -548,10 +1243,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .conflict{font-size:13px;color:#fbbf24;padding:10px 16px;background:#1c1507;border:1px solid #3d2d0a;border-radius:8px}
 .conflict::before{content:"⚡ ";font-weight:700}
 .cards-outer{margin-bottom:20px}
-.cards-row{display:grid;grid-template-columns:1fr;gap:16px}
-@media(min-width:768px){.cards-row{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:1280px){.cards-row{grid-template-columns:repeat(3,1fr)}}
-.card{border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:12px;transition:transform .2s,box-shadow .2s;cursor:default;position:relative;overflow:hidden}
+.cards-row{display:flex;flex-direction:column;gap:0}
+@media(max-width:767px){.cards-row{gap:0}}
+.card-wrap{border-bottom:1px solid var(--border);padding-bottom:28px;margin-bottom:28px}
+.card-wrap:last-child{border-bottom:none;margin-bottom:0}
+.card{border-radius:12px;padding:28px 32px;display:flex;flex-direction:column;gap:14px;transition:transform .2s,box-shadow .2s;cursor:default;position:relative;overflow:hidden}
 .card::before{content:"";position:absolute;inset:0;opacity:.04;background:radial-gradient(ellipse at top left,#fff,transparent 70%);pointer-events:none}
 .card-r{background:var(--blue-dim);border:1px solid #1d3557}
 .card-c{background:var(--green-dim);border:1px solid #0e3728}
@@ -569,17 +1265,17 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .card-top{display:flex;align-items:center;justify-content:space-between}
 .type-lbl{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--c);background:var(--cd);border:1px solid var(--ct);padding:3px 10px;border-radius:4px}
 .ai-bdg{background:var(--green);color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:4px;letter-spacing:.3px}
-.card-title{font-size:18px;font-weight:800;color:#f1f5f9;letter-spacing:-.3px}
-.card-desc{font-size:13px;line-height:1.8;color:#94a3b8}
-.tags{display:flex;flex-wrap:wrap;gap:5px}
-.tag{background:var(--cd);color:var(--c);border:1px solid var(--ct);border-radius:4px;padding:2px 9px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.card-title{font-size:23px;font-weight:800;color:#f1f5f9;letter-spacing:-.3px}
+.card-desc{font-size:15px;line-height:1.8;color:#94a3b8}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{background:var(--cd);color:var(--c);border:1px solid var(--ct);border-radius:4px;padding:3px 11px;font-size:12px;font-weight:700;letter-spacing:.3px}
 .tl-hd{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .tl{display:flex;flex-direction:column;gap:1px;position:relative;padding-left:20px}
 .tl::before{content:"";position:absolute;left:4px;top:6px;bottom:6px;width:1px;background:linear-gradient(to bottom,var(--c),transparent)}
 .tl-row{display:flex;gap:8px;align-items:flex-start;padding:4px 0;position:relative}
 .tl-row::before{content:"";position:absolute;left:-16px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--bg)}
 .tl-yr{font-size:10px;font-weight:800;color:var(--c);min-width:26px;padding-top:1px}
-.tl-tx{font-size:12px;color:#94a3b8;line-height:1.6}
+.tl-tx{font-size:14px;color:#94a3b8;line-height:1.6}
 .fear{background:var(--cd);border-left:3px solid var(--c);border-radius:0 8px 8px 0;padding:10px 14px}
 .fear-hd{font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--c);margin-bottom:5px}
 .fear-tx{font-size:12px;line-height:1.75;color:#94a3b8;font-style:italic}
@@ -589,9 +1285,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .trf-g::before{content:"▲ 얻는 것\A";white-space:pre;font-size:9px;font-weight:800;letter-spacing:.5px;color:#10b981;text-transform:uppercase}
 .trf-l{background:#1a0a00;border:1px solid #3d1a00;color:#fdba74}
 .trf-l::before{content:"▼ 잃는 것\A";white-space:pre;font-size:9px;font-weight:800;letter-spacing:.5px;color:#f97316;text-transform:uppercase}
-.sel-btn{margin-top:auto;padding:11px;border:1px solid var(--c);background:transparent;color:var(--c);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;width:100%;letter-spacing:.3px}
+.card-actions{display:flex;gap:8px;margin-top:auto}
+.toggle-btn{flex:1;padding:11px;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.toggle-btn:hover{background:#1e293b;color:#f1f5f9}
+.toggle-btn.open{border-color:var(--c);color:var(--c)}
+.sel-btn{flex:1;padding:11px;border:1px solid var(--c);background:transparent;color:var(--c);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px}
 .sel-btn:hover,.sel-btn.on{background:var(--c);color:#0d1117}
-.panel-wrap{grid-column:1/-1}
 .panel{overflow:hidden;max-height:0;transition:max-height .5s cubic-bezier(.4,0,.2,1),opacity .35s;opacity:0}
 .panel.open{max-height:3000px;opacity:1}
 .panel-inner{border-radius:12px;padding:26px;margin-top:4px;border:1px solid}
@@ -644,7 +1343,18 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .rec{background:var(--green-dim);border:1px solid #0e3728;border-radius:12px;padding:24px}
 .rec-lbl{font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px}
 .rec-tx{font-size:13.5px;line-height:1.95;color:#6ee7b7}
-"""
+.share-sec{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;text-align:center}
+.share-title{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.share-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.share-btn{padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s;letter-spacing:.2px}
+.s-li{background:#0A66C2;color:#fff}
+.s-li:hover{background:#004182}
+.s-kt{background:#FEE500;color:#3C1E1E}
+.s-kt:hover{background:#F5DB00}
+.s-cp{background:var(--border);color:var(--text)}
+.s-cp:hover{filter:brightness(1.2)}
+.share-msg{margin-top:12px;font-size:12px;font-weight:600;color:var(--green);min-height:18px}
+""" + CSS_EXTRA
 
     return f"""<!DOCTYPE html>
 <html lang="ko">
@@ -669,9 +1379,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <div class="cards-outer">
 <div class="cards-row" id="cardsRow">
 {cards_html}
-  <div class="panel-wrap">
-{panels_html}
-  </div>
 </div>
 </div>
 
@@ -695,6 +1402,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <div class="rec-tx">{_nl2br(rec.get("reason",""))}</div>
 </div>
 
+<div class="share-sec">
+  <div class="share-title">결과 공유하기</div>
+  <div class="share-btns">
+    <button class="share-btn s-li" onclick="shareLI()">💼 LinkedIn 공유</button>
+    <button class="share-btn s-kt" onclick="shareKT()">💬 카카오톡 공유</button>
+    <button class="share-btn s-cp" onclick="copyURL()">🔗 URL 복사</button>
+  </div>
+  <div class="share-msg" id="share-msg"></div>
+</div>
+
 </div>
 <script>
 const lbs=['현재','1년','3년','5년','10년'];
@@ -715,25 +1432,45 @@ lbs.forEach((lb,i)=>{{
 
 let cur=null;
 function pick(i){{
-  const ps=document.querySelectorAll('.panel');
   const cs=document.querySelectorAll('.card');
   const bs=document.querySelectorAll('.sel-btn');
   if(cur===i){{
-    ps[i].classList.remove('open');cs[i].classList.remove('active');
-    bs[i].classList.remove('on');bs[i].textContent='이 시나리오 선택';cur=null;
-    sendHeight();return;
+    cs[i].classList.remove('active');
+    bs[i].classList.remove('on');bs[i].textContent='이 시나리오 선택';
+    cur=null;return;
   }}
   if(cur!==null){{
-    ps[cur].classList.remove('open');cs[cur].classList.remove('active');
+    cs[cur].classList.remove('active');
     bs[cur].classList.remove('on');bs[cur].textContent='이 시나리오 선택';
   }}
-  ps[i].classList.add('open');cs[i].classList.add('active');
-  bs[i].classList.add('on');bs[i].textContent='✔ 선택됨';cur=i;
-  setTimeout(()=>{{
-    ps[i].scrollIntoView({{behavior:'smooth',block:'nearest'}});
-    sendHeight();
-  }},200);
+  cs[i].classList.add('active');
+  bs[i].classList.add('on');bs[i].textContent='✔ 선택됨';
+  cur=i;
 }}
+
+function togglePanel(i){{
+  const p=document.getElementById('panel-'+i);
+  const btn=document.getElementById('toggle-'+i);
+  if(!p||!btn)return;
+  const isOpen=p.classList.contains('open');
+  if(isOpen){{
+    p.classList.remove('open');
+    btn.classList.remove('open');
+    btn.textContent='▼ 실행 계획 보기';
+  }}else{{
+    p.classList.add('open');
+    btn.classList.add('open');
+    btn.textContent='▲ 접기';
+  }}
+  setTimeout(sendHeight,350);
+}}
+
+(function(){{
+  const p=document.getElementById('panel-{rec_idx}');
+  const btn=document.getElementById('toggle-{rec_idx}');
+  if(p){{p.classList.add('open');}}
+  if(btn){{btn.classList.add('open');btn.textContent='▲ 접기';}}
+}})();
 
 function sendHeight(){{
   const h=document.documentElement.scrollHeight;
@@ -741,71 +1478,414 @@ function sendHeight(){{
 }}
 window.addEventListener('load',sendHeight);
 new MutationObserver(sendHeight).observe(document.documentElement,{{subtree:true,childList:true,attributes:true}});
+
+const kakaoText={kakao_share_js};
+function getURL(){{try{{return window.parent.location.href;}}catch(e){{return window.location.href;}}}}
+function showMsg(txt){{
+  const el=document.getElementById('share-msg');
+  if(!el)return;
+  el.textContent=txt;
+  setTimeout(()=>{{el.textContent='';}},3000);
+}}
+function shareLI(){{
+  window.open('https://www.linkedin.com/sharing/share-offsite/?url='+encodeURIComponent(getURL()),'_blank');
+}}
+function shareKT(){{
+  navigator.clipboard.writeText(kakaoText)
+    .then(()=>showMsg('복사되었습니다. 카카오톡에 붙여넣기 하세요.'))
+    .catch(()=>showMsg('클립보드 접근이 차단되었습니다. 수동으로 복사해 주세요.'));
+}}
+function copyURL(){{
+  navigator.clipboard.writeText(getURL())
+    .then(()=>showMsg('URL이 복사되었습니다.'))
+    .catch(()=>showMsg('클립보드 접근이 차단되었습니다.'));
+}}
 </script>
 </body>
 </html>"""
 
 
-def render_input_page():
-    st.title("AI 인생 시나리오 플래너")
-    st.caption("15개 질문에 답하면 AI가 현실형·도전형·파격형 3가지 인생 시나리오를 분석해 드립니다.")
+def render_compare_page():
+    comp = st.session_state.compare_result
+    old_data = st.session_state.compare_old_data
 
-    col_load, col_save = st.columns([1, 1])
+    if st.button("← 입력 화면으로"):
+        st.session_state.page = "input"
+        st.session_state.compare_result = None
+        st.session_state.compare_old_data = None
+        st.rerun()
+
+    old_date = old_data.get("saved_at", old_data.get("date", ""))[:16].replace("T", " ")
+    st.title("📊 시나리오 비교 분석")
+    st.caption(f"과거 기록 ({old_date}) vs 현재 입력값")
+    st.divider()
+
+    # 항목별 변화
+    st.subheader("항목별 변화")
+    changes = comp.get("changes", [])
+    dir_icon = {"up": "📈", "down": "📉", "changed": "🔄", "same": "➖"}
+    for ch in changes:
+        icon = dir_icon.get(ch.get("direction", "same"), "🔄")
+        col1, col2, col3 = st.columns([2, 3, 5])
+        with col1:
+            st.markdown(f"**{ch.get('label', '')}**")
+        with col2:
+            st.markdown(f"{icon} `{ch.get('before', '')}` → `{ch.get('after', '')}`")
+        with col3:
+            st.caption(ch.get("comment", ""))
+    st.divider()
+
+    # 추천 시나리오 변화
+    st.subheader("AI 추천 시나리오 변화")
+    rec_ch = comp.get("recommendation_change", {})
+    col1, col2 = st.columns(2)
+    type_color = {"현실형": "🔵", "도전형": "🟢", "파격형": "🟣"}
+    with col1:
+        bt = rec_ch.get("before_type", "")
+        st.metric("과거 추천", f"{type_color.get(bt, '')} {bt}")
+    with col2:
+        at = rec_ch.get("after_type", "")
+        st.metric("현재 추천 (예측)", f"{type_color.get(at, '')} {at}")
+    st.info(rec_ch.get("analysis", ""))
+    st.divider()
+
+    # 과거 next steps 달성 여부 체크리스트
+    st.subheader("과거 Next Steps 달성 여부 체크리스트")
+    checklist = comp.get("checklist", [])
+    if checklist:
+        for item in checklist:
+            done = item.get("likely_done", False)
+            icon = "✅" if done else "⬜"
+            cat = item.get("category", "")
+            st.markdown(f"{icon} **{item.get('item', '')}**" + (f"  <sub>({cat})</sub>" if cat else ""), unsafe_allow_html=True)
+            st.caption(item.get("reason", ""))
+    else:
+        st.caption("체크리스트 항목이 없습니다.")
+    st.divider()
+
+    # AI 종합 분석
+    st.subheader("AI 종합 분석")
+    st.write(comp.get("overall_analysis", ""))
+
+
+def _migrate_profile(profile: dict) -> dict:
+    """구형(Q1-Q15/AGE/GENDER/TIME 키) 프로필을 id 기반 키로 변환."""
+    migrated = {}
+    for old_key, new_key in OLD_KEY_MIGRATION.items():
+        if old_key in profile:
+            migrated[new_key] = profile[old_key]
+    for k in ("INCOME_SELECT", "INCOME_TEXT"):
+        if k in profile:
+            migrated[k] = profile[k]
+    for q in QUESTIONS:
+        id_key = q["id"]
+        if id_key in profile and id_key not in migrated:
+            migrated[id_key] = profile[id_key]
+    return migrated
+
+
+def _render_question(q: dict, inputs: dict) -> None:
+    """단일 질문 위젯을 렌더링하고 inputs 딕셔너리를 채운다."""
+    qid = q["id"]
+    saved = st.session_state.inputs.get(qid)
+
+    if q["type"] == "text":
+        val = st.text_input(q["label"], value=saved or "", placeholder=q.get("placeholder", ""), key=f"input_{qid}")
+        inputs[qid] = val.strip() if val.strip() else "입력 없음"
+
+    elif q["type"] == "textarea":
+        val = st.text_area(q["label"], value=saved or "", placeholder=q.get("placeholder", ""), height=80, key=f"input_{qid}")
+        inputs[qid] = val.strip() if val.strip() else "입력 없음"
+
+    elif q["type"] == "slider":
+        raw = saved
+        default = int(raw) if raw and str(raw).isdigit() else 5
+        val = st.slider(q["label"], min_value=1, max_value=10, value=default, key=f"input_{qid}")
+        st.caption(f"현재 선택: **{val} / 10**")
+        inputs[qid] = str(val)
+
+    elif q["type"] == "select":
+        options = q["options"]
+        default_idx = options.index(saved) if saved in options else 0
+        val = st.selectbox(q["label"], options=options, index=default_idx, key=f"input_{qid}")
+        inputs[qid] = val
+
+    elif q["type"] == "income_select":
+        options = q["options"]
+        saved_sel = st.session_state.inputs.get("INCOME_SELECT", "직접 입력 안 함")
+        default_idx = options.index(saved_sel) if saved_sel in options else 0
+        sel = st.selectbox(q["label"], options=options, index=default_idx, key="input_INCOME_SELECT")
+        if sel == "직접 입력":
+            saved_txt = st.session_state.inputs.get("INCOME_TEXT", "")
+            txt = st.text_input(
+                "금액 직접 입력",
+                value=saved_txt,
+                placeholder="예) 연봉 6600만원, 월급 450만원",
+                key="input_INCOME_TEXT",
+            )
+            inputs["INCOME_SELECT"] = sel
+            inputs["INCOME_TEXT"] = txt.strip()
+        else:
+            inputs["INCOME_SELECT"] = sel
+            inputs["INCOME_TEXT"] = ""
+
+
+def _restore_session_from_history(hist: dict):
+    """history 데이터를 session_state에 복원해 화면2·3이 정상 동작하게 한다."""
+    result    = hist.get("result", {})
+    inputs    = hist.get("inputs", {})
+    rec_type  = result.get("recommendation", {}).get("type", "")
+    scenarios = result.get("scenarios", [])
+    selected  = next((s for s in scenarios if s.get("type") == rec_type),
+                     scenarios[0] if scenarios else {})
+    st.session_state.result            = result
+    st.session_state.inputs            = inputs
+    st.session_state.selected_scenario = selected
+
+
+def _build_status_section_html(status: int, hist_data: dict, checklist_data: dict) -> str:
+    """상태(1/2/3)에 맞는 {{STATUS_SECTION}} 치환용 HTML 블록 반환."""
+    result       = hist_data.get("result", {})
+    rec          = result.get("recommendation", {})
+    rec_type     = rec.get("type", "")
+    scenarios    = result.get("scenarios", [])
+    rec_sc       = next((s for s in scenarios if s.get("type") == rec_type), {})
+    sc_title     = rec_sc.get("title", "")
+    saved_at     = (hist_data.get("saved_at", hist_data.get("date", "")) or "")[:10]
+    display_date = saved_at.replace("-", ".") or "—"
+    TYPE_EMOJI   = {"현실형": "🔵", "도전형": "🟢", "파격형": "🟣"}
+    emoji        = TYPE_EMOJI.get(rec_type, "⭐")
+    scenario_display = _e(f"{emoji} {rec_type} — {sc_title}") if rec_type else "—"
+
+    checked_count = sum(1 for i in range(1, 37) if checklist_data.get(f"s4_check_{i}", False))
+    pct_int       = int(checked_count / 36 * 100)
+    unchecked_y1  = sum(1 for i in range(1, 13) if not checklist_data.get(f"s4_check_{i}", False))
+
+    if status == 1:
+        return """
+  <button class="plan-btn btn-locked" onclick="toast('🔒','먼저 인생 시나리오를 설계해주세요')">
+    <span class="b-icon">📋</span>
+    <span class="b-text">
+      <span class="b-label">목표 달성 플랜 <span class="lock-tag">🔒 잠김</span></span>
+      <span class="b-desc">선택한 시나리오 실행 현황 + AI 코칭</span>
+    </span>
+  </button>"""
+    elif status == 2:
+        return f"""
+  <div class="card-result">
+    <div class="cr-top">
+      <div>
+        <div class="cr-badge">📊 내 시나리오 결과</div>
+        <div class="cr-name">{scenario_display}</div>
+      </div>
+      <div class="cr-date">분석일<br><strong>{_e(display_date)}</strong></div>
+    </div>
+    <div class="cr-actions">
+      <button class="cr-btn cr-btn-outline" onclick="toast('📄','결과 화면으로 이동합니다')">결과 다시 보기</button>
+      <button class="cr-btn cr-btn-fill" onclick="toast('🚀','목표달성플랜으로 이동합니다')">목표달성플랜 시작하기 →</button>
+    </div>
+  </div>"""
+    else:
+        return f"""
+  <div class="card-progress">
+    <div class="cp-top">
+      <div class="cp-name">{scenario_display}</div>
+      <div class="cp-todo">⚠️ 미완료 {unchecked_y1}개</div>
+    </div>
+    <div class="cp-bar-wrap">
+      <div class="cp-bar-meta"><span>전체 진행률</span><span class="cp-pct">{pct_int}%</span></div>
+      <div class="cp-bar"><div class="cp-fill" id="cpFill" data-pct="{pct_int}"></div></div>
+    </div>
+    <button class="cp-continue" onclick="toast('📋','플랜 진행 화면으로 이동합니다')">이어서 진행하기 →</button>
+  </div>"""
+
+
+def build_home_html(status: int, hist_data: dict, checklist_data: dict, theme: str = "dark") -> str:
+    """screen0.html을 읽어 {{STATUS_SECTION}} 플레이스홀더를 상태별 HTML로 치환해 반환."""
+    html_path = os.path.join(os.path.dirname(__file__), "screen0.html")
+    if not os.path.exists(html_path):
+        return ""
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+
+    status_section = _build_status_section_html(status, hist_data, checklist_data)
+    html_content = html_content.replace("{{STATUS_SECTION}}", status_section)
+
+    return html_content
+
+
+def render_home_page():
+    # HTML 컴포넌트 버튼 클릭에서 오는 네비게이션 처리
+    try:
+        action = st.query_params.get("home_action", "")
+    except Exception:
+        action = ""
+
+    if action:
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
+        hist = _load_latest_history()
+        if action == "start":
+            st.session_state.page = "input"
+        elif action == "result" and hist:
+            _restore_session_from_history(hist)
+            st.session_state.page = "result"
+        elif action == "plan" and hist:
+            _restore_session_from_history(hist)
+            st.session_state.page = "plan"
+        elif action == "career":
+            st.session_state["s4_prev_page"] = "home"
+            st.session_state.page = "career"
+        st.rerun()
+
+    status         = get_user_status()
+    hist_data      = _load_latest_history() if status >= 2 else {}
+    checklist_data = _load_latest_career_checklist() if status >= 3 else {}
+    theme          = st.session_state.get("theme", "dark")
+
+    html_content = build_home_html(status, hist_data, checklist_data, theme)
+
+    if not html_content:
+        st.warning("screen0.html 파일이 없습니다. Final 폴더에 파일을 추가해주세요.")
+        _render_home_fallback(status, hist_data)
+        return
+
+    components.html(html_content, height=800, scrolling=True)
+
+    # Streamlit 네이티브 버튼 — HTML 디자인 아래 실제 동작 담당
+    st.divider()
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("✨ 인생 시나리오 시작", use_container_width=True, key="home_native_start"):
+            st.session_state.page = "input"
+            st.rerun()
+    with col2:
+        if status == 3:
+            if st.button("▶ 이어서 진행하기", use_container_width=True, key="home_native_plan"):
+                _restore_session_from_history(hist_data)
+                st.session_state.page = "plan"
+                st.rerun()
+        elif status == 2:
+            if st.button("📊 결과 다시 보기", use_container_width=True, key="home_native_result"):
+                _restore_session_from_history(hist_data)
+                st.session_state.page = "result"
+                st.rerun()
+    with col3:
+        if st.button("💼 3년 후 커리어 설계", use_container_width=True, key="home_native_career"):
+            st.session_state["s4_prev_page"] = "home"
+            st.session_state.page = "career"
+            st.rerun()
+
+
+def _render_home_fallback(status: int, hist_data: dict):
+    """screen0.html이 없을 때 네이티브 UI로 fallback."""
+    st.title("AI 인생 시나리오 플래너")
+    st.caption("나의 현재 상황을 입력하면 AI가 3가지 인생 시나리오를 분석해 드립니다.")
+    if st.button("✨ 인생 시나리오 시작", type="primary", use_container_width=True):
+        st.session_state.page = "input"
+        st.rerun()
+    if status >= 2:
+        col_v, col_p = st.columns(2)
+        with col_v:
+            if st.button("📊 결과 다시 보기", use_container_width=True):
+                _restore_session_from_history(hist_data)
+                st.session_state.page = "result"
+                st.rerun()
+        with col_p:
+            if st.button("🎯 목표달성플랜 시작", use_container_width=True):
+                _restore_session_from_history(hist_data)
+                st.session_state.page = "plan"
+                st.rerun()
+    if st.button("💼 3년 후 커리어 설계", use_container_width=True):
+        st.session_state["s4_prev_page"] = "home"
+        st.session_state.page = "career"
+        st.rerun()
+
+
+def render_input_page():
+    if st.button("← 홈으로", key="input_home"):
+        st.session_state.page = "home"
+        st.rerun()
+
+    st.title("AI 인생 시나리오 플래너")
+    st.caption("18개 질문에 답하면 AI가 현실형·도전형·파격형 3가지 인생 시나리오를 분석해 드립니다.")
+
+    col_load, col_compare = st.columns([1, 1])
     with col_load:
         if st.button("저장된 정보 불러오기", use_container_width=True):
-            profile = load_profile()
-            if profile:
+            raw_profile = load_profile()
+            if raw_profile:
+                profile = _migrate_profile(raw_profile)
                 st.session_state.inputs = profile
+                for q in QUESTIONS:
+                    qid = q["id"]
+                    wkey = f"input_{qid}"
+                    if q["type"] in ("text", "textarea"):
+                        raw = profile.get(qid, "")
+                        st.session_state[wkey] = "" if raw == "입력 없음" else (raw or "")
+                    elif q["type"] == "slider":
+                        raw = profile.get(qid, "5")
+                        st.session_state[wkey] = int(raw) if str(raw).isdigit() else 5
+                    elif q["type"] == "select":
+                        options = q["options"]
+                        raw = profile.get(qid, options[0])
+                        st.session_state[wkey] = raw if raw in options else options[0]
+                    elif q["type"] == "income_select":
+                        options = q["options"]
+                        raw_sel = profile.get("INCOME_SELECT", "직접 입력 안 함")
+                        st.session_state["input_INCOME_SELECT"] = raw_sel if raw_sel in options else "직접 입력 안 함"
+                        st.session_state["input_INCOME_TEXT"] = profile.get("INCOME_TEXT", "")
                 st.success("프로필을 불러왔습니다.")
                 st.rerun()
             else:
                 st.warning("저장된 프로필이 없습니다.")
 
-    st.divider()
+    with col_compare:
+        if st.button("📊 과거 결과와 비교", use_container_width=True):
+            st.session_state.compare_mode = not st.session_state.compare_mode
+            st.rerun()
+
+    if st.session_state.compare_mode:
+        with st.container(border=True):
+            st.markdown("**과거 결과 선택**")
+            history_items = list_history()
+            if not history_items:
+                st.warning("저장된 과거 기록이 없습니다. 결과 화면에서 '이 결과 저장' 버튼을 눌러 기록을 남기세요.")
+                if st.button("닫기", key="close_compare"):
+                    st.session_state.compare_mode = False
+                    st.rerun()
+            else:
+                options = {item["label"]: item for item in history_items}
+                selected_label = st.selectbox("비교할 과거 기록 선택", list(options.keys()), key="compare_select")
+                if st.button("비교 분석 시작", type="primary", use_container_width=True, key="compare_start"):
+                    selected_data = options[selected_label]["data"]
+                    cur_inputs = st.session_state.inputs
+                    if not any(cur_inputs.get(k) for k in ("job", "satisfaction", "endurance", "skill", "saving")):
+                        st.warning("먼저 현재 입력값을 작성해 주세요.")
+                    else:
+                        with st.spinner("AI가 비교 분석 중입니다... (30초~1분 소요)"):
+                            try:
+                                comp_result = generate_comparison(selected_data, cur_inputs)
+                                st.session_state.compare_result = comp_result
+                                st.session_state.compare_old_data = selected_data
+                                st.session_state.compare_mode = False
+                                st.session_state.page = "compare"
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"비교 분석 오류: {e}")
 
     inputs = {}
 
-    for q in QUESTIONS:
-        key = q["key"]
-        label = q["label"]
-        saved = st.session_state.inputs.get(key)
-
-        if q["type"] == "text":
-            val = st.text_input(label, value=saved or "", key=f"input_{key}")
-            st.caption(q["placeholder"])
-            inputs[key] = val if val.strip() else "입력 없음"
-
-        elif q["type"] == "slider":
-            default = int(saved) if saved and str(saved).isdigit() else 5
-            val = st.slider(label, min_value=1, max_value=10, value=default, key=f"input_{key}")
-            inputs[key] = str(val)
-
-        elif q["type"] == "select":
-            options = q["options"]
-            default_idx = options.index(saved) if saved in options else 0
-            val = st.selectbox(label, options=options, index=default_idx, key=f"input_{key}")
-            inputs[key] = val
-
-        elif q["type"] == "income_select":
-            options = q["options"]
-            saved_sel = st.session_state.inputs.get("INCOME_SELECT", "직접 입력 안 함")
-            default_idx = options.index(saved_sel) if saved_sel in options else 0
-            sel = st.selectbox(label, options=options, index=default_idx, key="input_INCOME_SELECT")
-            if sel == "직접 입력":
-                saved_txt = st.session_state.inputs.get("INCOME_TEXT", "")
-                txt = st.text_input(
-                    "금액 직접 입력",
-                    value=saved_txt,
-                    placeholder="예) 연봉 6600만원, 월급 450만원",
-                    key="input_INCOME_TEXT",
-                )
-                inputs["INCOME_SELECT"] = sel
-                inputs["INCOME_TEXT"] = txt.strip()
-            else:
-                inputs["INCOME_SELECT"] = sel
-                inputs["INCOME_TEXT"] = ""
-
-        st.write("")
+    for sec in SECTIONS:
+        st.divider()
+        st.subheader(sec["title"])
+        st.caption(sec["desc"])
+        for q in sec["questions"]:
+            _render_question(q, inputs)
+            st.write("")
 
     st.divider()
 
@@ -833,12 +1913,79 @@ def render_input_page():
 
 
 def render_result_page():
-    if st.button("← 다시 입력하기"):
-        st.session_state.page = "input"
-        st.session_state.result = None
-        st.rerun()
+    # PDF 미리 생성 (버튼 렌더링에 필요)
+    pdf_bytes = None
+    try:
+        pdf_bytes = generate_pdf(st.session_state.result, st.session_state.inputs)
+    except Exception:
+        pass
 
-    html_content = build_result_html(st.session_state.result, st.session_state.inputs)
+    col_home, col_back, col_save_hist, col_pdf, col_career, col_theme = st.columns([2, 3, 2, 2, 2, 1])
+    with col_home:
+        if st.button("🏠 홈으로", use_container_width=True):
+            st.session_state.page = "home"
+            st.rerun()
+    with col_back:
+        if st.button("← 다시 입력하기", use_container_width=True):
+            st.session_state.page = "input"
+            st.session_state.result = None
+            st.rerun()
+    with col_save_hist:
+        if st.button("💾 이 결과 저장", use_container_width=True):
+            try:
+                saved_path = save_history(st.session_state.inputs, st.session_state.result)
+                st.success(f"저장 완료: {saved_path}")
+            except Exception as e:
+                st.error(f"저장 실패: {e}")
+    with col_pdf:
+        if pdf_bytes:
+            fname = f"scenario_report_{datetime.date.today().strftime('%Y%m%d')}.pdf"
+            st.download_button(
+                label="📄 PDF로 저장",
+                data=pdf_bytes,
+                file_name=fname,
+                mime="application/pdf",
+                use_container_width=True,
+            )
+    with col_career:
+        if st.button("🎯 3년 후 커리어 설계", use_container_width=True):
+            st.session_state["s4_prev_page"] = "result"
+            st.session_state.page = "career"
+            st.rerun()
+    with col_theme:
+        theme = st.session_state.get("theme", "dark")
+        if st.button("☀️" if theme == "dark" else "🌙", help="라이트/다크 모드 전환", use_container_width=True):
+            st.session_state.theme = "light" if theme == "dark" else "dark"
+            st.rerun()
+
+    st.divider()
+    _result = st.session_state.result
+    _rec_type = _result.get("recommendation", {}).get("type", "")
+    _scenarios = _result.get("scenarios", [])
+    if _scenarios:
+        _TYPE_EMOJI = {"현실형": "🔵", "도전형": "🟢", "파격형": "🟣"}
+        st.markdown("##### ▶ 실행할 시나리오를 선택하세요")
+        _plan_cols = st.columns(len(_scenarios))
+        for _plan_col, _sc in zip(_plan_cols, _scenarios):
+            with _plan_col:
+                _sc_type = _sc.get("type", "")
+                _is_rec = (_sc_type == _rec_type)
+                _emoji = _TYPE_EMOJI.get(_sc_type, "")
+                _badge = " ⭐ AI 추천" if _is_rec else ""
+                if st.button(
+                    f"{_emoji} {_sc_type}{_badge}",
+                    help=_sc.get("title", ""),
+                    use_container_width=True,
+                    type="primary" if _is_rec else "secondary",
+                    key=f"go_plan_{_sc_type}",
+                ):
+                    st.session_state.selected_scenario = _sc
+                    st.session_state.page = "plan"
+                    st.rerun()
+                st.caption(_sc.get("title", ""))
+
+    theme = st.session_state.get("theme", "dark")
+    html_content = build_result_html(st.session_state.result, st.session_state.inputs, theme)
     components.html(html_content, height=3200, scrolling=False)
 
     st.divider()
@@ -870,10 +2017,27 @@ def main():
     )
     init_session()
 
-    if st.session_state.page == "input":
+    if st.session_state.page == "home":
+        render_home_page()
+    elif st.session_state.page == "input":
         render_input_page()
-    else:
+    elif st.session_state.page == "compare":
+        render_compare_page()
+    elif st.session_state.page == "plan":
+        if SCREEN3_ENABLED:
+            screen3_plan.render()
+        else:
+            st.warning("화면3 점검 중입니다.")
+            if st.button("← 결과로 돌아가기"):
+                st.session_state.page = "result"
+                st.rerun()
+    elif st.session_state.page == "career":
+        screen4_career.render(pdf_fn=generate_pdf)
+    elif st.session_state.page == "result":
         render_result_page()
+    else:
+        st.session_state.page = "home"
+        st.rerun()
 
 
 if __name__ == "__main__":

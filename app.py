@@ -6,7 +6,6 @@ import os
 import html as _html
 import datetime
 import urllib.request
-import urllib.parse
 from dotenv import load_dotenv
 import screen3_plan
 import screen4_career
@@ -382,92 +381,8 @@ COMPARE_RESPONSE_SCHEMA = {
 
 PROFILE_PATH = "profile.json"
 
-# ── Google OAuth 상수 ──────────────────────────────────────────────────────────
-_GOOGLE_AUTH_ENDPOINT  = "https://accounts.google.com/o/oauth2/v2/auth"
-_GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-_GOOGLE_USERINFO_URL   = "https://www.googleapis.com/oauth2/v3/userinfo"
-_OAUTH_SCOPE           = "openid email profile"
-
-
-def _build_google_auth_url() -> str:
-    client_id    = os.getenv("GOOGLE_CLIENT_ID", "")
-    redirect_uri = os.getenv("REDIRECT_URI", "http://localhost:8501")
-    if not client_id:
-        return ""
-    params = {
-        "client_id":     client_id,
-        "redirect_uri":  redirect_uri,
-        "response_type": "code",
-        "scope":         _OAUTH_SCOPE,
-        "access_type":   "offline",
-    }
-    return _GOOGLE_AUTH_ENDPOINT + "?" + urllib.parse.urlencode(params)
-
-
-def _exchange_code_for_token(code: str) -> dict:
-    data = urllib.parse.urlencode({
-        "code":          code,
-        "client_id":     os.getenv("GOOGLE_CLIENT_ID", ""),
-        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
-        "redirect_uri":  os.getenv("REDIRECT_URI", "http://localhost:8501"),
-        "grant_type":    "authorization_code",
-    }).encode()
-    req = urllib.request.Request(
-        _GOOGLE_TOKEN_ENDPOINT,
-        data=data,
-        method="POST",
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
-
-
-def _fetch_userinfo(access_token: str) -> dict:
-    req = urllib.request.Request(
-        _GOOGLE_USERINFO_URL,
-        headers={"Authorization": f"Bearer {access_token}"},
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
-
-
-def check_google_auth() -> bool:
-    """True → 로그인 완료 / False → 미로그인."""
-    if st.session_state.get("user_email"):
-        return True
-    code = st.query_params.get("code", "")
-    if code:
-        try:
-            st.query_params.clear()
-            token_data   = _exchange_code_for_token(code)
-            access_token = token_data.get("access_token", "")
-            if not access_token:
-                st.error("Google 로그인 실패: 토큰을 받지 못했습니다.")
-                return False
-            userinfo = _fetch_userinfo(access_token)
-            st.session_state["user_email"]   = userinfo.get("email", "")
-            st.session_state["user_name"]    = userinfo.get("name", "")
-            st.session_state["user_picture"] = userinfo.get("picture", "")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Google 로그인 오류: {e}")
-        return False
-    return False
-
-
 def render_login_page() -> None:
-    """로그인 전용 페이지 — 로그인 완료 전 st.stop()."""
-    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-    if not client_id:
-        st.error("⚠️  GOOGLE_CLIENT_ID 환경변수가 없습니다. .env 파일을 확인해주세요.")
-        st.code(
-            "GOOGLE_CLIENT_ID=your_client_id\n"
-            "GOOGLE_CLIENT_SECRET=your_client_secret\n"
-            "REDIRECT_URI=http://localhost:8501"
-        )
-        st.stop()
-
-    auth_url = _build_google_auth_url()
+    """로그인 전용 페이지 — Streamlit 내장 OIDC(st.login) 방식."""
     st.markdown(
         """
         <style>
@@ -492,22 +407,20 @@ def render_login_page() -> None:
     )
     _, col, _ = st.columns([1, 1, 1])
     with col:
-        st.link_button(
-            "🔑  Google로 로그인",
-            auth_url,
-            type="primary",
-            use_container_width=True,
-        )
+        st.login("google")
     st.stop()
 
 
 def render_user_sidebar() -> None:
     """사이드바에 사용자 프로필 + 로그아웃 버튼 표시."""
-    email   = st.session_state.get("user_email", "")
-    name    = st.session_state.get("user_name", "")
-    picture = st.session_state.get("user_picture", "")
-    if not email:
+    if not st.user.is_logged_in:
         return
+    name    = st.user.name or ""
+    email   = st.user.email or ""
+    try:
+        picture = st.user["picture"] or ""
+    except (KeyError, Exception):
+        picture = ""
     with st.sidebar:
         if picture:
             st.markdown(
@@ -523,10 +436,7 @@ def render_user_sidebar() -> None:
             )
         else:
             st.caption(email)
-        if st.button("로그아웃", use_container_width=True, key="sidebar_logout"):
-            for k in ("user_email", "user_name", "user_picture"):
-                st.session_state.pop(k, None)
-            st.rerun()
+        st.logout()
         st.divider()
 
 
@@ -2418,8 +2328,8 @@ def main():
     )
     init_session()
 
-    # ── Google 로그인 체크 ────────────────────────────────────────────────────
-    if not check_google_auth():
+    # ── 로그인 체크 (Streamlit 내장 OIDC) ────────────────────────────────────
+    if not st.user.is_logged_in:
         render_login_page()
 
     render_user_sidebar()

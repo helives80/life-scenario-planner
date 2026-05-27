@@ -1,0 +1,19 @@
+{
+  "date": "2026-05-26",
+  "scenario_type": "도전형",
+  "checks": {
+    "check_week_0": false,
+    "check_week_1": false,
+    "check_month_0": false,
+    "check_month_1": false,
+    "check_month_2": false,
+    "check_3month_0": false,
+    "check_3month_1": false,
+    "check_prepare_0": false,
+    "check_prepare_1": false,
+    "check_prepare_2": false,
+    "check_prepare_3": false,
+    "check_avoid_0": false,
+    "check_avoid_1": false
+  }
+}

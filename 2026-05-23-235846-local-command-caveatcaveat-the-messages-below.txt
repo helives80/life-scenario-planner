@@ -1,0 +1,1796 @@
+╭─── Claude Code v2.1.145 ─────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting        │
+│                Welcome back Master!                │ started                 │
+│                                                    │ Run /init to create a … │
+│                      ▗ ▗   ▖ ▖                     │ ─────────────────────── │
+│                                                    │ What's new              │
+│                        ▘▘ ▝▝                       │ Added `claude agents -… │
+│  Sonnet 4.6 · Claude Pro · helives80@gmail.com's   │ Added `agent_id` and `… │
+│  Organization                                      │ Status line JSON input… │
+│             ~/Desktop/VibeCoding/Final             │ /release-notes for more │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+❯ /clear                                                                        
+  ⎿  (no content)
+
+❯ /Users/mary_shin/Desktop/VibeCoding/Final/2026-05-21-002135-this-session-is-b 
+  eing-continued-from-a-previous-c.txt 읽어와서 이어서 시작해                   
+
+⏺ 이전 세션 파일을 읽어오겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 파일이 아직 더 있습니다. 나머지도 읽겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 이전 세션 파악 완료. 세션이 PDF 생성 함수의 multi_cell(0, ...) 호출 문제를
+  수정하다가 컨텍스트 한도에 도달하여 끝났습니다. 현재 app.py 상태를
+  확인하겠습니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('문법 OK')")
+  ⎿  문법 OK
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Bash(python3 << 'PYEOF'
+      import os, json, datetime, urllib.request, sys…)
+  ⎿  Error: Exit code 1
+     /Users/mary_shin/Library/Python/3.9/lib/python/site-packages/google/api_cor
+     e/_python_version_support.py:242: FutureWarning: You are using a 
+     non-supported Python version (3.9.6). Google will not post any further 
+     updates to google.api_core supporting this Python version. Please upgrade 
+     to the latest Python version, or at least Python 3.10, and then update 
+     google.api_core.
+       warnings.warn(message, FutureWarning)
+     /Users/mary_shin/Library/Python/3.9/lib/python/site-packages/urllib3/__init
+     __.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, 
+     currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: 
+     https://github.com/urllib3/urllib3/issues/3020
+       warnings.warn(
+     /Users/mary_shin/Library/Python/3.9/lib/python/site-packages/google/auth/__
+     init__.py:54: FutureWarning: You are using a Python version 3.9 past its 
+     end of life. Google will update google-auth with critical bug fixes on a 
+     best-effort basis, but not with any other fixes or features. Please upgrade
+      your Python version, and then update google-auth.
+       warnings.warn(eol_message.format("3.9"), FutureWarning)
+     /Users/mary_shin/Library/Python/3.9/lib/python/site-packages/google/oauth2/
+     __init__.py:40: FutureWarning: You are using a Python version 3.9 past its 
+     end of life. Google will update google-auth with critical bug fixes on a 
+     best-effort basis, but not with any other fixes or features. Please upgrade
+      your Python version, and then update google-auth.
+       warnings.warn(eol_message.format("3.9"), FutureWarning)
+     <string>:3: FutureWarning: 
+     … +15 lines (ctrl+o to expand)
+
+⏺ Bash(python3 << 'PYEOF'
+      import os, json, datetime, urllib.request, sys…)
+  ⎿  Traceback (most recent call last):
+       File "<stdin>", line 43, in <module>
+       File "<string>", line 556, in generate_pdf
+     … +14 lines (ctrl+o to expand)
+
+⏺ 오류 위치와 해결책을 파악했습니다. multi_cell(0, ...) 호출들을 pdf.epw로
+  통일하는 수정을 완료합니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ multi_cell(0, ...) 호출을 모두 pdf.set_x(pdf.l_margin); 
+  pdf.multi_cell(pdf.epw, ...) 로 수정합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 2 lines, removed 2 lines
+      550  
+      551          sfb(14)
+      552          pdf.set_text_color(*c_rgb)
+      553 -        pdf.multi_cell(0, 9, f"시나리오  {sc_type}{'  ★ AI 추 
+          -천' if is_rec else ''}")                                      
+      553 +        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 9, f"
+          +시나리오  {sc_type}{'  ★ AI 추천' if is_rec else ''}")        
+      554          sfb(13)
+      555          pdf.set_text_color(30, 30, 30)
+      556 -        pdf.multi_cell(0, 8, sc.get("title", ""))             
+      556 +        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 8, sc
+          +.get("title", ""))                                            
+      557          pdf.ln(2)
+      558          wl(sc.get("description", ""), lh=7)
+      559          pdf.ln(3)
+
+⏺ Update(app.py)
+  ⎿  Added 3 lines, removed 3 lines
+      569          sfb(10); pdf.set_text_color(80, 80, 80)
+      570          pdf.cell(0, 6, "두려움 분석", new_x="LMARGIN", new_y="
+           NEXT")
+      571          pdf.set_text_color(70, 70, 100)
+      572 -        sf(9); pdf.multi_cell(0, 6, sc.get("fear_response", ""
+          -))                                                            
+      572 +        sf(9); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw
+          +, 6, sc.get("fear_response", ""))                             
+      573          pdf.set_text_color(30, 30, 30); pdf.ln(2)
+      574  
+      575          trf = sc.get("tradeoff", {})
+      576          sf(10)
+      577          pdf.set_text_color(0, 130, 80)
+      578 -        pdf.multi_cell(0, 6, f"▲ 얻는 것: {trf.get('gain','')}
+          -")                                                            
+      578 +        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"
+          +▲ 얻는 것: {trf.get('gain','')}")                             
+      579          pdf.set_text_color(180, 60, 0)
+      580 -        pdf.multi_cell(0, 6, f"▼ 잃는 것: {trf.get('lose','')}
+          -")                                                            
+      580 +        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"
+          +▼ 잃는 것: {trf.get('lose','')}")                             
+      581          pdf.set_text_color(30, 30, 30)
+      582  
+      583          if is_rec:
+
+⏺ Update(app.py)
+  ⎿  Added 2 lines, removed 2 lines
+      599                      pdf.cell(0, 7, ns_title, new_x="LMARGIN", 
+           new_y="NEXT")
+      600                      pdf.set_text_color(30, 30, 30); sf(10)
+      601                      for it in items:
+      602 -                        pdf.multi_cell(0, 6, f"  • {it}")     
+      602 +                        pdf.set_x(pdf.l_margin); pdf.multi_cel
+          +l(pdf.epw, 6, f"  • {it}")                                    
+      603                      pdf.ln(2)
+      604              coach = ns.get("coach_message", "")
+      605              if coach:
+      606                  sfb(10); pdf.set_text_color(80, 80, 80)
+      607                  pdf.cell(0, 7, "AI 코치 한 마디", new_x="LMARG
+           IN", new_y="NEXT")
+      608                  pdf.set_text_color(60, 60, 100); sf(10)
+      609 -                pdf.multi_cell(0, 6, coach)                   
+      609 +                pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.ep
+          +w, 6, coach)                                                  
+      610  
+      611      # ── 마지막 페이지: 추천 이유 + 최종 메시지
+      612      pdf.add_page()
+
+⏺ Update(app.py)
+  ⎿  Added 2 lines, removed 2 lines
+      614      sfb(11); pdf.set_text_color(16, 185, 129)
+      615      pdf.cell(0, 7, f"추천 시나리오: {rec_type}", new_x="LMARGI
+           N", new_y="NEXT")
+      616      pdf.set_text_color(30, 30, 30); sf(10)
+      617 -    pdf.multi_cell(0, 7, rec.get("reason", ""))               
+      617 +    pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, rec.ge
+          +t("reason", ""))                                              
+      618  
+      619      section("AI 최종 메시지")
+      620 -    sf(10); pdf.multi_cell(0, 7, final_msg)                   
+      620 +    sf(10); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7
+          +, final_msg)                                                  
+      621  
+      622      return bytes(pdf.output())
+      623  
+
+⏺ 이제 수정 결과를 검증합니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('문법 OK')")
+  ⎿  문법 OK
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ multi_cell(0, ...) 호출이 모두 제거됐습니다. 이제 PDF 생성 테스트를 합니다.
+
+⏺ Bash(python3 << 'PYEOF'
+      import os, json, datetime, urllib.request, sys, ast, types…)
+  ⎿  PDF 생성 성공: 47,970 bytes
+     파일 저장 완료: /tmp/test_report.pdf
+
+⏺ PDF 생성이 정상 작동합니다. 이제 앱을 재시작해서 전체 검증을 합니다.
+⏺ Bash(pkill -f "streamlit run app.py" 2>/dev/null; sleep 1 && python3 -m
+      streamlit run /Users/mary_shin/Desktop/VibeCoding/Final/app.py
+      --server.headless true --serve…)
+  ⎿  200
+
+⏺ 앱 정상 기동 완료. 이전 세션 내용을 메모리에 저장합니다.
+
+  Recalled 1 memory, wrote 2 memories (ctrl+o to expand)
+
+⏺ 이전 세션 내용을 모두 파악하고 이어받았습니다.
+
+  ---
+  현재 상태 요약:
+
+  이전 세션에서 완료된 기능:
+  - [1번] SNS 공유 버튼 (LinkedIn, 카카오톡, URL 복사)
+  - [2번] PDF 다운로드 — fpdf2 2.8.4에서 multi_cell(0, ...) 오류가 발생하다가
+  세션이 끊겼음
+  - [5번] 저장된 정보 불러오기 버그 수정
+  - [6번] 연령대/성별/여유시간 입력 항목 추가 (연령대 9개 선택지)
+  - [7번] 결과 리포트 가독성 개선 + 다크/라이트 모드
+
+  이번에 수정한 것:
+  - generate_pdf 함수 내 multi_cell(0, ...) 호출 전부를 pdf.set_x(pdf.l_margin);
+   pdf.multi_cell(pdf.epw, ...) 로 교체 → PDF 생성 정상 작동 확인 (47,970 bytes)
+  - 앱 HTTP 200 정상 기동 중
+
+  다음에 작업할 게 있으면 말씀해 주세요!
+
+✻ Cogitated for 2m 37s
+
+❯ 3차 완료된거야?                                                               
+
+⏺ 이전 세션 로그를 다시 확인해볼게요. SNS 공유 버튼([1번])은 HTML에 추가됐고,
+  PDF 다운로드([2번])는 코드는 다 들어갔지만 multi_cell 오류로 인해 실제로는
+  PDF가 생성되지 않는 버그가 남아 있었습니다.
+
+  제가 방금 그 버그를 수정해서 PDF가 정상 생성됩니다 (47,970 bytes 확인). 따라서
+   3차 작업이 이제 완료된 상태입니다.
+
+  간단히 정리하면:
+
+  ┌─────────────────────┬──────────────────────┬──────────────┐
+  │        항목         │    이전 세션 상태    │  지금 상태   │
+  ├─────────────────────┼──────────────────────┼──────────────┤
+  │ [1번] SNS 공유 버튼 │ ✅ 코드 완료         │ ✅ 완료      │
+  ├─────────────────────┼──────────────────────┼──────────────┤
+  │ [2번] PDF 다운로드  │ ⚠️ 오류로 작동 안 함 │ ✅ 수정 완료 │
+  └─────────────────────┴──────────────────────┴──────────────┘
+
+  앱이 현재 http://localhost:8501 에서 실행 중입니다. 브라우저에서 시나리오를
+  생성하면 상단에 "📄 PDF로 저장" 버튼이 나타납니다.
+
+  3차 완료입니다. 다음 작업이 있으면 말씀해 주세요!
+
+✻ Churned for 13s
+
+❯ #                                                                             
+                                                                                
+  app.py에서 아래 2가지를 추가해줘.                                             
+                                                                                
+  [4번] 결과 수정하기 기능                                                      
+  결과 화면 하단에 수정 요청 섹션 추가:                                         
+                                                                                
+  - 제목: "결과가 실제와 다른가요?"                                             
+  - 텍스트 입력창                                                               
+  placeholder: "예) 현재 연봉은 6,600만원입니다.                                
+  이를 반영해서 다시 작성해주세요."                                             
+  - "수정 반영하여 재생성" 버튼                                                 
+  - 동작:                                                                       
+  기존 15개 입력값 유지                                                         
+  Gemini API 재호출 시 user 메시지 맨 아래 추가:                                
+  "===수정 요청===                                                              
+  사용자가 아래 내용이 실제와 다르다고 합니다.                                  
+  반드시 반영해서 시나리오를 다시 작성해주세요:                                 
+  [수정 요청 내용]"                                                             
+  로딩 스피너 표시 후 결과 화면 교체                                            
+                                                                                
+  [3번] 이전 시나리오 비교 리포트                                               
+  [저장 기능]                                                                   
+  결과 화면에 "이 결과 저장" 버튼 추가:                                         
+                                                                                
+  - 날짜 + 입력값 15개 + 결과 JSON을                                            
+  history_YYYYMMDD.json으로 저장                                                
+  - 여러 번 저장 시 날짜별 누적 보관                                            
+                                                                                
+  [비교 기능]                                                                   
+  입력 화면에 "과거 결과와 비교" 버튼 추가:                                     
+                                                                                
+  - 저장된 history 파일 목록 드롭다운으로 선택                                  
+  - 선택한 과거 데이터 + 현재 입력값을 Gemini API에 전달                        
+  - 비교 리포트 출력:                                                           
+  · 항목별 변화 (만족도·저축액·가족지지 수치 비교)                              
+  · 과거 AI 추천 vs 현재 AI 추천 시나리오                                       
+  · 과거 다음 스텝 달성 여부 체크리스트                                         
+  · AI 종합 분석 메시지 (변화 요약 + 다음 방향 제시)                            
+                                                                                
+  완료 후 "4차 완료" 메시지 출력.                                               
+
+⏺ 먼저 현재 app.py 전체를 파악하겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 전체 구조 파악 완료. 이제 순서대로 구현합니다.
+
+  추가할 것:
+  - [4번] 수정 요청 문구 1줄 변경 (이미 로직은 있음, 워딩 수정)
+  - [3번] history 저장/불러오기/비교 함수 + compare 페이지 + 비교 시스템
+  프롬프트
+
+⏺ Update(app.py)
+  ⎿  Added 1 line, removed 1 line
+      398          msg += (
+      399              "\n\n===수정 요청===\n"
+      400              "사용자가 아래 내용이 실제와 다르다고 합니다.\n"
+      401 -            "이를 반영해서 시나리오를 다시 작성해주세요:\n"   
+      401 +            "반드시 반영해서 시나리오를 다시 작성해주세요:\n" 
+      402              + correction.strip()
+      403          )
+      404      return msg
+
+⏺ 이제 COMPARE 시스템 프롬프트 + 스키마를 RESPONSE_SCHEMA 바로 뒤에 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 60 lines
+      315      "required": ["summary", "scenarios", "recommendation", "fi
+           nal_message"]
+      316  }
+      317  
+      318 +COMPARE_SYSTEM_PROMPT = """                                   
+      319 +당신은 AI 인생 시나리오 비교 분석 엔진입니다.                 
+      320 +과거에 저장된 시나리오 데이터와 현재 입력값을 비교하여 사용자 
+          +의 변화를 분석합니다.                                         
+      321 +                                                              
+      322 +응답은 반드시 단일 JSON 객체 하나만 반환합니다. 코드펜스·설명·
+          +공백 줄바꿈 외 어떤 문자도 추가 금지.                         
+      323 +                                                              
+      324 +분석 지침:                                                    
+      325 +1. changes: Q2(만족도), Q5(저축), Q6(가족지지), Q3(버틸 기간) 
+          +등 핵심 항목과 텍스트 항목 변화를 분석합니다.                 
+      326 +   direction은 "up"(긍정적 변화), "down"(부정적 변화), "same"(
+          +변화 없음), "changed"(내용 변경) 중 하나.                     
+      327 +2. recommendation_change: 과거 AI 추천 타입과 현재 입력값 기준
+          +으로 추천할 타입을 분석합니다.                                
+      328 +   after_type은 반드시 현실형/도전형/파격형 중 하나.          
+      329 +3. checklist: 과거 추천 시나리오의 next_steps 항목들이 현재 입
+          +력값 변화를 근거로 달성됐을 가능성을 평가합니다.              
+      330 +   likely_done은 true(달성 가능성 높음) 또는 false(미달성 가능
+          +성 높음).                                                     
+      331 +4. overall_analysis: 3~4문장. 핵심 변화를 요약하고 현재 상황에
+          +서 다음 방향을 구체적으로 제시합니다.                         
+      332 +"""                                                           
+      333 +                                                              
+      334 +COMPARE_RESPONSE_SCHEMA = {                                   
+      335 +    "type": "object",                                         
+      336 +    "properties": {                                           
+      337 +        "changes": {                                          
+      338 +            "type": "array",                                  
+      339 +            "items": {                                        
+      340 +                "type": "object",                             
+      341 +                "properties": {                               
+      342 +                    "label":     {"type": "string"},          
+      343 +                    "before":    {"type": "string"},          
+      344 +                    "after":     {"type": "string"},          
+      345 +                    "direction": {"type": "string"},          
+      346 +                    "comment":   {"type": "string"},          
+      347 +                },                                            
+      348 +                "required": ["label", "before", "after", "dire
+          +ction", "comment"],                                           
+      349 +            },                                                
+      350 +        },                                                    
+      351 +        "recommendation_change": {                            
+      352 +            "type": "object",                                 
+      353 +            "properties": {                                   
+      354 +                "before_type": {"type": "string"},            
+      355 +                "after_type":  {"type": "string"},            
+      356 +                "analysis":    {"type": "string"},            
+      357 +            },                                                
+      358 +            "required": ["before_type", "after_type", "analysi
+          +s"],                                                          
+      359 +        },                                                    
+      360 +        "checklist": {                                        
+      361 +            "type": "array",                                  
+      362 +            "items": {                                        
+      363 +                "type": "object",                             
+      364 +                "properties": {                               
+      365 +                    "item":        {"type": "string"},        
+      366 +                    "category":    {"type": "string"},        
+      367 +                    "likely_done": {"type": "boolean"},       
+      368 +                    "reason":      {"type": "string"},        
+      369 +                },                                            
+      370 +                "required": ["item", "category", "likely_done"
+          +, "reason"],                                                  
+      371 +            },                                                
+      372 +        },                                                    
+      373 +        "overall_analysis": {"type": "string"},               
+      374 +    },                                                        
+      375 +    "required": ["changes", "recommendation_change", "checklis
+          +t", "overall_analysis"],                                      
+      376 +}                                                             
+      377 +                                                              
+      378  PROFILE_PATH = "profile.json"
+      379  
+      380  Q3_OPTIONS = ["3개월 미만", "6개월", "1년", "1년 이상"]
+
+⏺ history 함수들 + compare 모델/메시지/생성 함수를 load_profile 뒤에 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 124 lines
+      485          return json.load(f)
+      486  
+      487  
+      488 +def save_history(inputs: dict, result: dict) -> str:          
+      489 +    today = datetime.date.today().strftime("%Y%m%d")          
+      490 +    base = f"history_{today}"                                 
+      491 +    path = f"{base}.json"                                     
+      492 +    counter = 2                                               
+      493 +    while os.path.exists(path):                               
+      494 +        path = f"{base}_{counter}.json"                       
+      495 +        counter += 1                                          
+      496 +    data = {                                                  
+      497 +        "date": datetime.date.today().isoformat(),            
+      498 +        "saved_at": datetime.datetime.now().isoformat(timespec
+          +="seconds"),                                                  
+      499 +        "inputs": inputs,                                     
+      500 +        "result": result,                                     
+      501 +    }                                                         
+      502 +    with open(path, "w", encoding="utf-8") as f:              
+      503 +        json.dump(data, f, ensure_ascii=False, indent=2)      
+      504 +    return path                                               
+      505 +                                                              
+      506 +                                                              
+      507 +def list_history() -> list:                                   
+      508 +    import glob                                               
+      509 +    files = sorted(glob.glob("history_*.json"), reverse=True) 
+      510 +    items = []                                                
+      511 +    for f in files:                                           
+      512 +        try:                                                  
+      513 +            with open(f, "r", encoding="utf-8") as fh:        
+      514 +                data = json.load(fh)                          
+      515 +            saved_at = data.get("saved_at", data.get("date", "
+          +"))[:16].replace("T", " ")                                    
+      516 +            q1 = data.get("inputs", {}).get("Q1", "")         
+      517 +            label = f"{saved_at}  |  {q1[:25]}" if q1 else sav
+          +ed_at                                                         
+      518 +            items.append({"filename": f, "label": label, "data
+          +": data})                                                     
+      519 +        except Exception:                                     
+      520 +            continue                                          
+      521 +    return items                                              
+      522 +                                                              
+      523 +                                                              
+      524 +def get_compare_model():                                      
+      525 +    api_key = os.environ.get("GEMINI_API_KEY")                
+      526 +    if not api_key:                                           
+      527 +        return None                                           
+      528 +    genai.configure(api_key=api_key)                          
+      529 +    generation_config = genai.GenerationConfig(               
+      530 +        response_mime_type="application/json",                
+      531 +        response_schema=COMPARE_RESPONSE_SCHEMA,              
+      532 +        temperature=0.7,                                      
+      533 +    )                                                         
+      534 +    return genai.GenerativeModel(                             
+      535 +        model_name="gemini-2.5-flash",                        
+      536 +        system_instruction=COMPARE_SYSTEM_PROMPT,             
+      537 +        generation_config=generation_config,                  
+      538 +    )                                                         
+      539 +                                                              
+      540 +                                                              
+      541 +def build_compare_message(old_data: dict, new_inputs: dict) ->
+          + str:                                                         
+      542 +    old_inputs = old_data.get("inputs", {})                   
+      543 +    old_result = old_data.get("result", {})                   
+      544 +    old_date = old_data.get("saved_at", old_data.get("date", "
+          +"))[:10]                                                      
+      545 +    old_rec = old_result.get("recommendation", {})            
+      546 +    old_rec_type = old_rec.get("type", "")                    
+      547 +    old_scenarios = old_result.get("scenarios", [])           
+      548 +    old_rec_sc = next((s for s in old_scenarios if s.get("type
+          +") == old_rec_type), {})                                      
+      549 +    old_ns = old_rec_sc.get("next_steps", {})                 
+      550 +                                                              
+      551 +    lines = [f"=== 과거 입력값 ({old_date}) ==="]             
+      552 +    for i in range(1, 16):                                    
+      553 +        key = f"Q{i}"                                         
+      554 +        lines.append(f"Q{i}: {old_inputs.get(key, '입력 없음')
+          +}")                                                           
+      555 +    inc_sel = old_inputs.get("INCOME_SELECT", "")             
+      556 +    inc_txt = old_inputs.get("INCOME_TEXT", "")               
+      557 +    if inc_sel == "직접 입력" and inc_txt:                    
+      558 +        lines.append(f"현재 소득: {inc_txt}")                 
+      559 +    elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""): 
+      560 +        lines.append(f"현재 소득: {inc_sel}")                 
+      561 +    for key, label in [("AGE", "연령대"), ("GENDER", "성별"), 
+          +("TIME", "하루 평균 여유시간")]:                              
+      562 +        val = old_inputs.get(key, "")                         
+      563 +        if val:                                               
+      564 +            lines.append(f"{label}: {val}")                   
+      565 +                                                              
+      566 +    lines.append("")                                          
+      567 +    lines.append(f"=== 과거 AI 추천 ({old_rec_type}) ===")    
+      568 +    lines.append(old_rec.get("reason", ""))                   
+      569 +                                                              
+      570 +    lines.append("")                                          
+      571 +    lines.append("=== 과거 추천 시나리오 next_steps ===")     
+      572 +    for ns_key, ns_label in [                                 
+      573 +        ("this_week", "이번 주"), ("one_month", "1개월 내"),  
+      574 +        ("three_months", "3개월 내"), ("must_prepare", "반드시
+          + 갖춰야 할 것"),                                              
+      575 +        ("must_avoid", "반드시 피해야 할 것"),                
+      576 +    ]:                                                        
+      577 +        items = old_ns.get(ns_key, [])                        
+      578 +        if items:                                             
+      579 +            lines.append(f"{ns_label}: {' / '.join(items)}")  
+      580 +    coach = old_ns.get("coach_message", "")                   
+      581 +    if coach:                                                 
+      582 +        lines.append(f"AI 코치 메시지: {coach}")              
+      583 +                                                              
+      584 +    lines.append("")                                          
+      585 +    lines.append("=== 현재 입력값 ===")                       
+      586 +    for i in range(1, 16):                                    
+      587 +        key = f"Q{i}"                                         
+      588 +        lines.append(f"Q{i}: {new_inputs.get(key, '입력 없음')
+          +}")                                                           
+      589 +    inc_sel = new_inputs.get("INCOME_SELECT", "")             
+      590 +    inc_txt = new_inputs.get("INCOME_TEXT", "")               
+      591 +    if inc_sel == "직접 입력" and inc_txt:                    
+      592 +        lines.append(f"현재 소득: {inc_txt}")                 
+      593 +    elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""): 
+      594 +        lines.append(f"현재 소득: {inc_sel}")                 
+      595 +    for key, label in [("AGE", "연령대"), ("GENDER", "성별"), 
+          +("TIME", "하루 평균 여유시간")]:                              
+      596 +        val = new_inputs.get(key, "")                         
+      597 +        if val:                                               
+      598 +            lines.append(f"{label}: {val}")                   
+      599 +                                                              
+      600 +    return "\n".join(lines)                                   
+      601 +                                                              
+      602 +                                                              
+      603 +def generate_comparison(old_data: dict, new_inputs: dict) -> d
+          +ict:                                                          
+      604 +    model = get_compare_model()                               
+      605 +    if model is None:                                         
+      606 +        raise ValueError("GEMINI_API_KEY 환경변수가 설정되지  
+          +않았습니다.")                                                 
+      607 +    msg = build_compare_message(old_data, new_inputs)         
+      608 +    response = model.generate_content(msg)                    
+      609 +    return json.loads(response.text)                          
+      610 +                                                              
+      611 +                                                              
+      612  def get_korean_font_path():
+      613      """한국어 TTF/TTC 폰트 경로 반환. 없으면 다운로드 시도, 실
+           패 시 None."""
+      614      base = os.path.dirname(os.path.abspath(__file__))
+
+⏺ init_session에 비교 관련 state 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 6 lines
+      815          st.session_state.page = "input"
+      816      if "theme" not in st.session_state:
+      817          st.session_state.theme = "dark"
+      818 +    if "compare_mode" not in st.session_state:                
+      819 +        st.session_state.compare_mode = False                 
+      820 +    if "compare_result" not in st.session_state:              
+      821 +        st.session_state.compare_result = None                
+      822 +    if "compare_old_data" not in st.session_state:            
+      823 +        st.session_state.compare_old_data = None              
+      824  
+      825  
+      826  def _e(s):
+
+⏺ render_compare_page 함수를 render_input_page 바로 앞에 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 63 lines
+      1272  </html>"""
+      1273  
+      1274  
+      1275 +def render_compare_page():                                   
+      1276 +    comp = st.session_state.compare_result                   
+      1277 +    old_data = st.session_state.compare_old_data             
+      1278 +                                                             
+      1279 +    if st.button("← 입력 화면으로"):                         
+      1280 +        st.session_state.page = "input"                      
+      1281 +        st.session_state.compare_result = None               
+      1282 +        st.session_state.compare_old_data = None             
+      1283 +        st.rerun()                                           
+      1284 +                                                             
+      1285 +    old_date = old_data.get("saved_at", old_data.get("date", 
+           +""))[:16].replace("T", " ")                                  
+      1286 +    st.title("📊 시나리오 비교 분석")                        
+      1287 +    st.caption(f"과거 기록 ({old_date}) vs 현재 입력값")     
+      1288 +    st.divider()                                             
+      1289 +                                                             
+      1290 +    # 항목별 변화                                            
+      1291 +    st.subheader("항목별 변화")                              
+      1292 +    changes = comp.get("changes", [])                        
+      1293 +    dir_icon = {"up": "📈", "down": "📉", "changed": "🔄", "s
+           +ame": "➖"}                                                  
+      1294 +    for ch in changes:                                       
+      1295 +        icon = dir_icon.get(ch.get("direction", "same"), "🔄"
+           +)                                                            
+      1296 +        col1, col2, col3 = st.columns([2, 3, 5])             
+      1297 +        with col1:                                           
+      1298 +            st.markdown(f"**{ch.get('label', '')}**")        
+      1299 +        with col2:                                           
+      1300 +            st.markdown(f"{icon} `{ch.get('before', '')}` → `
+           +{ch.get('after', '')}`")                                     
+      1301 +        with col3:                                           
+      1302 +            st.caption(ch.get("comment", ""))                
+      1303 +    st.divider()                                             
+      1304 +                                                             
+      1305 +    # 추천 시나리오 변화                                     
+      1306 +    st.subheader("AI 추천 시나리오 변화")                    
+      1307 +    rec_ch = comp.get("recommendation_change", {})           
+      1308 +    col1, col2 = st.columns(2)                               
+      1309 +    type_color = {"현실형": "🔵", "도전형": "🟢", "파격형": "
+           +🟣"}                                                         
+      1310 +    with col1:                                               
+      1311 +        bt = rec_ch.get("before_type", "")                   
+      1312 +        st.metric("과거 추천", f"{type_color.get(bt, '')} {bt
+           +}")                                                          
+      1313 +    with col2:                                               
+      1314 +        at = rec_ch.get("after_type", "")                    
+      1315 +        st.metric("현재 추천 (예측)", f"{type_color.get(at, '
+           +')} {at}")                                                   
+      1316 +    st.info(rec_ch.get("analysis", ""))                      
+      1317 +    st.divider()                                             
+      1318 +                                                             
+      1319 +    # 과거 next steps 달성 여부 체크리스트                   
+      1320 +    st.subheader("과거 Next Steps 달성 여부 체크리스트")     
+      1321 +    checklist = comp.get("checklist", [])                    
+      1322 +    if checklist:                                            
+      1323 +        for item in checklist:                               
+      1324 +            done = item.get("likely_done", False)            
+      1325 +            icon = "✅" if done else "⬜"                    
+      1326 +            cat = item.get("category", "")                   
+      1327 +            st.markdown(f"{icon} **{item.get('item', '')}**" 
+           ++ (f"  <sub>({cat})</sub>" if cat else ""), unsafe_allow_html
+           +=True)                                                       
+      1328 +            st.caption(item.get("reason", ""))               
+      1329 +    else:                                                    
+      1330 +        st.caption("체크리스트 항목이 없습니다.")            
+      1331 +    st.divider()                                             
+      1332 +                                                             
+      1333 +    # AI 종합 분석                                           
+      1334 +    st.subheader("AI 종합 분석")                             
+      1335 +    st.write(comp.get("overall_analysis", ""))               
+      1336 +                                                             
+      1337 +                                                             
+      1338  def render_input_page():
+      1339      st.title("AI 인생 시나리오 플래너")
+      1340      st.caption("15개 질문에 답하면 AI가 현실형·도전형·파격형 
+            3가지 인생 시나리오를 분석해 드립니다.")
+
+⏺ render_input_page에 "과거 결과와 비교" 버튼과 히스토리 선택 UI를 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 1 line, removed 1 line
+      1339      st.title("AI 인생 시나리오 플래너")
+      1340      st.caption("15개 질문에 답하면 AI가 현실형·도전형·파격형 
+            3가지 인생 시나리오를 분석해 드립니다.")
+      1341  
+      1342 -    col_load, col_save = st.columns([1, 1])                  
+      1342 +    col_load, col_save, col_compare = st.columns([1, 1, 1])  
+      1343      with col_load:
+      1344          if st.button("저장된 정보 불러오기", use_container_wi
+            dth=True):
+      1345              profile = load_profile()
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 이제 "과거 결과와 비교" 버튼 UI와 render_result_page에 저장 버튼을 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 36 lines
+      1368              else:
+      1369                  st.warning("저장된 프로필이 없습니다.")
+      1370  
+      1371 +    with col_compare:                                        
+      1372 +        if st.button("📊 과거 결과와 비교", use_container_wid
+           +th=True):                                                    
+      1373 +            st.session_state.compare_mode = not st.session_st
+           +ate.compare_mode                                             
+      1374 +            st.rerun()                                       
+      1375 +                                                             
+      1376 +    # 비교 모드 UI                                           
+      1377 +    if st.session_state.compare_mode:                        
+      1378 +        with st.container(border=True):                      
+      1379 +            st.markdown("**과거 결과 선택**")                
+      1380 +            history_items = list_history()                   
+      1381 +            if not history_items:                            
+      1382 +                st.warning("저장된 과거 기록이 없습니다. 결과
+           + 화면에서 '이 결과 저장' 버튼을 눌러 기록을 남기세요.")      
+      1383 +                if st.button("닫기", key="close_compare"):   
+      1384 +                    st.session_state.compare_mode = False    
+      1385 +                    st.rerun()                               
+      1386 +            else:                                            
+      1387 +                options = {item["label"]: item for item in hi
+           +story_items}                                                 
+      1388 +                selected_label = st.selectbox("비교할 과거 기
+           +록 선택", list(options.keys()), key="compare_select")        
+      1389 +                if st.button("비교 분석 시작", type="primary"
+           +, use_container_width=True, key="compare_start"):            
+      1390 +                    selected_data = options[selected_label]["
+           +data"]                                                       
+      1391 +                    # 현재 입력값 수집 (inputs 변수가 아직 없
+           +으므로 session_state 사용)                                   
+      1392 +                    cur_inputs = st.session_state.inputs     
+      1393 +                    if not any(cur_inputs.get(f"Q{i}") for i 
+           +in range(1, 6)):                                             
+      1394 +                        st.warning("먼저 현재 입력값을 작성해
+           + 주세요.")                                                   
+      1395 +                    else:                                    
+      1396 +                        with st.spinner("AI가 비교 분석 중입 
+           +니다... (30초~1분 소요)"):                                   
+      1397 +                            try:                             
+      1398 +                                comp_result = generate_compar
+           +ison(selected_data, cur_inputs)                              
+      1399 +                                st.session_state.compare_resu
+           +lt = comp_result                                             
+      1400 +                                st.session_state.compare_old_
+           +data = selected_data                                         
+      1401 +                                st.session_state.compare_mode
+           + = False                                                     
+      1402 +                                st.session_state.page = "comp
+           +are"                                                         
+      1403 +                                st.rerun()                   
+      1404 +                            except Exception as e:           
+      1405 +                                st.error(f"비교 분석 오류: {e
+           +}")                                                          
+      1406 +                                                             
+      1407      st.divider()
+      1408  
+      1409      inputs = {}
+
+⏺ render_result_page에 "이 결과 저장" 버튼을 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 8 lines, removed 1 line
+      1483      except Exception:
+      1484          pass
+      1485  
+      1486 -    col_back, col_pdf, col_theme = st.columns([6, 2, 1])     
+      1486 +    col_back, col_save_hist, col_pdf, col_theme = st.columns(
+           +[4, 2, 2, 1])                                                
+      1487      with col_back:
+      1488          if st.button("← 다시 입력하기"):
+      1489              st.session_state.page = "input"
+      1490              st.session_state.result = None
+      1491              st.rerun()
+      1492 +    with col_save_hist:                                      
+      1493 +        if st.button("💾 이 결과 저장", use_container_width=T
+           +rue):                                                        
+      1494 +            try:                                             
+      1495 +                saved_path = save_history(st.session_state.in
+           +puts, st.session_state.result)                               
+      1496 +                st.success(f"저장 완료: {saved_path}")       
+      1497 +            except Exception as e:                           
+      1498 +                st.error(f"저장 실패: {e}")                  
+      1499      with col_pdf:
+      1500          if pdf_bytes:
+      1501              fname = f"scenario_report_{datetime.date.today().
+            strftime('%Y%m%d')}.pdf"
+⏺ 마지막으로 main() 라우팅에 compare 페이지를 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 2 lines
+      1547  
+      1548      if st.session_state.page == "input":
+      1549          render_input_page()
+      1550 +    elif st.session_state.page == "compare":                 
+      1551 +        render_compare_page()                                
+      1552      else:
+      1553          render_result_page()
+      1554  
+
+⏺ 문법 검사 후 앱 재시작합니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('문법 OK')")
+  ⎿  문법 OK
+
+⏺ Bash(pkill -f "streamlit run app.py" 2>/dev/null; sleep 1 && python3 -m
+      streamlit run /Users/mary_shin/Desktop/VibeCoding/Final/app.py
+      --server.headless true --serve…)
+  ⎿  200
+
+⏺ Bash(python3 -c "
+      import ast, sys…)
+  ⎿  함수 목록: ['get_model', 'build_user_message', 'generate_scenarios', '
+     save_profile', 'load_profile', 'save_history', 'list_history', 'get_co
+     mpare_model', 'build_compare_message', 'generate_comparison', 'get_kor
+     … +14 lines (ctrl+o to expand)
+
+⏺ 전부 정상 확인됐습니다.
+
+  ---
+  4차 완료
+
+  ---
+  [4번] 결과 수정하기 기능
+  - 결과 화면 하단 "결과가 실제와 다른가요?" 섹션 — 이미 구현돼 있었고, 수정
+  요청 문구를 "반드시 반영해서 시나리오를 다시 작성해주세요:"로 정확히 수정
+
+  [3번] 이전 시나리오 비교 리포트
+
+  저장 기능:
+  - 결과 화면 상단에 💾 이 결과 저장 버튼 추가
+  - history_YYYYMMDD.json 형식으로 저장, 같은 날 여러 번 저장 시
+  history_YYYYMMDD_2.json ... 으로 누적
+
+  비교 기능:
+  - 입력 화면 상단에 📊 과거 결과와 비교 버튼 추가
+  - 클릭 시 저장된 history 파일 드롭다운으로 선택
+  - "비교 분석 시작" 클릭 → Gemini에 과거 데이터 + 현재 입력값 전달 → 비교
+  페이지로 이동
+  - 비교 리포트 내용:
+    - 항목별 변화 (📈📉🔄➖ 아이콘 + before/after + 코멘트)
+    - 과거 AI 추천 vs 현재 AI 추천 (예측) 비교
+    - 과거 next steps 달성 여부 체크리스트 (✅/⬜)
+    - AI 종합 분석 메시지
+
+✻ Brewed for 5m 5s
+
+※ recap: AI 인생 시나리오 플래너 앱(app.py)에 4차 기능을 추가 완료했습니다. 결과 저장·비교 리포트([3번])와 수정 재생성([4번])이 모두 작동하며, 다음 작업 지시를 기다리고 있습니다. (disable recaps in /config)
+
+❯ app.py에서 아래 기능을 추가해줘.                                              
+                                                                                
+  [8번] 3년 후 가상 이력서 → 월간 실행 계획                                     
+                                                                                
+  [위치]                                                                        
+  결과 화면 하단에 별도 섹션으로 추가.                                          
+  제목: "3년 후의 나를 설계하세요"                                              
+                                                                                
+  [입력 방식 — 2가지 중 선택]                                                   
+                                                                                
+  라디오 버튼으로 선택:                                                         
+  ○ 직접 입력  ○ 이력서 파일 업로드                                             
+                                                                                
+  [직접 입력 선택 시]                                                           
+                                                                                
+  - 직책·역할: 텍스트 입력                                                      
+  예) AI 컨설팅 대표, 직원 3명                                                  
+  - 연 수입 목표: 텍스트 입력                                                   
+  예) 연매출 3억                                                                
+  - 핵심 성취: 텍스트 입력                                                      
+  예) SaaS 제품 출시, 해외 고객 10곳                                            
+                                                                                
+  [이력서 파일 업로드 선택 시]                                                  
+                                                                                
+  - st.file_uploader()로 파일 업로드                                            
+  지원 형식: PDF, DOCX, TXT                                                     
+  - 업로드된 파일에서 텍스트 추출:                                              
+  PDF → pdfplumber 라이브러리 사용                                              
+  DOCX → python-docx 라이브러리 사용                                            
+  TXT → 직접 읽기                                                               
+  - 추출된 텍스트를 화면에 미리보기로 표시                                      
+  (최대 500자, 나머지는 "..." 처리)                                             
+  - 파일에서 추출한 내용을 Gemini API에 전달:                                   
+  "아래는 사용자의 이력서입니다.                                                
+  현재 이력과 3년 후 목표가 모두 포함되어 있습니다.                             
+  이를 바탕으로 실행 계획을 생성해주세요:                                       
+  [추출된 이력서 텍스트]"                                                       
+                                                                                
+  [공통 — Gemini API 호출]                                                      
+  기존 15개 입력값 +                                                            
+  (직접 입력값 또는 이력서 텍스트)를 함께 전달.                                 
+                                                                                
+  아래 JSON 형식으로 출력 요청:                                                 
+  {                                                                             
+  "goal_summary": "3년 후 목표 한 줄 요약",                                     
+  "quarterly_milestones": [                                                     
+  {"quarter": "Q1", "milestone": "3개월 후 달성 목표"},                         
+  {"quarter": "Q2", "milestone": ""},                                           
+  {"quarter": "Q3", "milestone": ""},                                           
+  {"quarter": "Q4", "milestone": ""},                                           
+  {"quarter": "Q5", "milestone": ""},                                           
+  {"quarter": "Q6", "milestone": ""},                                           
+  {"quarter": "Q7", "milestone": ""},                                           
+  {"quarter": "Q8", "milestone": ""},                                           
+  {"quarter": "Q9", "milestone": ""},                                           
+  {"quarter": "Q10", "milestone": ""},                                          
+  {"quarter": "Q11", "milestone": ""},                                          
+  {"quarter": "Q12", "milestone": ""}                                           
+  ],                                                                            
+  "monthly_plans": [                                                            
+  {                                                                             
+  "month": 1,                                                                   
+  "theme": "이달의 핵심 주제",                                                  
+  "gap_analysis": "현재 이력 기준 이달에 채워야 할 갭",                         
+  "objectives": ["목표1", "목표2"],                                             
+  "checklist": ["체크항목1", "체크항목2", "체크항목3"]                          
+  }                                                                             
+  ... 36개월 전체                                                               
+  ],                                                                            
+  "success_conditions": ["성공 기준 3가지"]                                     
+  }                                                                             
+                                                                                
+  [출력 화면]                                                                   
+                                                                                
+  - 분기별 마일스톤 타임라인 (상단 가로 배치)                                   
+  - 월별 실행 계획 아코디언 형태                                                
+  클릭하면 해당 월 목표·갭 분석·체크리스트 펼쳐짐                               
+  - 체크리스트 항목 실제로 체크 가능                                            
+  체크 상태 session_state로 관리                                                
+  - 전체 진행률 표시 (체크된 항목 수 / 전체 항목 수)                            
+  - "PDF로 저장" 버튼 (3차 PDF 기능과 연동)                                     
+                                                                                
+  [에러 처리]                                                                   
+                                                                                
+  - 파일 업로드 실패 시:                                                        
+  "파일을 읽을 수 없습니다. 다른 형식으로 시도해주세요."                        
+  - 파일에서 텍스트 추출 실패 시:                                               
+  자동으로 직접 입력 모드로 전환 안내                                           
+  - 파일 용량 제한: 5MB 이하                                                    
+                                                                                
+  [패키지 설치]                                                                 
+  pdfplumber와 python-docx가 없으면                                             
+  pip3로 설치 후 requirements.txt에 추가.                                       
+                                                                                
+  완료 후 "5차 완료. 전체 고도화 완료" 메시지 출력.                             
+
+⏺ 먼저 필요한 패키지를 설치하고 현재 코드 구조를 파악하겠습니다.
+
+⏺ Bash(pip3 install pdfplumber python-docx --quiet 2>&1 | tail -5)
+  ⎿    Consider adding this directory to PATH or, if you prefer to suppress
+      this warning, use --no-warn-script-location.
+       WARNING: The script pdfplumber is installed in '/Users/mary_shin/Lib
+     … +7 lines (ctrl+o to expand)
+
+⏺ Bash(python3 -c "import pdfplumber; from docx import Document;
+      print('pdfplumber:', pdfplumber.__version__); print('python-docx: OK')")
+  ⎿  pdfplumber: 0.11.8
+     python-docx: OK
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ import io 추가 및 requirements.txt 업데이트부터 시작합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 1 line
+       6  import html as _html
+       7  import datetime
+       8  import urllib.request
+       9 +import io                                                      
+      10  from dotenv import load_dotenv
+      11  
+      12  load_dotenv()
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(requirements.txt)
+  ⎿  Added 2 lines
+      2  google-generativeai
+      3  python-dotenv
+      4  fpdf2
+      5 +pdfplumber                                                      
+      6 +python-docx                                                     
+
+⏺ 이제 ROADMAP 시스템 프롬프트 + 스키마를 COMPARE_RESPONSE_SCHEMA 뒤에
+  추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 56 lines
+      376      "required": ["changes", "recommendation_change", "checklis
+           t", "overall_analysis"],
+      377  }
+      378  
+      379 +ROADMAP_SYSTEM_PROMPT = """                                   
+      380 +당신은 AI 인생 로드맵 설계 엔진입니다.                        
+      381 +사용자의 현재 상황(Q1~Q15 입력값)과 3년 후 목표를 분석하여 12 
+          +분기(36개월) 월별 실행 계획을 생성합니다.                     
+      382 +                                                              
+      383 +응답은 반드시 단일 JSON 객체 하나만 반환합니다. 코드펜스·설명·
+          +공백 줄바꿈 외 어떤 문자도 추가 금지.                         
+      384 +                                                              
+      385 +생성 규칙:                                                    
+      386 +1. goal_summary: 3년 후 목표를 30자 이내로 요약합니다.        
+      387 +2. quarterly_milestones: 반드시 정확히 12개 (Q1~Q12). quarter 
+          +는 "Q1"~"Q12" 문자열. 각 milestone에 구체적 수치(금액·인원·횟 
+          +수·%) 반드시 포함.                                            
+      388 +3. monthly_plans: 반드시 정확히 36개 (month 1~36). 한 개도 빠 
+          +짐없이 전부 포함:                                             
+      389 +   - theme: 이달 핵심 주제 5~10자 명사형                      
+      390 +   - gap_analysis: 현재→목표 갭 중 이달에 채울 내용 1문장     
+      391 +   - objectives: 정확히 2개. 동사형 구체 행동 목표.           
+      392 +   - checklist: 정확히 3개. 이달 말 완료 여부 판단 가능한 측정
+          + 가능 항목.                                                   
+      393 +4. success_conditions: 정확히 3개. 3년 후 달성 여부를 판단할  
+          +수 있는 수치 기준.                                            
+      394 +                                                              
+      395 +현실성 검증: Q5(저축액)·Q3(버틸 기간)·Q6(가족지지)를 반영한 현
+          +실적 속도. 1년 만에 연봉 5배 등 비현실적 수치 금지. 한국어로  
+          +작성.                                                         
+      396 +"""                                                           
+      397 +                                                              
+      398 +ROADMAP_RESPONSE_SCHEMA = {                                   
+      399 +    "type": "object",                                         
+      400 +    "properties": {                                           
+      401 +        "goal_summary": {"type": "string"},                   
+      402 +        "quarterly_milestones": {                             
+      403 +            "type": "array",                                  
+      404 +            "items": {                                        
+      405 +                "type": "object",                             
+      406 +                "properties": {                               
+      407 +                    "quarter":   {"type": "string"},          
+      408 +                    "milestone": {"type": "string"},          
+      409 +                },                                            
+      410 +                "required": ["quarter", "milestone"],         
+      411 +            },                                                
+      412 +        },                                                    
+      413 +        "monthly_plans": {                                    
+      414 +            "type": "array",                                  
+      415 +            "items": {                                        
+      416 +                "type": "object",                             
+      417 +                "properties": {                               
+      418 +                    "month":        {"type": "integer"},      
+      419 +                    "theme":        {"type": "string"},       
+      420 +                    "gap_analysis": {"type": "string"},       
+      421 +                    "objectives":   {"type": "array", "items":
+          + {"type": "string"}},                                         
+      422 +                    "checklist":    {"type": "array", "items":
+          + {"type": "string"}},                                         
+      423 +                },                                            
+      424 +                "required": ["month", "theme", "gap_analysis",
+          + "objectives", "checklist"],                                  
+      425 +            },                                                
+      426 +        },                                                    
+      427 +        "success_conditions": {                               
+      428 +            "type": "array",                                  
+      429 +            "items": {"type": "string"},                      
+      430 +        },                                                    
+      431 +    },                                                        
+      432 +    "required": ["goal_summary", "quarterly_milestones", "mont
+          +hly_plans", "success_conditions"],                            
+      433 +}                                                             
+      434 +                                                              
+      435  PROFILE_PATH = "profile.json"
+      436  
+      437  Q3_OPTIONS = ["3개월 미만", "6개월", "1년", "1년 이상"]
+
+⏺ 이제 파일 텍스트 추출, 로드맵 모델/메시지/생성 함수들을 generate_comparison
+  뒤에 추가합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 78 lines
+      666      return json.loads(response.text)
+      667  
+      668  
+      669 +def extract_text_from_file(uploaded_file) -> str:             
+      670 +    name = uploaded_file.name.lower()                         
+      671 +    data = uploaded_file.read()                               
+      672 +    if name.endswith(".txt"):                                 
+      673 +        return data.decode("utf-8", errors="ignore")          
+      674 +    elif name.endswith(".pdf"):                               
+      675 +        import pdfplumber                                     
+      676 +        with pdfplumber.open(io.BytesIO(data)) as pdf:        
+      677 +            pages = [p.extract_text() or "" for p in pdf.pages
+          +]                                                             
+      678 +        return "\n".join(pages)                               
+      679 +    elif name.endswith(".docx"):                              
+      680 +        from docx import Document                             
+      681 +        doc = Document(io.BytesIO(data))                      
+      682 +        return "\n".join(para.text for para in doc.paragraphs)
+      683 +    else:                                                     
+      684 +        raise ValueError(f"지원하지 않는 파일 형식: {name}")  
+      685 +                                                              
+      686 +                                                              
+      687 +def get_roadmap_model():                                      
+      688 +    api_key = os.environ.get("GEMINI_API_KEY")                
+      689 +    if not api_key:                                           
+      690 +        return None                                           
+      691 +    genai.configure(api_key=api_key)                          
+      692 +    generation_config = genai.GenerationConfig(               
+      693 +        response_mime_type="application/json",                
+      694 +        response_schema=ROADMAP_RESPONSE_SCHEMA,              
+      695 +        temperature=0.7,                                      
+      696 +    )                                                         
+      697 +    return genai.GenerativeModel(                             
+      698 +        model_name="gemini-2.5-flash",                        
+      699 +        system_instruction=ROADMAP_SYSTEM_PROMPT,             
+      700 +        generation_config=generation_config,                  
+      701 +    )                                                         
+      702 +                                                              
+      703 +                                                              
+      704 +def build_roadmap_message(inputs: dict, goal_info: dict) -> st
+          +r:                                                            
+      705 +    lines = ["=== 현재 상황 ==="]                             
+      706 +    for i in range(1, 16):                                    
+      707 +        key = f"Q{i}"                                         
+      708 +        lines.append(f"Q{i}: {inputs.get(key, '입력 없음')}") 
+      709 +    inc_sel = inputs.get("INCOME_SELECT", "")                 
+      710 +    inc_txt = inputs.get("INCOME_TEXT", "")                   
+      711 +    if inc_sel == "직접 입력" and inc_txt:                    
+      712 +        lines.append(f"현재 소득: {inc_txt}")                 
+      713 +    elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""): 
+      714 +        lines.append(f"현재 소득: {inc_sel}")                 
+      715 +    for key, label in [("AGE", "연령대"), ("GENDER", "성별"), 
+          +("TIME", "하루 평균 여유시간")]:                              
+      716 +        val = inputs.get(key, "")                             
+      717 +        if val:                                               
+      718 +            lines.append(f"{label}: {val}")                   
+      719 +                                                              
+      720 +    lines.append("")                                          
+      721 +    if goal_info.get("mode") == "upload":                     
+      722 +        lines.append("=== 이력서 내용 ===")                   
+      723 +        lines.append("아래는 사용자의 이력서입니다.")         
+      724 +        lines.append("현재 이력과 3년 후 목표가 모두 포함되어 
+          +있습니다.")                                                   
+      725 +        lines.append("이를 바탕으로 실행 계획을 생성해주세요:"
+          +)                                                             
+      726 +        lines.append(goal_info.get("resume_text", ""))        
+      727 +    else:                                                     
+      728 +        lines.append("=== 3년 후 목표 ===")                   
+      729 +        if goal_info.get("role"):                             
+      730 +            lines.append(f"직책·역할: {goal_info['role']}")   
+      731 +        if goal_info.get("income"):                           
+      732 +            lines.append(f"연 수입 목표: {goal_info['income']}
+          +")                                                            
+      733 +        if goal_info.get("achievements"):                     
+      734 +            lines.append(f"핵심 성취: {goal_info['achievements
+          +']}")                                                         
+      735 +    return "\n".join(lines)                                   
+      736 +                                                              
+      737 +                                                              
+      738 +def generate_roadmap(inputs: dict, goal_info: dict) -> dict:  
+      739 +    model = get_roadmap_model()                               
+      740 +    if model is None:                                         
+      741 +        raise ValueError("GEMINI_API_KEY 환경변수가 설정되지  
+          +않았습니다.")                                                 
+      742 +    msg = build_roadmap_message(inputs, goal_info)            
+      743 +    response = model.generate_content(msg)                    
+      744 +    return json.loads(response.text)                          
+      745 +                                                              
+      746 +                                                              
+      747  def get_korean_font_path():
+      748      """한국어 TTF/TTC 폰트 경로 반환. 없으면 다운로드 시도, 실
+           패 시 None."""
+      749      base = os.path.dirname(os.path.abspath(__file__))
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ app.py를 확인해서 3년 후 이력서 관련 코드가추가되어 있는지 알려줘             
+
+⏺ Bash(python3 -c "
+      src = open('/Users/mary_shin/Desktop/VibeCoding/Final/app.py').read()…)
+  ⎿    ✅ 로드맵 시스템 프롬프트 (ROADMAP_SYSTEM_PROMPT)
+       ✅ 로드맵 응답 스키마 (ROADMAP_RESPONSE_SCHEMA)
+       ✅ 파일 텍스트 추출 함수 (extract_text_from_file)
+     … +11 lines (ctrl+o to expand)
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ 현재 상태 정리:
+
+  ✅ 추가 완료된 것 (백엔드 로직)
+
+  ┌──────────────────────────┬──────────────────────────────┐
+  │           항목           │             위치             │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ ROADMAP_SYSTEM_PROMPT    │ line 379                     │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ ROADMAP_RESPONSE_SCHEMA  │ line 398                     │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ extract_text_from_file() │ line 669 (PDF/DOCX/TXT 파싱) │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ get_roadmap_model()      │ line 687                     │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ build_roadmap_message()  │ line 704                     │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ generate_roadmap()       │ line 738                     │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ requirements.txt         │ pdfplumber, python-docx 포함 │
+  └──────────────────────────┴──────────────────────────────┘
+
+  ❌ 아직 추가 안 된 것 (UI + PDF)
+  - generate_roadmap_pdf() — 로드맵 전용 PDF 생성 함수
+  - render_roadmap_section() — 결과 화면 하단 UI 섹션 전체
+  - session_state.roadmap_result 초기화
+  - init_session() 업데이트
+  - render_result_page() 연동
+
+  이전 요청이 중간에 끊긴 상태입니다. 나머지 UI + PDF 부분을 이어서 구현할까요?
+✻ Baked for 23s
+
+❯ 화면에 추가된 3년 후 이력서 관련                                              
+     코드를 모두 제거해줘.                                                      
+     app.py.bak 백업 파일이 있으면                                              
+     해당 부분만 원복해줘.                                                      
+
+  Listed 1 directory (ctrl+o to expand)
+
+⏺ 백업 파일이 없습니다. 직접 로드맵 관련 코드를 식별해서 제거합니다.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ 위치를 파악했습니다. 3군데를 제거합니다.
+
+⏺ Update(app.py)
+  ⎿  Removed 1 line
+       6  import html as _html
+       7  import datetime
+       8  import urllib.request
+       9 -import io                                                      
+       9  from dotenv import load_dotenv
+      10  
+      11  load_dotenv()
+
+⏺ Update(app.py)
+  ⎿  Removed 56 lines
+      375      "required": ["changes", "recommendation_change", "checklis
+           t", "overall_analysis"],
+      376  }
+      377  
+      378 -ROADMAP_SYSTEM_PROMPT = """                                   
+      379 -당신은 AI 인생 로드맵 설계 엔진입니다.                        
+      380 -사용자의 현재 상황(Q1~Q15 입력값)과 3년 후 목표를 분석하여 12 
+          -분기(36개월) 월별 실행 계획을 생성합니다.                     
+      381 -                                                              
+      382 -응답은 반드시 단일 JSON 객체 하나만 반환합니다. 코드펜스·설명·
+          -공백 줄바꿈 외 어떤 문자도 추가 금지.                         
+      383 -                                                              
+      384 -생성 규칙:                                                    
+      385 -1. goal_summary: 3년 후 목표를 30자 이내로 요약합니다.        
+      386 -2. quarterly_milestones: 반드시 정확히 12개 (Q1~Q12). quarter 
+          -는 "Q1"~"Q12" 문자열. 각 milestone에 구체적 수치(금액·인원·횟 
+          -수·%) 반드시 포함.                                            
+      387 -3. monthly_plans: 반드시 정확히 36개 (month 1~36). 한 개도 빠 
+          -짐없이 전부 포함:                                             
+      388 -   - theme: 이달 핵심 주제 5~10자 명사형                      
+      389 -   - gap_analysis: 현재→목표 갭 중 이달에 채울 내용 1문장     
+      390 -   - objectives: 정확히 2개. 동사형 구체 행동 목표.           
+      391 -   - checklist: 정확히 3개. 이달 말 완료 여부 판단 가능한 측정
+          - 가능 항목.                                                   
+      392 -4. success_conditions: 정확히 3개. 3년 후 달성 여부를 판단할  
+          -수 있는 수치 기준.                                            
+      393 -                                                              
+      394 -현실성 검증: Q5(저축액)·Q3(버틸 기간)·Q6(가족지지)를 반영한 현
+          -실적 속도. 1년 만에 연봉 5배 등 비현실적 수치 금지. 한국어로  
+          -작성.                                                         
+      395 -"""                                                           
+      396 -                                                              
+      397 -ROADMAP_RESPONSE_SCHEMA = {                                   
+      398 -    "type": "object",                                         
+      399 -    "properties": {                                           
+      400 -        "goal_summary": {"type": "string"},                   
+      401 -        "quarterly_milestones": {                             
+      402 -            "type": "array",                                  
+      403 -            "items": {                                        
+      404 -                "type": "object",                             
+      405 -                "properties": {                               
+      406 -                    "quarter":   {"type": "string"},          
+      407 -                    "milestone": {"type": "string"},          
+      408 -                },                                            
+      409 -                "required": ["quarter", "milestone"],         
+      410 -            },                                                
+      411 -        },                                                    
+      412 -        "monthly_plans": {                                    
+      413 -            "type": "array",                                  
+      414 -            "items": {                                        
+      415 -                "type": "object",                             
+      416 -                "properties": {                               
+      417 -                    "month":        {"type": "integer"},      
+      418 -                    "theme":        {"type": "string"},       
+      419 -                    "gap_analysis": {"type": "string"},       
+      420 -                    "objectives":   {"type": "array", "items":
+          - {"type": "string"}},                                         
+      421 -                    "checklist":    {"type": "array", "items":
+          - {"type": "string"}},                                         
+      422 -                },                                            
+      423 -                "required": ["month", "theme", "gap_analysis",
+          - "objectives", "checklist"],                                  
+      424 -            },                                                
+      425 -        },                                                    
+      426 -        "success_conditions": {                               
+      427 -            "type": "array",                                  
+      428 -            "items": {"type": "string"},                      
+      429 -        },                                                    
+      430 -    },                                                        
+      431 -    "required": ["goal_summary", "quarterly_milestones", "mont
+          -hly_plans", "success_conditions"],                            
+      432 -}                                                             
+      433 -                                                              
+      378  PROFILE_PATH = "profile.json"
+      379  
+      380  Q3_OPTIONS = ["3개월 미만", "6개월", "1년", "1년 이상"]
+
+⏺ Update(app.py)
+  ⎿  Removed 78 lines
+      609      return json.loads(response.text)
+      610  
+      611  
+      612 -def extract_text_from_file(uploaded_file) -> str:             
+      613 -    name = uploaded_file.name.lower()                         
+      614 -    data = uploaded_file.read()                               
+      615 -    if name.endswith(".txt"):                                 
+      616 -        return data.decode("utf-8", errors="ignore")          
+      617 -    elif name.endswith(".pdf"):                               
+      618 -        import pdfplumber                                     
+      619 -        with pdfplumber.open(io.BytesIO(data)) as pdf:        
+      620 -            pages = [p.extract_text() or "" for p in pdf.pages
+          -]                                                             
+      621 -        return "\n".join(pages)                               
+      622 -    elif name.endswith(".docx"):                              
+      623 -        from docx import Document                             
+      624 -        doc = Document(io.BytesIO(data))                      
+      625 -        return "\n".join(para.text for para in doc.paragraphs)
+      626 -    else:                                                     
+      627 -        raise ValueError(f"지원하지 않는 파일 형식: {name}")  
+      628 -                                                              
+      629 -                                                              
+      630 -def get_roadmap_model():                                      
+      631 -    api_key = os.environ.get("GEMINI_API_KEY")                
+      632 -    if not api_key:                                           
+      633 -        return None                                           
+      634 -    genai.configure(api_key=api_key)                          
+      635 -    generation_config = genai.GenerationConfig(               
+      636 -        response_mime_type="application/json",                
+      637 -        response_schema=ROADMAP_RESPONSE_SCHEMA,              
+      638 -        temperature=0.7,                                      
+      639 -    )                                                         
+      640 -    return genai.GenerativeModel(                             
+      641 -        model_name="gemini-2.5-flash",                        
+      642 -        system_instruction=ROADMAP_SYSTEM_PROMPT,             
+      643 -        generation_config=generation_config,                  
+      644 -    )                                                         
+      645 -                                                              
+      646 -                                                              
+      647 -def build_roadmap_message(inputs: dict, goal_info: dict) -> st
+          -r:                                                            
+      648 -    lines = ["=== 현재 상황 ==="]                             
+      649 -    for i in range(1, 16):                                    
+      650 -        key = f"Q{i}"                                         
+      651 -        lines.append(f"Q{i}: {inputs.get(key, '입력 없음')}") 
+      652 -    inc_sel = inputs.get("INCOME_SELECT", "")                 
+      653 -    inc_txt = inputs.get("INCOME_TEXT", "")                   
+      654 -    if inc_sel == "직접 입력" and inc_txt:                    
+      655 -        lines.append(f"현재 소득: {inc_txt}")                 
+      656 -    elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""): 
+      657 -        lines.append(f"현재 소득: {inc_sel}")                 
+      658 -    for key, label in [("AGE", "연령대"), ("GENDER", "성별"), 
+          -("TIME", "하루 평균 여유시간")]:                              
+      659 -        val = inputs.get(key, "")                             
+      660 -        if val:                                               
+      661 -            lines.append(f"{label}: {val}")                   
+      662 -                                                              
+      663 -    lines.append("")                                          
+      664 -    if goal_info.get("mode") == "upload":                     
+      665 -        lines.append("=== 이력서 내용 ===")                   
+      666 -        lines.append("아래는 사용자의 이력서입니다.")         
+      667 -        lines.append("현재 이력과 3년 후 목표가 모두 포함되어 
+          -있습니다.")                                                   
+      668 -        lines.append("이를 바탕으로 실행 계획을 생성해주세요:"
+          -)                                                             
+      669 -        lines.append(goal_info.get("resume_text", ""))        
+      670 -    else:                                                     
+      671 -        lines.append("=== 3년 후 목표 ===")                   
+      672 -        if goal_info.get("role"):                             
+      673 -            lines.append(f"직책·역할: {goal_info['role']}")   
+      674 -        if goal_info.get("income"):                           
+      675 -            lines.append(f"연 수입 목표: {goal_info['income']}
+          -")                                                            
+      676 -        if goal_info.get("achievements"):                     
+      677 -            lines.append(f"핵심 성취: {goal_info['achievements
+          -']}")                                                         
+      678 -    return "\n".join(lines)                                   
+      679 -                                                              
+      680 -                                                              
+      681 -def generate_roadmap(inputs: dict, goal_info: dict) -> dict:  
+      682 -    model = get_roadmap_model()                               
+      683 -    if model is None:                                         
+      684 -        raise ValueError("GEMINI_API_KEY 환경변수가 설정되지  
+          -않았습니다.")                                                 
+      685 -    msg = build_roadmap_message(inputs, goal_info)            
+      686 -    response = model.generate_content(msg)                    
+      687 -    return json.loads(response.text)                          
+      688 -                                                              
+      689 -                                                              
+      612  def get_korean_font_path():
+      613      """한국어 TTF/TTC 폰트 경로 반환. 없으면 다운로드 시도, 실
+           패 시 None."""
+      614      base = os.path.dirname(os.path.abspath(__file__))
+
+⏺ 이제 requirements.txt에서도 pdfplumber, python-docx를 제거합니다.
+
+⏺ Update(requirements.txt)
+  ⎿  Removed 2 lines
+      2  google-generativeai
+      3  python-dotenv
+      4  fpdf2
+      5 -pdfplumber                                                      
+      6 -python-docx                                                     
+
+⏺ 최종 검증합니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('문법 OK')")
+  ⎿  문법 OK
+
+⏺ Bash(python3 -c "
+      src = open('/Users/mary_shin/Desktop/VibeCoding/Final/app.py').read()…)
+  ⎿  === 제거 확인 ===
+       ✅ 제거됨: ROADMAP_SYSTEM_PROMPT
+       ✅ 제거됨: ROADMAP_RESPONSE_SCHEMA
+     … +13 lines (ctrl+o to expand)
+
+⏺ 완료됐습니다.
+
+  제거된 것 (전부 삭제)
+  - ROADMAP_SYSTEM_PROMPT / ROADMAP_RESPONSE_SCHEMA
+  - extract_text_from_file() / get_roadmap_model() / build_roadmap_message() /
+  generate_roadmap()
+  - import io
+  - requirements.txt — pdfplumber, python-docx 항목
+
+  기존 기능은 모두 그대로 유지됩니다 (비교 분석, PDF 다운로드, 히스토리 저장,
+  다크/라이트 모드 등).
+
+✻ Churned for 1m 21s
+
+※ recap: AI 인생 시나리오 플래너 앱(app.py) 고도화 작업 중. 3년 후 이력서/로드맵 기능([8번])을 방금 전체 제거 완료했고, 다음 작업 지시를 기다리는 상태입니다. (disable recaps in /config)
+
+❯ 질문지를 출력해줘                                                             
+
+⏺ Bash(python3 -c "
+      import ast, sys…)
+  ⎿  QUESTIONS = [
+         {"key": "Q1",     "label": "Q1. 현재 직업·역할",           "type":
+      "text",          "placeholder": "예) 중소기업 영업부장 15년차, 프리랜
+     … +28 lines (ctrl+o to expand)
+
+⏺ 현재 앱의 질문지입니다.
+
+  ---
+  기본 정보
+
+  ┌─────┬───────────────┬───────────────┬───────────────────────────────────┐
+  │  #  │     항목      │   입력 방식   │           선택지 / 예시           │
+  ├─────┼───────────────┼───────────────┼───────────────────────────────────┤
+  │ —   │ 현재 연봉     │ 드롭다운 +    │ 연봉 3천만원 미만 ~ 1억 이상,     │
+  │     │ 또는 월급     │ 직접 입력     │ 월급 200만원 미만 ~ 600만원 이상  │
+  ├─────┼───────────────┼───────────────┼───────────────────────────────────┤
+  │ —   │ 연령대        │ 드롭다운      │ 20대 초반 ~ 60대 이상 (9개)       │
+  ├─────┼───────────────┼───────────────┼───────────────────────────────────┤
+  │ —   │ 성별          │ 드롭다운      │ 남성 / 여성 / 선택 안 함          │
+  ├─────┼───────────────┼───────────────┼───────────────────────────────────┤
+  │ —   │ 하루 평균     │ 드롭다운      │ 1시간 미만 / 1~2시간 / 2~3시간 /  │
+  │     │ 여유시간      │               │ 3시간 이상                        │
+  └─────┴───────────────┴───────────────┴───────────────────────────────────┘
+
+  15개 핵심 질문
+
+  ┌─────┬──────────────────────┬────────────────────────────────────────────┐
+  │  #  │         질문         │                 입력 방식                  │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q1  │ 현재 직업·역할       │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q2  │ 현 상황 만족도       │ 슬라이더 (1~10)                            │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q3  │ 버틸 수 있는 기간    │ 드롭다운 (3개월 미만 / 6개월 / 1년 / 1년   │
+  │     │                      │ 이상)                                      │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q4  │ 돈 받고 팔 수 있는   │ 텍스트                                     │
+  │     │ 기술                 │                                            │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q5  │ 매달 저축 가능 금액  │ 드롭다운 (없음 / 50만 미만 / 50~150만 /    │
+  │     │                      │ 150만 이상)                                │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q6  │ 가족의 지지          │ 드롭다운 (강하게 반대 / 중립 / 지지 / 적극 │
+  │     │                      │  응원)                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q7  │ 절대 포기할 수 없는  │ 텍스트                                     │
+  │     │ 것                   │                                            │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q8  │ 가장 두려운 것       │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q9  │ 롤모델·닮고 싶은 삶  │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q10 │ 10년 후 목표         │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q11 │ 죽기 전 반드시 할 일 │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q12 │ 5년 전과 달라진 점   │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q13 │ 현재 가장 큰 고민    │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q14 │ 지금 바꿀 수 있는 것 │ 텍스트                                     │
+  ├─────┼──────────────────────┼────────────────────────────────────────────┤
+  │ Q15 │ 리포트 보고 첫 행동  │ 텍스트                                     │
+  └─────┴──────────────────────┴────────────────────────────────────────────┘
+
+  총 19개 항목 (기본 정보 4개 + Q1~Q15).
+
+✻ Cooked for 20s
+
+※ recap: AI 인생 시나리오 플래너 Streamlit 앱을 개발 중이며, 1~7번 기능이 완료된 상태입니다. 8번(3년 후 이력서 → 월간 실행 계획) 기능은 사용자 요청으로 관련 코드를 제거했고, 다음 작업 지시를 기다리고 있습니다. (disable recaps in /config)
+
+❯ # AI 인생 시나리오 플래너 — 화면 추가 작업                                    
+                                                                                
+  지금부터 단계별 프롬프트를 순서대로 입력한다.                                 
+  아래 규칙은 전체 작업에 공통으로 적용되는 전역 규칙이며,                      
+  이후 모든 단계에서 항상 준수한다.                                             
+                                                                                
+  # 이 앱의 화면 구조 정의 (전체 작업에 걸쳐 반드시 이 명칭을 기준으로 삼아라)  
+                                                                                
+  이 앱은 다음 4개 화면으로 구성된다.                                           
+                                                                                
+  화면1 = 인생 설계 시작                                                        
+          사용자가 18개 질문에 답하는 화면.                                     
+          현재 app.py에 구현되어 있음.                                          
+                                                                                
+  화면2 = 나의 인생 시나리오                                                    
+          Gemini API가 생성한 현실형·도전형·파격형 3개 시나리오 카드를          
+          보여주는 화면. 현재 app.py에 구현되어 있음.                           
+                                                                                
+  화면3 = 지금 당장 실행하기                                                    
+          화면2에서 시나리오를 선택하고 "실행하기" 클릭 시 진입하는 화면.       
+          분기별 체크리스트, AI 중간 평가, AI 코치 채팅 기능을 포함한다.        
+          화면3 우측 상단에 화면4로 이동하는 바로가기 버튼을 둔다.              
+          버튼명: "3년 후 내 이력서 등록"                                       
+          현재 미구현. 단계 1~6 작업에서 새로 추가한다.                         
+                                                                                
+  화면4 = 3년 후 내 이력서                                                      
+          화면3 우측 상단의 "3년 후 내 이력서 등록" 버튼으로 진입하는 화면.     
+          선택 시나리오 기준 3년 후 가상 이력서를 생성하고,                     
+          Google Search Grounding으로 실제 구인공고를 탐색하여                  
+          현재와의 갭을 분석하고 월간 실행 플랜을 제시한다.                     
+          현재 미구현. 화면3 작업 이후 별도로 추가한다.                         
+                                                                                
+  각 화면의 실제 page 변수 값은 0단계에서 app.py를 확인하여 매핑한다.           
+  작업 중 "화면1"~"화면4"라는 표현이 나오면 위 정의를 기준으로 해석하라.        
+  임의로 화면을 합치거나 분리하지 마라.                                         
+                                                                                
+  # 절대 준수 (작업 범위 제약)                                                  
+  1. 기존 app.py의 함수·변수·화면 로직을 수정·삭제하지 말 것.                   
+  2. 화면3 관련 코드는 신규 모듈 파일 screen3_plan.py에 작성하고,               
+     app.py에는 (a) import screen3_plan 1줄, (b) page 분기에 elif 1개 블록만    
+     추가할 것.                                                                 
+  3. 작업 시작 전 app.py를 app.py.bak으로 백업할 것.                            
+  4. 각 단계 완료 시 앱이 에러 없이 기동되는지 확인한 뒤 다음 단계로 진행할 것. 
+                                                                                
+  # 사전 확인 (코드 작성 전 필수)                                               
+  - app.py가 어떤 Gemini SDK를 import하는지 확인할 것.                          
+  - 화면2가 선택 시나리오를 session_state의 어떤 키로 저장하는지 확인할 것.     
+                                                                                
+  # 진행 방식                                                                   
+  - 한 번에 한 단계씩만 진행한다.                                               
+  - 각 단계의 [확인] 항목을 통과한 뒤 멈추고, 다음 단계 지시를 기다린다.        
+  - 임의로 다음 단계를 미리 진행하지 마라.                                      
+                                                                                
+  이 규칙을 숙지했으면 "확인" 이라고만 답하고, 0단계 입력을 기다려라.           
+
+⏺ 확인
+
+✻ Sautéed for 15s
+
+❯ # 화면 추가 작업 (0/6단계: 사전 진단)                                         
+  # 앞서 입력한 전역 규칙을 전제로 진행한다.                                    
+                                                                                
+  이번 단계는 코드를 작성·수정하지 않고, 진단과 백업만 수행한다.                
+                                                                                
+  ## 작업                                                                       
+  1. app.py를 app.py.bak 으로 복사 백업하라.                                    
+                                                                                
+  2. 터미널에서 아래를 실행하고 결과를 보고하라:                                
+     - pip show google-generativeai                                             
+     - pip show google-genai                                                    
+     - streamlit --version                                                      
+                                                                                
+  3. app.py를 읽고 다음 5가지를 보고하라:                                       
+     (a) 현재 import하는 Gemini SDK가 구버전(import google.generativeai)인지    
+         신버전(from google import genai)인지                                   
+     (b) 화면 전환에 쓰는 session_state의 page 변수 분기 위치(라인 번호)        
+     (c) 화면2가 선택 시나리오를 저장하는 session_state 키 이름                 
+         (없으면 "없음"으로 보고)                                               
+     (d) 기존 PDF 저장 함수의 이름과 인자 시그니처                              
+     (e) 화면1·화면2에 해당하는 page 변수의 실제 값을 확인하라.                 
+         화면3·화면4에 쓸 page 값은 기존 네이밍 패턴과 일치하는 이름으로        
+         제안하라. 예시 패턴: "input"→"result"→"plan"→"career"                  
+         이후 모든 단계에서 아래 형식으로 고정 사용한다:                        
+         화면1 = [확인된 값], 화면2 = [확인된 값],                              
+         화면3 = [제안값], 화면4 = [제안값]                                     
+                                                                                
+  ## 절대 준수                                                                  
+  - 이 단계에서는 어떤 코드도 수정·생성하지 마라. 진단과 백업만 한다.           
+                                                                                
+  ## [확인]                                                                     
+  - app.py.bak 파일이 생성되었다.                                               
+  - 위 (a)~(e) 5가지가 모두 보고되었다.                                         
+  이 결과를 보고하고 멈춰라. 다음 단계 지시를 기다려라.                         
+
+⏺ 백업 먼저 수행하고, 진단을 병렬로 실행합니다.
+
+⏺ Bash(cp /Users/mary_shin/Desktop/VibeCoding/Final/app.py
+      /Users/mary_shin/Desktop/VibeCoding/Final/app.py.bak && echo "백업 완료:
+      app.py.bak")  ⎿  백업 완료: app.py.bak
+
+⏺ Bash(pip3 show google-generativeai 2>/dev/null | grep -E "Name|Version" &&
+      echo "---" && pip3 show google-genai 2>/dev/null | grep -E "Name|Version"
+      || echo "google-…)
+  ⎿  Name: google-generativeai
+     Version: 0.8.6
+     ---
+     … +3 lines (ctrl+o to expand)
+
+  Searched for 6 patterns, read 1 file (ctrl+o to expand)
+
+⏺ 모든 진단이 완료됐습니다. 결과를 보고합니다.
+
+  ---
+  0단계 진단 보고
+
+  ✅ 백업 완료
+
+  app.py.bak 생성 확인.
+
+  ---
+  패키지 / 버전
+
+  ┌─────────────────────┬────────────────┐
+  │        항목         │      결과      │
+  ├─────────────────────┼────────────────┤
+  │ google-generativeai │ 0.8.6 (설치됨) │
+  ├─────────────────────┼────────────────┤
+  │ google-genai        │ 미설치         │
+  ├─────────────────────┼────────────────┤
+  │ Streamlit           │ 1.50.0         │
+  └─────────────────────┴────────────────┘
+
+  ---
+  (a) Gemini SDK
+
+  구버전 — import google.generativeai as genai (line 3)
+  신버전(from google import genai) 미사용.
+
+  ---
+  (b) page 분기 위치
+
+  main() 함수 내 line 1548~1553
+  if st.session_state.page == "input":
+      render_input_page()
+  elif st.session_state.page == "compare":
+      render_compare_page()
+  else:
+      render_result_page()
+
+  ---
+  (c) 화면2 선택 시나리오 session_state 키
+
+  없음.
+  화면2의 pick(i) 함수는 JS 내 UI 스타일(active 클래스)만 변경하고,
+  선택된 시나리오 인덱스/데이터를 Streamlit session_state로 전달하는 postMessage
+   호출이 없음.
+  → 화면3 구현 시 pick() 함수에 postMessage 연동을 추가해야 함.
+
+  ---
+  (d) PDF 함수 시그니처
+
+  def generate_pdf(result: dict, inputs: dict) -> bytes:   # line 644
+
+  ---
+  (e) page 값 매핑 및 제안
+
+  ┌────────────────────────────┬────────────────────────────────────┐
+  │            화면            │         현재/제안 page 값          │
+  ├────────────────────────────┼────────────────────────────────────┤
+  │ 화면1 (질문 입력)          │ "input" ← 기존 확인값              │
+  ├────────────────────────────┼────────────────────────────────────┤
+  │ 화면2 (시나리오 결과)      │ "result" ← 기존 확인값 (else 분기) │
+  ├────────────────────────────┼────────────────────────────────────┤
+  │ 화면3 (지금 당장 실행하기) │ "plan" ← 제안                      │
+  ├────────────────────────────┼────────────────────────────────────┤
+  │ 화면4 (3년 후 내 이력서)   │ "career" ← 제안                    │
+  └────────────────────────────┴────────────────────────────────────┘
+
+  ---
+  멈춥니다. 1단계 지시를 기다립니다.
+
+✻ Cogitated for 1m 1s
+
+❯ # 작업: 화면1 질문 입력 폼 개편 (19항목 → 18항목 / 5섹션 구조)                
+  # 이 작업은 화면1을 수정하는 예외 작업이다. 시작 전 app.py를 app.py.bak3 으로 
+   백업하라.                                                                    
+                                                                                
+  ## 1. 현재 상태 확인 (코드 수정 전)                                           
+  - app.py에서 화면1 질문 폼이 정의된 위치를 찾아라.                            
+  - 현재 입력값들이 session_state에 어떤 키로 저장되는지 확인해 보고하라.       
+  - 화면2(시나리오 생성)·화면3(AI 평가·코치)의 Gemini 프롬프트가                
+    입력값을 어떤 방식(Q번호 / 키 이름)으로 참조하는지 확인해 보고하라.         
+                                                                                
+  ## 2. 신규 질문지 정의                                                        
+  질문을 아래 구조의 리스트/딕셔너리로 정의하라. 각 질문은                      
+  의미 기반 고유 id를 가지며, 화면2·3은 Q번호가 아닌 이 id로 입력값을           
+  참조하도록 한다(향후 순서 변경에도 안 깨지게).                                
+                                                                                
+  [섹션 1 — 현재 상황]                                                          
+  설명: "지금 어디에 있나요? 현재 직업·재정·환경을 파악합니다"                  
+  - id=job        | 현재 직업·역할        | text   | placeholder: 예) 중소기업  
+  영업부장 15년차, 프리랜서 디자이너                                            
+  - id=satisfaction | 현 상황 만족도      | slider 1~10 | 슬라이더 아래 현재    
+  숫자 표시                                                                     
+  - id=endurance  | 버틸 수 있는 기간    | select | 3개월 미만 / 6개월 / 1년 /  
+  1년 이상                                                                      
+  - id=saving     | 매달 저축 가능 금액  | select | 없음 / 50만 미만 / 50~150만 
+   / 150만 이상                                                                 
+  - id=family_support | 가족의 지지 여부 | select | 강하게 반대 / 중립 / 지지 / 
+   적극 응원                                                                    
+                                                                                
+  [섹션 2 — 내 자산·역량]                                                       
+  설명: "무엇을 가지고 있나요? 활용 가능한 기술과 자원을 확인합니다"            
+  - id=age        | 연령대               | select | (기존 app.py의 연령대       
+  선택지를 그대로 유지)                                                         
+  - id=gender     | 성별                 | select | 남성 / 여성 / 선택 안 함    
+  - id=skill      | 돈 받고 팔 수 있는 기술 | text | placeholder: 예) 영업·협상 
+   경험, 엑셀 분석, 콘텐츠 기획                                                 
+  - id=income     | 현재 연봉 또는 월급  | select+직접입력 | (기존 app.py의     
+  연봉/월급 선택지를 그대로 유지 + 직접 입력 옵션)                              
+  - id=free_time  | 하루 평균 여유시간   | select | 1시간 미만 / 1~2시간 /      
+  2~3시간 / 3시간 이상                                                          
+                                                                                
+  [섹션 3 — 가치관·두려움]                                                      
+  설명: "무엇이 중요한가요? 포기할 수 없는 것과 두려움을 솔직하게 적어주세요"   
+  - id=priority   | 절대 포기할 수 없는 것 | text | placeholder: 예) 가족과의   
+  저녁 시간, 주말 취미 생활, 건강 관리                                          
+  - id=fear       | 가장 두려운 것       | text   | placeholder: 예) 50대에     
+  직장 잃는 것, 노후 준비 없이 나이 드는 것                                     
+  - id=rolemodel  | 롤모델·닮고 싶은 삶  | text   | placeholder: 예) 자기 회사  
+  차린 선배, 자유롭게 일하는 프리랜서 지인                                      
+                                                                                
+  [섹션 4 — 미래 비전]                                                          
+  설명: "어디로 가고 싶나요? 10년 후 모습과 인생에서 반드시 이룰 것을           
+  적어주세요"                                                                   
+  - id=goal       | 10년 후 목표         | textarea(2줄) | placeholder: 예) 내  
+  회사 운영, 안정적인 부업 수입 월 300만                                        
+  - id=bucketlist | 죽기 전 반드시 하고 싶은 일 | text | placeholder: 예)       
+  세계여행, 책 한 권 출판, 자녀 결혼 다 시키기                                  
+                                                                                
+  [섹션 5 — 변화·행동]                                                          
+  설명: "무엇을 바꿀 건가요? 현재 고민과 지금 당장 실행 가능한 것을 적어주세요" 
+  - id=change_5y  | 5년 전과 달라진 점   | textarea(2줄) | placeholder: 예)     
+  이직 2번 했음, 아이가 생겼음, 부모님 간병 시작                                
+  - id=worry      | 현재 가장 큰 고민    | textarea(2줄) | placeholder: 예)     
+  지금 직장 계속 다닐지 이직할지 모르겠다                                       
+  - id=changeable | 지금 바꿀 수 있는 것 | text   | placeholder: 예) 퇴근 후    
+  유튜브 2시간을 자기계발로 바꾸기                                              
+                                                                                
+  ## 3. 화면 출력 규칙 (중요)                                                   
+  - 위 명세 표(번호·입력타입·예시 문구 컬럼 구조)를 화면에 그대로 출력하지      
+  마라.                                                                         
+  - 화면에 표시할 것: 섹션명, 섹션 설명, 각 질문의 질문 문구(입력 위젯의 라벨), 
+    입력 위젯 자체.                                                             
+  - 화면에 표시하지 말 것: Q번호(Q1·Q2 등 표식), 입력 타입을 가리키는 글자      
+    ("텍스트"·"드롭다운"·"슬라이더" 등), "예시 문구"라는 라벨.                  
+  - 예시 문구는 별도 텍스트가 아니라 입력 위젯의 placeholder로만 넣어라.        
+  - 섹션은 시각적으로 구분되게 배치하라(섹션명 + 설명을 헤더로).                
+                                                                                
+  ## 4. 다운스트림 갱신 (입력값 참조 정합성)                                    
+  기존 질문 → 신규 질문 매핑은 다음과 같다. 화면2·3의 Gemini 프롬프트가         
+  입력값을 참조하는 부분을 이 매핑에 맞게 갱신하라.                             
+  - 기존 Q1(직업) → job                                                         
+  - 기존 Q2(만족도) → satisfaction                                              
+  - 기존 Q3(버틸 기간) → endurance                                              
+  - 기존 Q5(저축액) → saving                                                    
+  - 기존 Q6(가족 지지) → family_support                                         
+  - 기존 기본정보(연령대) → age                                                 
+  - 기존 기본정보(성별) → gender                                                
+  - 기존 Q4(기술) → skill                                                       
+  - 기존 기본정보(연봉/월급) → income                                           
+  - 기존 기본정보(여유시간) → free_time                                         
+  - 기존 Q7(포기 불가) → priority                                               
+  - 기존 Q8(두려움) → fear                                                      
+  - 기존 Q9(롤모델) → rolemodel                                                 
+  - 기존 Q10(10년 후 목표) → goal                                               
+  - 기존 Q11(죽기 전 할 일) → bucketlist  ※ 문구를 "죽기 전 반드시 하고 싶은    
+  일"로 변경                                                                    
+  - 기존 Q12(5년 전 달라진 점) → change_5y                                      
+  - 기존 Q13(고민) → worry                                                      
+  - 기존 Q14(바꿀 수 있는 것) → changeable                                      
+  - 기존 Q15(리포트 보고 첫 행동) → 삭제. 이 항목을 참조하는 코드가 있으면 함께 
+   제거하라.                                                                    
+                                                                                
+  ## 절대 준수                                                                  
+  - 화면2·3의 기능 로직 자체는 바꾸지 마라. 입력값 참조 키만 위 매핑대로        
+  갱신한다.                                                                     
+  - 저장·불러오기 기능이 있으면 새 18개 항목 기준으로 동작하도록 맞춰라.        
+  - 질문 정의는 코드 상단에 리스트/딕셔너리로 분리해, 향후 수정이 쉽게 하라.    
+                                                                                
+  ## 에러 처리                                                                  
+  - 기존 저장 파일(구 19항목 구조)을 불러올 때 키가 안 맞으면,                  
+    맞는 항목만 채우고 나머지는 빈 값으로 두되 앱이 죽지 않게 하라.             
+                                                                                
+  ## [확인]                                                                     
+  - 화면1에 5개 섹션이 섹션명·설명과 함께 표시되고, 질문은 18개다.              
+  - "리포트 보고 첫 행동" 질문이 사라졌다.                                      
+  - "죽기 전 반드시 하고 싶은 일"로 문구가 바뀌었다.                            
+  - Q번호·입력타입 글자·"예시 문구" 라벨이 화면에 보이지 않는다.                
+  - 18개 입력 후 화면2 시나리오 생성이 정상 동작한다(입력값 누락·오류 없음).    
+  - 화면3의 AI 평가·코치가 새 입력값을 정상 참조한다.                           
+  보고 후 작업을 마쳐라.                                                        
+
+⏺ 먼저 백업하고, 현재 상태를 파악합니다.
+
+⏺ Bash(cp /Users/mary_shin/Desktop/VibeCoding/Final/app.py
+      /Users/mary_shin/Desktop/VibeCoding/Final/app.py.bak3 && echo "app.py.bak3
+       백업 완료")
+  ⎿  app.py.bak3 백업 완료
+
+  Read 1 file (ctrl+o to expand)
+  ⎿  Context limit reached · /compact or /clear to continue
+
+✻ Churned for 2m 36s

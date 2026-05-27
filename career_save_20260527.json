@@ -1,0 +1,262 @@
+{
+  "saved_at": "2026-05-27T23:22:36",
+  "goal_role": "AI 컨설팅 대표",
+  "goal_income": "연봉 3억",
+  "goal_skills": "UX 설계, 콘텐츠 기획, AI 프롬프트 엔지니어링, AI 컨설팅",
+  "gap_result": {
+    "required_skills": [
+      "AI 기술 전문성",
+      "비즈니스 이해 및 전략 컨설팅 능력",
+      "문제 해결 능력",
+      "의사소통 및 협업",
+      "데이터 분석 및 활용"
+    ],
+    "preferred_skills": [
+      "산업 전문성 (제조, 스마트 팩토리 등)",
+      "기술 활용 경험 (자동화 툴, AI 툴)",
+      "어학 능력 (영어/일본어 비즈니스)",
+      "UX 설계",
+      "콘텐츠 기획"
+    ],
+    "have": [
+      "UX 설계",
+      "콘텐츠 기획",
+      "AI 프롬프트 엔지니어링",
+      "웹기획 (4년 경력)",
+      "프로젝트 기반 문제 해결 능력"
+    ],
+    "lack": [
+      "AI 서비스 기획/운영 및 개발에 대한 심층 이해",
+      "전략 컨설팅 및 비즈니스 모델링 경험",
+      "고급 데이터 분석 및 IT/데이터 분석 관련 지식 (Python, SQL 등)",
+      "AI 컨설팅 분야의 실질적인 산업 전문성 및 리더십"
+    ],
+    "gap_comment": "Q1의 4년차 프리랜서 웹기획 경력과 Q4의 UX 설계, 콘텐츠 기획, AI 프롬프트 엔지니어링 역량은 AI 컨설팅 대표로서의 기반이 될 수 있습니다. 하지만 목표 연봉 3억 달성을 위해서는 현재 연봉 6600만원 대비 약 4.5배 이상의 성장이 필요하며, 이를 위해 AI 기술 전반에 대한 심층 이해와 전략 컨설팅 경험을 쌓는 것이 가장 빠른 첫걸음입니다. AI 관련 전문 교육 이수 및 실제 프로젝트 참여를 통해 비즈니스 모델링 역량을 강화해야 합니다.",
+    "sources": [
+      {
+        "title": "skcareers.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEFgwFPihGTHlyUgv1ofIAqIg7wxFZC9sUoWJ7x6hfO7C9ofOy8M1pKGsWQM2SKtQqsSqj3YeII9yk3PgoXcrsX1jRwbo5SCXpq8adTxMi6wxu3I4y-YPLYjma4UZKSxAwz_WKOjfMSQnCkyw=="
+      },
+      {
+        "title": "skcareers.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFkBf9julRg9hcqv1u-uaa9wptI5JrZBID3Uy2V1mtVXG7w_iwIa2wGc0ZvvtDMKtpT9817VAIaVpgtbDbetn31G7-QuhcE9oms0QAFOqNo3mu4SztcoDdMYvbMOx5uuUcqVGtZbioM9l44FQ=="
+      },
+      {
+        "title": "chosun.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHd42U0ranWGFHzH2nJeNwhw-HUA91XJgIicR9cpygpAb1fLygPx5t-XKV04vDH_gN9efUuSnVYgiyXBAsQaa-hHLkEjraJVc3eCKzy3bobj6NQO3bKGxKC8rN5HN50NhPkKB1jIXHQ-1GR5cowTQf2tty3dvNeK0OFozeLppthhEdO_jiaNUNqzO6IlywN5V04"
+      },
+      {
+        "title": "indeed.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE6SeRXulRi4Y0uVi06otbvMLyjWkXwNIF__DBWSfjakNp7gG6W1f5EzB62lmdwWgmVAZ_2ZcCDNoWvHp6YwbDVSh_AakTF2MstlCKrZ0ZW1MjVKCmB9KQO2hJG_LBG4Pmmrkixno-grt3TVuBqW4dBfcu_UD_elxP1fZHiwnrJlFMVChLedsVrc780XspN_2QVSuQ5CTdNgXcIfg=="
+      },
+      {
+        "title": "banronbodo.com",
+        "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEgO_hIGV2f9Ry9YTYYwr0ev6dlfov_b5qMcGXMJQiP0U_1vph6Zh096nfrvAJFaA9SvmhKOkuwTOsSj-sTIMn0sE_RQ3OEmw8_g0p_dVcyktaJYahBqMDaCGxvht9jqVr47RmeP2LBKV05IPjXEqMvbbkMuJj87g=="
+      }
+    ]
+  },
+  "roadmap": {
+    "y1": [
+      "AI 기초 온라인 교육 2개(총 40시간) 이수 및 웹기획 프로젝트 3건 완료.",
+      "AI 프롬프트 엔지니어링 전문 자격증 1개 취득 및 실무 적용 프로젝트 1건 참여.",
+      "Python 기초 프로그래밍 강의 1개(총 30시간) 수강 및 데이터 처리 스크립트 3개 개발.",
+      "AI 서비스 기획 스터디 1곳 참여 및 비즈니스 모델링 사례 5개 분석 보고서 작성."
+    ],
+    "y2": [
+      "AI 서비스 기획/운영 프로젝트 2건 리드하여 핵심 기능 5가지 이상 설계 및 구현 기여.",
+      "전략 컨설팅 방법론 서적 3권 독파 및 비즈니스 모델링 워크숍 1회 참여.",
+      "SQL 활용 데이터 분석 프로젝트 1건 수행, 1000건 이상 데이터 분석 보고서 1회 작성.",
+      "AI 컨설팅 전문가 멘토링 3회 이상 진행 및 네트워킹 행사 2회 참석."
+    ],
+    "y3": [
+      "AI 컨설팅 서비스 모델 1개 개발 및 잠재 고객 5곳 대상 제안서 제출.",
+      "AI 컨설팅 계약 2건 체결 및 연간 매출 1억원 달성.",
+      "AI 컨설팅 팀원 1명 채용 및 서비스 포트폴리오 3개 구축 완료.",
+      "연간 컨설팅 매출 3억원 달성 및 AI 컨설팅 분야 리더십 확보."
+    ]
+  },
+  "monthly_plan": [
+    {
+      "month": 1,
+      "task": "안정적 웹기획 프로젝트 1건 계약 체결 완료."
+    },
+    {
+      "month": 2,
+      "task": "AI 기본 개념 온라인 강의 1개 50% 이상 수강."
+    },
+    {
+      "month": 3,
+      "task": "AI 기초 온라인 강의 1개 100% 수강 및 수료."
+    },
+    {
+      "month": 4,
+      "task": "AI 프롬프트 엔지니어링 심화 강의 30% 수강."
+    },
+    {
+      "month": 5,
+      "task": "AI 프롬프트 엔지니어링 강의 70% 수강 완료."
+    },
+    {
+      "month": 6,
+      "task": "AI 프롬프트 엔지니어링 자격증 1개 취득."
+    },
+    {
+      "month": 7,
+      "task": "Python 기초 문법 온라인 강의 50% 수강."
+    },
+    {
+      "month": 8,
+      "task": "Python 데이터 처리 스크립트 1개 개발 완료."
+    },
+    {
+      "month": 9,
+      "task": "Python 데이터 분석 스크립트 2개 추가 개발."
+    },
+    {
+      "month": 10,
+      "task": "AI 서비스 기획 스터디 그룹 1곳 가입 참여."
+    },
+    {
+      "month": 11,
+      "task": "비즈니스 모델링 기초 서적 1권 완독 정리."
+    },
+    {
+      "month": 12,
+      "task": "AI 컨설팅 시장 동향 보고서 1개 분석 완료."
+    },
+    {
+      "month": 13,
+      "task": "AI 서비스 기획/운영 프로젝트 1건 참여 시작."
+    },
+    {
+      "month": 14,
+      "task": "프로젝트 내 AI 기능 요구사항 정의서 1건 작성."
+    },
+    {
+      "month": 15,
+      "task": "AI 서비스 운영 전략 수립 과정 1회 기여."
+    },
+    {
+      "month": 16,
+      "task": "전략 컨설팅 방법론 서적 1권 완독 정리."
+    },
+    {
+      "month": 17,
+      "task": "비즈니스 모델링 워크숍 1회 참석 및 아이디어 3개 도출."
+    },
+    {
+      "month": 18,
+      "task": "AI 기반 신규 비즈니스 모델 아이디어 1개 구체화."
+    },
+    {
+      "month": 19,
+      "task": "SQL 기초 온라인 강의 1개 70% 이상 수강."
+    },
+    {
+      "month": 20,
+      "task": "실제 데이터셋 활용 SQL 쿼리 연습 10개 해결."
+    },
+    {
+      "month": 21,
+      "task": "AI 서비스 데이터 분석 프로젝트 1건 참여 완료."
+    },
+    {
+      "month": 22,
+      "task": "AI 컨설팅 전문가 멘토 1명과 첫 미팅 진행."
+    },
+    {
+      "month": 23,
+      "task": "AI 컨설팅 컨퍼런스 1회 참석 및 관계자 3명 교류."
+    },
+    {
+      "month": 24,
+      "task": "멘토링 기반 AI 컨설팅 역량 강화 계획 수립."
+    },
+    {
+      "month": 25,
+      "task": "AI 컨설팅 서비스 모델 1개 정의 및 제안서 초안."
+    },
+    {
+      "month": 26,
+      "task": "잠재 고객 2곳 대상 비공식 제안 및 피드백 수렴."
+    },
+    {
+      "month": 27,
+      "task": "AI 컨설팅 서비스 프로토타입 1개 개발 완료."
+    },
+    {
+      "month": 28,
+      "task": "AI 컨설팅 계약 1건 체결 및 프로젝트 착수."
+    },
+    {
+      "month": 29,
+      "task": "컨설팅 프로젝트 1건 성공적 수행 및 완료 보고."
+    },
+    {
+      "month": 30,
+      "task": "AI 컨설팅 초기 매출 5천만원 달성 및 확인."
+    },
+    {
+      "month": 31,
+      "task": "AI 컨설팅 사업 확장을 위한 파트너십 1건 모색."
+    },
+    {
+      "month": 32,
+      "task": "AI 컨설팅 보조 인력 1명 채용 및 업무 분장."
+    },
+    {
+      "month": 33,
+      "task": "새로운 AI 컨설팅 서비스 모델 1개 개발 완료."
+    },
+    {
+      "month": 34,
+      "task": "추가 AI 컨설팅 계약 1건 이상 체결 및 관리."
+    },
+    {
+      "month": 35,
+      "task": "연간 컨설팅 매출 2억원 이상 달성 및 보고."
+    },
+    {
+      "month": 36,
+      "task": "AI 컨설팅 대표로서 3억원 매출 달성 확인."
+    }
+  ],
+  "checks": {
+    "s4_check_1": true,
+    "s4_check_2": false,
+    "s4_check_3": false,
+    "s4_check_4": false,
+    "s4_check_5": false,
+    "s4_check_6": false,
+    "s4_check_7": false,
+    "s4_check_8": false,
+    "s4_check_9": false,
+    "s4_check_10": false,
+    "s4_check_11": false,
+    "s4_check_12": false,
+    "s4_check_13": false,
+    "s4_check_14": false,
+    "s4_check_15": false,
+    "s4_check_16": false,
+    "s4_check_17": false,
+    "s4_check_18": false,
+    "s4_check_19": false,
+    "s4_check_20": false,
+    "s4_check_21": false,
+    "s4_check_22": false,
+    "s4_check_23": false,
+    "s4_check_24": false,
+    "s4_check_25": false,
+    "s4_check_26": false,
+    "s4_check_27": false,
+    "s4_check_28": false,
+    "s4_check_29": false,
+    "s4_check_30": false,
+    "s4_check_31": false,
+    "s4_check_32": false,
+    "s4_check_33": false,
+    "s4_check_34": false,
+    "s4_check_35": false,
+    "s4_check_36": false
+  }
+}

@@ -841,8 +841,7 @@ def get_user_status() -> int:
     import glob as _glob
     try:
         has_history   = bool(_glob.glob("history_*.json"))
-        # screen3 은 checklist_{시나리오유형}_{날짜}.json 으로 저장
-        has_checklist = bool(_glob.glob("checklist_*.json"))
+        has_checklist = bool(_glob.glob("checklist_career_*.json"))
         if has_history and has_checklist:
             return 3
         if has_history:
@@ -866,10 +865,10 @@ def _load_latest_history() -> dict:
 
 
 def _load_latest_career_checklist() -> dict:
-    """최신 checklist_*.json (화면3 저장) 데이터 반환. 실패 시 빈 dict."""
+    """최신 checklist_career_*.json 데이터 반환. 실패 시 빈 dict."""
     import glob as _glob
     try:
-        files = sorted(_glob.glob("checklist_*.json"), reverse=True)
+        files = sorted(_glob.glob("checklist_career_*.json"), reverse=True)
         if not files:
             return {}
         with open(files[0], "r", encoding="utf-8") as f:
@@ -1915,7 +1914,7 @@ def _build_status_section_html(status: int, hist_data: dict, checklist_data: dic
     scenarios = result.get("scenarios", [])
     # 우선순위: 체크리스트 저장값(화면3 저장) > history 저장값 > AI 추천
     saved_sel      = checklist_data.get("selected_scenario") or hist_data.get("selected_scenario", {})
-    saved_sel_type = (saved_sel or {}).get("type", "") or checklist_data.get("scenario_type", "")
+    saved_sel_type = saved_sel.get("type", "")
     if saved_sel_type and any(s.get("type") == saved_sel_type for s in scenarios):
         display_sc = next(s for s in scenarios if s.get("type") == saved_sel_type)
         display_type = saved_sel_type
@@ -1931,11 +1930,9 @@ def _build_status_section_html(status: int, hist_data: dict, checklist_data: dic
     scenario_display = _e(f"{emoji} {display_type} — {sc_title}") if display_type else "—"
     rec_type     = display_type
 
-    _checks_dict  = checklist_data.get("checks", {})
-    _total        = max(len(_checks_dict), 1)
-    checked_count = sum(1 for v in _checks_dict.values() if v)
-    pct_int       = int(checked_count / _total * 100)
-    unchecked_y1  = sum(1 for k, v in _checks_dict.items() if k.startswith("check_week_") and not v)
+    checked_count = sum(1 for i in range(1, 37) if checklist_data.get(f"s4_check_{i}", False))
+    pct_int       = int(checked_count / 36 * 100)
+    unchecked_y1  = sum(1 for i in range(1, 13) if not checklist_data.get(f"s4_check_{i}", False))
 
     if status == 1:
         return """
@@ -1997,7 +1994,7 @@ def _render_home_status_card(status: int, hist_data: dict, checklist_data: dict)
     scenarios = result.get("scenarios", [])
     # 우선순위: 체크리스트 저장값(화면3 저장) > history 저장값 > AI 추천
     saved_sel      = checklist_data.get("selected_scenario") or hist_data.get("selected_scenario", {})
-    saved_sel_type = (saved_sel or {}).get("type", "") or checklist_data.get("scenario_type", "")
+    saved_sel_type = saved_sel.get("type", "")
     if saved_sel_type and any(s.get("type") == saved_sel_type for s in scenarios):
         display_sc   = next(s for s in scenarios if s.get("type") == saved_sel_type)
         display_type = saved_sel_type
@@ -2026,11 +2023,9 @@ def _render_home_status_card(status: int, hist_data: dict, checklist_data: dict)
             unsafe_allow_html=True,
         )
     else:  # status == 3
-        _cd       = checklist_data.get("checks", {})
-        _tot      = max(len(_cd), 1)
-        checked   = sum(1 for v in _cd.values() if v)
-        pct       = int(checked / _tot * 100)
-        unchecked = sum(1 for k, v in _cd.items() if k.startswith("check_week_") and not v)
+        checked   = sum(1 for i in range(1, 37) if checklist_data.get(f"s4_check_{i}", False))
+        pct       = int(checked / 36 * 100)
+        unchecked = sum(1 for i in range(1, 13) if not checklist_data.get(f"s4_check_{i}", False))
         st.markdown(
             f'<div class="home-card-progress">'
             f'  <div class="home-cp-top">'
@@ -2147,47 +2142,6 @@ def render_home_page():
 
         # 네이티브 버튼
         _render_home_nav_buttons(status, hist_data)
-
-        # ── 초기화 버튼 ──────────────────────────────────────────────────
-        st.write("")
-        st.write("")
-        with st.expander("⚙️ 데이터 초기화"):
-            st.warning(
-                "초기화하면 저장된 모든 데이터(설문, 시나리오 결과, 실행 계획)가 삭제됩니다.\n\n"
-                "이 작업은 되돌릴 수 없습니다."
-            )
-            confirmed = st.checkbox(
-                "위 내용을 확인했으며, 모든 데이터를 삭제합니다.",
-                key="reset_confirm_check",
-            )
-            if confirmed:
-                if st.button(
-                    "초기화 실행",
-                    type="primary",
-                    use_container_width=True,
-                    key="hn_reset_exec",
-                ):
-                    import glob as _greset
-                    for _pat in [
-                        "profile.json",
-                        "history_*.json",
-                        "checklist_*.json",
-                        "result_*.json",
-                        "career_save_*.json",
-                    ]:
-                        for _f in _greset.glob(_pat):
-                            try:
-                                os.remove(_f)
-                            except Exception:
-                                pass
-                    # session_state 초기화
-                    for _k in list(st.session_state.keys()):
-                        try:
-                            del st.session_state[_k]
-                        except Exception:
-                            pass
-                    st.session_state.page = "home"
-                    st.rerun()
 
 
 def render_input_page():

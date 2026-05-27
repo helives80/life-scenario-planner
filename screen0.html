@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 인생 시나리오 플래너</title>
+<style>
+:root {
+  --bg:#0f0f1a; --surface:#1a1a2e; --surface2:#16213e;
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.13);
+  --text1:#f0f0ff; --text2:#9090b0; --text3:#5a5a7a;
+  --green:#0F6E56; --green-h:#13957a; --green-glow:rgba(15,110,86,0.35);
+  --blue:#185FA5; --blue-h:#1e7fd4;
+  --purple:#534AB7; --purple-h:#6b62d4;
+  --lock:#252540; --lock-b:rgba(255,255,255,0.05);
+  --card:rgba(255,255,255,0.04);
+  --shadow:0 8px 32px rgba(0,0,0,0.45);
+  --toast-bg:#1e1e38;
+  --toggle-bg:#1a1a2e; --toggle-active:#2a2a4a;
+}
+.light {
+  --bg:#f0f0f8; --surface:#fff; --surface2:#e8e8f4;
+  --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.13);
+  --text1:#1a1a2e; --text2:#4a4a6a; --text3:#9090b0;
+  --lock:#e0e0ee; --lock-b:rgba(0,0,0,0.05);
+  --card:rgba(0,0,0,0.03);
+  --shadow:0 8px 32px rgba(0,0,0,0.1);
+  --toast-bg:#fff;
+  --toggle-bg:#e4e4f2; --toggle-active:#fff;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text1);
+  font-family:'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding-bottom:56px;transition:background .35s,color .35s;
+}
+
+/* ── 최상단 바 ── */
+.topbar{
+  width:100%;max-width:520px;
+  display:flex;justify-content:flex-end;
+  padding:18px 22px 0;
+}
+.theme-btn{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:50px;padding:6px 13px;cursor:pointer;
+  font-size:1.05rem;color:var(--text1);
+  transition:background .2s,transform .15s;
+}
+.theme-btn:hover{transform:scale(1.08);background:var(--surface2)}
+
+.dot-new{background:#13957a}.dot-done{background:#1e7fd4}.dot-progress{background:#6b62d4}
+
+/* ── 브랜딩 ── */
+.brand{
+  display:flex;flex-direction:column;align-items:center;
+  margin:28px 0 32px;gap:12px;padding:0 24px;text-align:center;
+}
+.brand-icon{width:66px;height:66px;
+  filter:drop-shadow(0 0 16px rgba(100,120,255,.4));
+  animation:float 4s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.brand h1{
+  font-size:clamp(1.3rem,5vw,1.65rem);font-weight:800;letter-spacing:-.5px;
+  background:linear-gradient(135deg,#a0a8ff 0%,#7ef8c8 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.brand p{font-size:.9rem;color:var(--text2)}
+
+/* ── 버튼 리스트 ── */
+.btn-list{width:100%;max-width:520px;padding:0 20px;display:flex;flex-direction:column;gap:13px}
+
+/* 공통 버튼 */
+.plan-btn{
+  position:relative;display:flex;align-items:center;gap:15px;
+  border-radius:18px;padding:19px 20px;cursor:pointer;
+  border:1px solid transparent;text-align:left;
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s;
+  overflow:hidden;
+}
+.plan-btn::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,.03);opacity:0;
+  transition:opacity .2s;border-radius:inherit;
+}
+.plan-btn:hover::after{opacity:1}
+.plan-btn:hover{transform:translateY(-4px)}
+
+.btn-s{background:linear-gradient(135deg,#0F6E56,#0d5c47);border-color:rgba(19,149,122,.35)}
+.btn-s:hover{box-shadow:0 10px 30px rgba(15,110,86,.5)}
+.btn-c{background:linear-gradient(135deg,#534AB7,#423b96);border-color:rgba(107,98,212,.35)}
+.btn-c:hover{box-shadow:0 10px 30px rgba(83,74,183,.5)}
+
+/* 잠금 버튼 */
+.btn-locked{
+  background:var(--lock);border:1px solid var(--lock-b);
+  cursor:not-allowed;
+}
+.btn-locked:hover{transform:none!important;box-shadow:none!important}
+.btn-locked::after{display:none}
+.btn-locked .b-label,.btn-locked .b-desc{color:var(--text3)!important}
+
+/* 버튼 내부 */
+.b-icon{font-size:1.75rem;flex-shrink:0;line-height:1}
+.b-icon.lg{font-size:2rem}
+.b-text{flex:1}
+.b-label{font-size:.98rem;font-weight:700;color:#fff;margin-bottom:3px;display:flex;align-items:center;gap:7px}
+.b-label.lg{font-size:1.08rem}
+.b-desc{font-size:.77rem;color:rgba(255,255,255,.62);line-height:1.5}
+.b-arrow{font-size:1.05rem;color:rgba(255,255,255,.45);flex-shrink:0;transition:transform .2s}
+.plan-btn:not(.btn-locked):hover .b-arrow{transform:translateX(3px)}
+.lock-tag{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:.68rem;background:rgba(255,255,255,.08);
+  border-radius:30px;padding:2px 8px;color:var(--text3);
+}
+
+/* ── 버튼 2 — 상태별 카드 ── */
+/* 상태2: 결과 카드 */
+.card-result{
+  background:linear-gradient(135deg,#0e3f74,#0a2d55);
+  border:1px solid rgba(30,127,212,.35);
+  border-radius:18px;padding:20px 20px 16px;
+  display:flex;flex-direction:column;gap:14px;
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s;
+}
+.card-result:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(24,95,165,.45)}
+.cr-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.cr-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:.68rem;font-weight:600;
+  background:rgba(30,127,212,.25);border:1px solid rgba(30,127,212,.35);
+  border-radius:30px;padding:3px 10px;color:#7ec8ff;margin-bottom:7px;
+}
+.cr-name{font-size:1.02rem;font-weight:800;color:#fff;line-height:1.3}
+.cr-date{font-size:.72rem;color:rgba(255,255,255,.45);text-align:right;flex-shrink:0;padding-top:2px}
+.cr-actions{display:flex;gap:8px}
+.cr-btn{
+  flex:1;padding:9px 10px;border-radius:11px;
+  font-size:.78rem;font-weight:700;cursor:pointer;
+  border:none;transition:transform .18s,box-shadow .18s;
+  line-height:1.2;
+}
+.cr-btn-outline{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15)!important;
+  color:rgba(255,255,255,.8);
+}
+.cr-btn-outline:hover{background:rgba(255,255,255,.12);transform:translateY(-2px)}
+.cr-btn-fill{
+  background:linear-gradient(90deg,#185FA5,#1e7fd4);color:#fff;
+}
+.cr-btn-fill:hover{box-shadow:0 6px 18px rgba(24,95,165,.5);transform:translateY(-2px)}
+
+/* 상태3: 진행 카드 */
+.card-progress{
+  background:linear-gradient(135deg,#2a1e5c,#1f1848);
+  border:1px solid rgba(107,98,212,.35);
+  border-radius:18px;padding:20px 20px 16px;
+  display:flex;flex-direction:column;gap:13px;
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s;
+}
+.card-progress:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(83,74,183,.45)}
+.cp-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cp-name{font-size:1rem;font-weight:800;color:#fff}
+.cp-todo{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:.7rem;font-weight:700;
+  background:rgba(255,180,80,.12);border:1px solid rgba(255,180,80,.22);
+  border-radius:30px;padding:3px 9px;color:#ffb450;flex-shrink:0;
+}
+.cp-bar-wrap{display:flex;flex-direction:column;gap:6px}
+.cp-bar-meta{display:flex;justify-content:space-between;font-size:.73rem;color:rgba(255,255,255,.5)}
+.cp-pct{font-weight:700;color:#c3b8ff}
+.cp-bar{height:7px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
+.cp-fill{height:100%;background:linear-gradient(90deg,#534AB7,#9b8fff);border-radius:99px;width:0;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.cp-continue{
+  background:linear-gradient(90deg,#534AB7,#6b62d4);
+  border:none;border-radius:11px;padding:10px 16px;
+  font-size:.82rem;font-weight:700;color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:transform .18s,box-shadow .18s;
+}
+.cp-continue:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(83,74,183,.55)}
+
+/* ── 토스트 ── */
+.toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(70px);
+  background:var(--toast-bg);border:1px solid var(--border2);
+  border-radius:14px;padding:12px 20px;
+  font-size:.83rem;color:var(--text1);
+  box-shadow:0 8px 28px rgba(0,0,0,.4);
+  display:flex;align-items:center;gap:8px;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .35s;
+  opacity:0;z-index:999;white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* 반응형 */
+@media(max-width:400px){
+  .b-icon{font-size:1.45rem}.b-icon.lg{font-size:1.75rem}
+  .plan-btn{padding:15px 14px}
+  .state-btn{font-size:.65rem}
+}
+</style>
+</head>
+<body>
+
+<!-- 상단 바 -->
+<div class="topbar">
+  <button class="theme-btn" id="themeBtn">🌙</button>
+</div>
+
+
+<!-- 브랜딩 -->
+<div class="brand">
+  <svg class="brand-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="36" cy="36" r="34" stroke="url(#cg1)" stroke-width="2.5"/>
+    <circle cx="36" cy="36" r="26" stroke="url(#cg2)" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <polygon points="36,10 40,36 36,30 32,36" fill="url(#cg3)"/>
+    <polygon points="36,62 32,36 36,42 40,36" fill="#4a4a6a"/>
+    <circle cx="36" cy="36" r="4" fill="url(#cg3)"/>
+    <line x1="36" y1="4" x2="36" y2="12" stroke="rgba(160,168,255,0.4)" stroke-width="2" stroke-linecap="round"/>
+    <line x1="36" y1="60" x2="36" y2="68" stroke="rgba(160,168,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="4" y1="36" x2="12" y2="36" stroke="rgba(160,168,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="60" y1="36" x2="68" y2="36" stroke="rgba(160,168,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="18" cy="18" r="1.5" fill="#a0a8ff" opacity=".7"/>
+    <circle cx="54" cy="15" r="1" fill="#7ef8c8" opacity=".6"/>
+    <circle cx="58" cy="52" r="1.2" fill="#a0a8ff" opacity=".5"/>
+    <defs>
+      <linearGradient id="cg1" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#a0a8ff"/><stop offset="100%" stop-color="#7ef8c8"/>
+      </linearGradient>
+      <linearGradient id="cg2" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#a0a8ff" stop-opacity=".5"/><stop offset="100%" stop-color="#7ef8c8" stop-opacity=".5"/>
+      </linearGradient>
+      <linearGradient id="cg3" x1="36" y1="10" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#7ef8c8"/><stop offset="100%" stop-color="#a0a8ff"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <h1>AI 인생 시나리오 플래너</h1>
+  <p>당신의 다음 10년을 설계하세요</p>
+</div>
+
+<!-- 버튼 리스트 -->
+<div class="btn-list">
+
+  <!-- 버튼 1: 인생 시나리오 시작 (항상 활성) -->
+  <button class="plan-btn btn-s" onclick="toast('🎯','인생 시나리오 시작 화면으로 이동합니다')">
+    <span class="b-icon lg">🎯</span>
+    <span class="b-text">
+      <span class="b-label lg">인생 시나리오 시작</span>
+      <span class="b-desc">15개 질문으로 나만의 3가지 시나리오 설계</span>
+    </span>
+    <span class="b-arrow">›</span>
+  </button>
+
+  <!-- 버튼 2: 상태에 따라 변경 (Python에서 {{STATUS_SECTION}} 치환) -->
+  {{STATUS_SECTION}}
+
+  <!-- 버튼 3: 3년 후 커리어 설계 (항상 활성) -->
+  <button class="plan-btn btn-c" onclick="toast('💼','3년 후 커리어 설계 화면으로 이동합니다')">
+    <span class="b-icon">💼</span>
+    <span class="b-text">
+      <span class="b-label">3년 후 커리어 설계</span>
+      <span class="b-desc">목표 직업 구인공고 분석 + 월간 실행 계획</span>
+    </span>
+    <span class="b-arrow">›</span>
+  </button>
+
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toastEl"><span id="ti"></span><span id="tm"></span></div>
+
+<script>
+/* ── 테마 ── */
+let dark = true;
+document.getElementById('themeBtn').addEventListener('click', () => {
+  dark = !dark;
+  document.body.classList.toggle('light', !dark);
+  document.getElementById('themeBtn').textContent = dark ? '🌙' : '☀️';
+});
+
+/* ── 토스트 ── */
+let ttimer;
+function toast(icon, msg) {
+  const el = document.getElementById('toastEl');
+  document.getElementById('ti').textContent = icon + ' ';
+  document.getElementById('tm').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(ttimer);
+  ttimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ── 상태3 진행률 바 애니메이션 (Python이 data-pct 속성으로 전달) ── */
+window.addEventListener('load', () => {
+  const fill = document.getElementById('cpFill');
+  if (fill) {
+    const pct = fill.getAttribute('data-pct') || '0';
+    setTimeout(() => { fill.style.width = pct + '%'; }, 80);
+  }
+});
+</script>
+</body>
+</html>

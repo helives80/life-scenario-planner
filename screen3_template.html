@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 인생 시나리오 플래너</title>
+<style>
+:root {
+  --bg: #0f0f1a;
+  --card: #1a1a2e;
+  --card2: #16213e;
+  --border: #2a2a4a;
+  --text: #e8e8f0;
+  --text2: #9090b0;
+  --accent: #7c6fcd;
+  --accent2: #5a4fcf;
+  --green: #2ecc71;
+  --green-bg: #0d2e1f;
+  --blue: #3b82f6;
+  --blue-bg: #0d1f3e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --tag-bg: #2a2a4a;
+  --input-bg: #12122a;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+[data-theme="light"] {
+  --bg: #f0f2f8;
+  --card: #ffffff;
+  --card2: #f5f6fb;
+  --border: #d8dae8;
+  --text: #1a1a2e;
+  --text2: #5a5a7a;
+  --accent: #6c5fc7;
+  --accent2: #5a4fcf;
+  --green-bg: #d4f5e4;
+  --blue-bg: #dbeafe;
+  --tag-bg: #e8e8f8;
+  --input-bg: #f0f2f8;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;transition:background .3s,color .3s;}
+.wrap{max-width:960px;margin:0 auto;padding:20px 16px 60px;}
+
+/* ── TOP BAR ── */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:10px;}
+.topbar h1{font-size:1.05rem;color:var(--text2);font-weight:500;}
+.toggle-btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:20px;cursor:pointer;font-size:.85rem;transition:all .2s;}
+.toggle-btn:hover{border-color:var(--accent);}
+
+/* ── SECTION CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;box-shadow:var(--shadow);}
+.section-title{font-size:1.1rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.section-title .icon{font-size:1.2rem;}
+
+/* ── DASHBOARD ── */
+.dash-meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:.85rem;color:var(--text2);}
+.dash-meta span strong{color:var(--text);}
+.dash-title{font-size:1.4rem;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.progress-wrap{margin:16px 0 8px;position:relative;}
+.progress-track{background:var(--border);border-radius:99px;height:12px;overflow:hidden;position:relative;}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#7c6fcd,#3b82f6);transition:width .6s;}
+.progress-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:.75rem;color:var(--text2);}
+.progress-marker{position:absolute;top:-2px;display:flex;flex-direction:column;align-items:center;}
+.progress-tick{width:2px;height:16px;background:var(--text2);opacity:.4;}
+.year-labels{display:flex;margin-top:4px;}
+.year-seg{flex:1;font-size:.72rem;color:var(--text2);text-align:center;border-left:1px dashed var(--border);padding:4px 0;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;}
+@media(max-width:600px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+.stat-card{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+.stat-num{font-size:1.6rem;font-weight:800;margin-bottom:2px;}
+.stat-label{font-size:.75rem;color:var(--text2);}
+.c-green{color:var(--green);}
+.c-blue{color:var(--blue);}
+.c-yellow{color:var(--yellow);}
+.c-purple{color:#a78bfa;}
+
+/* ── YEAR TABS ── */
+.year-tabs{display:flex;gap:8px;margin-bottom:20px;}
+.ytab{padding:8px 22px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:.9rem;font-weight:600;transition:all .2s;}
+.ytab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.ytab.locked{opacity:.4;cursor:not-allowed;}
+.ytab .lock{font-size:.8rem;margin-left:4px;}
+
+/* ── QUARTER ── */
+.quarter{border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+.q-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:var(--card2);transition:background .2s;}
+.q-header:hover{background:var(--border);}
+.q-left{display:flex;align-items:center;gap:10px;}
+.q-badge{font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+.q-active{background:#1a3a2e;color:#2ecc71;}
+.q-pending{background:#1a1a3e;color:#9090b0;}
+.q-locked{background:#1a1a2e;color:#555;}
+.q-title{font-weight:700;font-size:.95rem;}
+.q-subtitle{font-size:.8rem;color:var(--text2);margin-top:2px;}
+.q-pct{font-size:.85rem;font-weight:700;color:var(--accent);}
+.q-body{padding:16px 18px;border-top:1px solid var(--border);}
+.q-mini-bar{background:var(--border);border-radius:99px;height:6px;margin-bottom:14px;overflow:hidden;}
+.q-mini-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#2ecc71,#3b82f6);}
+
+/* ── CHECKLIST ── */
+.check-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.9rem;}
+.check-item:last-child{border-bottom:none;}
+.chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.chk.done{background:var(--green);border-color:var(--green);color:#fff;font-size:.75rem;}
+.chk.inprog{background:transparent;border-color:var(--yellow);}
+.done-text{text-decoration:line-through;color:var(--text2);}
+.inprog-text{font-weight:700;}
+.badge-inprog{font-size:.7rem;background:#2a1a0a;color:var(--yellow);border-radius:20px;padding:2px 8px;margin-left:6px;white-space:nowrap;}
+
+/* ── PLAN ADJUST ── */
+.adj-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.adj-input{flex:1;min-width:160px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 14px;font-size:.9rem;outline:none;}
+.adj-input:focus{border-color:var(--accent);}
+.adj-select{background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 14px;font-size:.9rem;outline:none;}
+.hint{font-size:.8rem;color:var(--text2);margin-bottom:14px;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);cursor:pointer;font-size:.85rem;font-weight:600;transition:all .2s;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn-red{background:#2a0a0a;border-color:#7f1d1d;color:#ef4444;}
+.btn-red:hover{background:#3a0a0a;}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent2);}
+
+/* ── AI COACH ── */
+.ai-msg-green{background:var(--green-bg);border:1px solid #1a4a2e;border-radius:12px;padding:16px;margin-bottom:16px;font-size:.9rem;line-height:1.7;position:relative;}
+.ai-msg-blue{background:var(--blue-bg);border:1px solid #1a2a5e;border-radius:12px;padding:16px;font-size:.9rem;line-height:1.7;}
+.ai-label{font-size:.75rem;font-weight:700;margin-bottom:8px;opacity:.7;}
+.eval-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0;}
+.eval-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.eval-grade{font-size:1.4rem;font-weight:800;margin-bottom:2px;}
+.eval-label{font-size:.75rem;color:var(--text2);}
+.suggest-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem;}
+.suggest-item:last-child{border-bottom:none;}
+.arrow{color:var(--accent);font-weight:700;}
+.suggest-btns{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+
+/* ── CHAT ── */
+.chat-box{background:var(--input-bg);border:1px solid var(--border);border-radius:12px;padding:14px;min-height:200px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;}
+.msg{max-width:78%;padding:10px 14px;border-radius:12px;font-size:.88rem;line-height:1.6;}
+.msg-user{background:#1a3a1a;border:1px solid #2a5a2a;color:#c0f0c0;align-self:flex-end;border-radius:12px 12px 2px 12px;}
+.msg-ai{background:var(--blue-bg);border:1px solid #1a3060;color:#c0d8ff;align-self:flex-start;border-radius:12px 12px 12px 2px;}
+.msg-sender{font-size:.72rem;opacity:.6;margin-bottom:3px;font-weight:700;}
+.chat-input-row{display:flex;gap:8px;}
+.chat-input{flex:1;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;font-size:.9rem;outline:none;}
+.chat-input:focus{border-color:var(--accent);}
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.quick-btn{background:var(--tag-bg);border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:5px 12px;font-size:.78rem;cursor:pointer;transition:all .2s;}
+.quick-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── FOCUS ── */
+.focus-box{background:linear-gradient(135deg,#1a1a3e,#0d2e1f);border:1px solid #3a3a6a;border-radius:14px;padding:20px;margin-bottom:14px;display:flex;align-items:center;gap:16px;}
+.focus-icon{font-size:2rem;}
+.focus-text{font-size:1rem;font-weight:700;line-height:1.5;}
+.focus-sub{font-size:.82rem;color:var(--text2);margin-top:4px;}
+
+/* ── RESUME / JOB ── */
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:500px){.res-grid{grid-template-columns:1fr;}}
+.cap-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.cap-tag{padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:600;}
+.cap-yes{background:#0d2e1f;color:var(--green);border:1px solid #1a4a2e;}
+.cap-no{background:#2a0a0a;color:#ef4444;border:1px solid #4a1a1a;}
+.feasibility{background:linear-gradient(90deg,#1a1a3e,#1a2e1a);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;font-size:.9rem;line-height:1.6;}
+
+.timeline-scroll{overflow-x:auto;padding-bottom:8px;margin-bottom:16px;}
+.timeline-row{display:flex;gap:8px;min-width:max-content;}
+.tl-box{min-width:90px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;font-size:.78rem;}
+.tl-box.done-tl{border-color:var(--green);background:#0d2e1f;}
+.tl-box.active-tl{border-color:var(--accent);background:#1a1a3e;}
+.tl-q{font-weight:700;font-size:.85rem;margin-bottom:3px;}
+.tl-theme{color:var(--text2);font-size:.72rem;}
+
+.month-acc{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px;}
+.month-hdr{padding:12px 16px;background:var(--card2);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:.88rem;font-weight:600;}
+.month-body{padding:14px 16px;border-top:1px solid var(--border);}
+.month-meta{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
+.meta-tag{font-size:.78rem;background:var(--tag-bg);border-radius:6px;padding:3px 10px;color:var(--text2);}
+
+.bottom-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.overall-mini{flex:1;min-width:160px;}
+.overall-mini-label{font-size:.78rem;color:var(--text2);margin-bottom:4px;}
+
+/* ── DIVIDER ── */
+hr.div{border:none;border-top:1px solid var(--border);margin:6px 0 16px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <h1>🚀 AI 인생 시나리오 플래너</h1>
+  <button class="toggle-btn" onclick="toggleTheme()">☀️ 라이트 모드</button>
+</div>
+
+<!-- ① 전체 진행 대시보드 -->
+<div class="card">
+  <div class="dash-title">불꽃 창업가 로드맵 — 목표 달성 러닝 메이트</div>
+  <div class="dash-meta">
+    <span>📅 시작일 <strong>2026.06.01</strong></span>
+    <span>🎯 목표일 <strong>2029.05.31</strong></span>
+    <span>🏷 시나리오 <strong>도전형 — 불꽃 창업가</strong></span>
+  </div>
+
+  <div class="progress-wrap">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.82rem;">
+      <span style="color:var(--text2)">전체 달성률</span>
+      <span style="font-weight:800;color:var(--accent)">18%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:18%"></div>
+    </div>
+    <div class="year-labels">
+      <div class="year-seg">1년차<br><span style="font-size:.65rem">~2027.05</span></div>
+      <div class="year-seg">2년차<br><span style="font-size:.65rem">~2028.05</span></div>
+      <div class="year-seg">3년차<br><span style="font-size:.65rem">~2029.05</span></div>
+    </div>
+    <div class="progress-labels"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-num c-green">7</div>
+      <div class="stat-label">✅ 완료 항목</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num c-yellow">3</div>
+      <div class="stat-label">⚡ 진행 중</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num c-blue">30</div>
+      <div class="stat-label">📋 남은 항목</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num c-purple">D-1095</div>
+      <div class="stat-label">⏳ 남은 일수</div>
+    </div>
+  </div>
+</div>
+
+<!-- ② 연간 실행 플랜 -->
+<div class="card">
+  <div class="section-title"><span class="icon">📆</span>연간 실행 플랜</div>
+
+  <div class="year-tabs">
+    <button class="ytab active" onclick="selectYear(this,1)">1년차</button>
+    <button class="ytab locked" onclick="return false">2년차 <span class="lock">🔒</span></button>
+    <button class="ytab locked" onclick="return false">3년차 <span class="lock">🔒</span></button>
+  </div>
+
+  <!-- Q1 -->
+  <div class="quarter">
+    <div class="q-header" onclick="toggleQ('q1')">
+      <div class="q-left">
+        <span class="q-badge q-active">진행 중</span>
+        <div>
+          <div class="q-title">Q1 — 법인 설립 + 첫 계약</div>
+          <div class="q-subtitle">2026.06 ~ 2026.08</div>
+        </div>
+      </div>
+      <span class="q-pct">75%</span>
+    </div>
+    <div class="q-body" id="q1">
+      <div class="q-mini-bar"><div class="q-mini-fill" style="width:75%"></div></div>
+      <div class="check-item">
+        <div class="chk done">✓</div>
+        <span class="done-text">세무사 상담 — 법인 설립 절차 확인</span>
+      </div>
+      <div class="check-item">
+        <div class="chk done">✓</div>
+        <span class="done-text">잠재 고객 5곳 리스트업</span>
+      </div>
+      <div class="check-item">
+        <div class="chk done">✓</div>
+        <span class="done-text">컨설팅 제안서 초안 완성</span>
+      </div>
+      <div class="check-item">
+        <div class="chk inprog"></div>
+        <span class="inprog-text">첫 고객과 계약 체결</span>
+        <span class="badge-inprog">⚡ 진행 중</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="quarter">
+    <div class="q-header" onclick="toggleQ('q2')">
+      <div class="q-left">
+        <span class="q-badge q-pending">미시작</span>
+        <div>
+          <div class="q-title">Q2 — 월 수입 현재 수준 유지</div>
+          <div class="q-subtitle">2026.09 ~ 2026.11</div>
+        </div>
+      </div>
+      <span style="color:var(--text2);font-size:.85rem">0% ▾</span>
+    </div>
+    <div class="q-body" id="q2" style="display:none;">
+      <div class="q-mini-bar"><div class="q-mini-fill" style="width:0%"></div></div>
+      <div class="check-item">
+        <div class="chk"></div>
+        <span>월 수입 300만원 이상 유지</span>
+      </div>
+      <div class="check-item">
+        <div class="chk"></div>
+        <span>고객 2차 미팅 + 연장 계약</span>
+      </div>
+      <div class="check-item">
+        <div class="chk"></div>
+        <span>서비스 패키지 가격표 완성</span>
+      </div>
+      <div class="check-item">
+        <div class="chk"></div>
+        <span>SNS 브랜딩 채널 개설 (1개)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="quarter">
+    <div class="q-header">
+      <div class="q-left">
+        <span class="q-badge q-locked">🔒 잠김</span>
+        <div>
+          <div class="q-title" style="opacity:.5">Q3 — 고객 3곳 + SaaS 기획 시작</div>
+          <div class="q-subtitle" style="opacity:.4">Q2 완료 후 잠금 해제</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="quarter">
+    <div class="q-header">
+      <div class="q-left">
+        <span class="q-badge q-locked">🔒 잠김</span>
+        <div>
+          <div class="q-title" style="opacity:.5">Q4 — 연매출 1억 달성</div>
+          <div class="q-subtitle" style="opacity:.4">Q3 완료 후 잠금 해제</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ③ 계획 조정 섹션 -->
+<div class="card">
+  <div class="section-title"><span class="icon">✏️</span>계획 조정</div>
+  <div class="adj-row">
+    <input class="adj-input" type="text" placeholder="새 항목을 입력하세요 (예: 계약서 양식 완성)" id="newItem">
+    <select class="adj-select" id="newQ">
+      <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+    </select>
+    <button class="btn btn-primary" onclick="addItem()">+ 추가</button>
+  </div>
+  <p class="hint">💡 항목을 길게 누르면 수정·삭제할 수 있습니다</p>
+  <div class="btn-row">
+    <button class="btn">📅 목표 기한 조정</button>
+    <button class="btn">↕️ 분기 순서 재배치</button>
+    <button class="btn btn-red">🔄 전체 재설계</button>
+  </div>
+</div>
+
+<!-- ④ AI 중간 평가 + 코칭 -->
+<div class="card">
+  <div class="section-title"><span class="icon">🤖</span>AI 코치의 Q1 평가</div>
+
+  <div class="ai-msg-green">
+    <div class="ai-label">💬 AI 코치 메시지</div>
+    3개월 전 <strong>"첫 고객 계약이 두렵다"</strong>고 하셨는데,<br>
+    지금 <strong>3곳에 제안서를 보낸 상태</strong>입니다.<br>
+    실행력이 계획을 앞서가고 있습니다. 🔥
+  </div>
+
+  <div class="eval-grid">
+    <div class="eval-card">
+      <div class="eval-grade c-green">A</div>
+      <div class="eval-label">실행력</div>
+    </div>
+    <div class="eval-card">
+      <div class="eval-grade c-yellow">B+</div>
+      <div class="eval-label">속도</div>
+    </div>
+    <div class="eval-card">
+      <div class="eval-grade" style="color:#a78bfa">A+</div>
+      <div class="eval-label">방향성</div>
+    </div>
+  </div>
+
+  <hr class="div">
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:8px;color:var(--text2)">🔧 AI 조정 제안</div>
+  <div class="suggest-item">
+    <span class="arrow">→</span>
+    <span>Q2 월 수입 목표를 <strong>350만원으로 상향</strong> 권장</span>
+  </div>
+  <div class="suggest-item">
+    <span class="arrow">→</span>
+    <span><strong>계약 협상 스킬 강의 1개</strong>를 Q2에 추가 권장</span>
+  </div>
+  <div class="suggest-btns">
+    <button class="btn btn-primary">✅ 제안 반영하기</button>
+    <button class="btn">✏️ 직접 수정</button>
+    <button class="btn">✖ 무시</button>
+  </div>
+
+  <hr class="div">
+  <div class="ai-msg-blue">
+    <div class="ai-label">💙 AI 격려 메시지</div>
+    "첫 고객이 두렵다"고 하셨지만, 이미 <strong>3장의 제안서</strong>를 발송하셨습니다.<br>
+    두려움은 행동을 막지 못했습니다. 지금 당신의 가장 큰 자산은 <strong>움직이는 습관</strong>입니다. 계속 가세요. 🙌
+  </div>
+</div>
+
+<!-- ⑤ AI 코치 채팅 -->
+<div class="card">
+  <div class="section-title"><span class="icon">💬</span>AI 코치 채팅</div>
+  <div class="chat-box" id="chatBox">
+    <div class="msg msg-user">
+      <div class="msg-sender">나</div>
+      Q1이 거의 끝나가는데, Q2 목표를 어떻게 잡아야 할까요?
+    </div>
+    <div class="msg msg-ai">
+      <div class="msg-sender">AI 코치</div>
+      Q1에서 제안서를 3곳에 발송한 것은 훌륭한 출발입니다. Q2는 <strong>첫 계약 체결 → 월 300만원 안정화</strong>에 집중하세요. 지금 속도라면 350만원도 충분히 가능합니다. 구체적인 수치를 잡아볼까요?
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="AI 코치에게 질문하세요..." onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="btn btn-primary" onclick="sendMsg()">전송 ↑</button>
+  </div>
+  <div class="quick-btns">
+    <button class="quick-btn" onclick="quickQ('Q2 목표 재검토를 요청드립니다.')">Q2 목표 재검토 요청</button>
+    <button class="quick-btn" onclick="quickQ('이번 달 우선순위가 무엇인가요?')">이번 달 우선순위 물어보기</button>
+    <button class="quick-btn" onclick="quickQ('슬럼프를 극복하는 방법이 있을까요?')">슬럼프 극복 방법</button>
+  </div>
+</div>
+
+<!-- ⑥ 이번 주 포커스 -->
+<div class="card">
+  <div class="section-title"><span class="icon">🎯</span>이번 주 포커스</div>
+  <div class="focus-box">
+    <div class="focus-icon">⚡</div>
+    <div>
+      <div class="focus-text">첫 고객과 계약 체결 — 최우선 실행 항목</div>
+      <div class="focus-sub">AI 코치 선정 · 이번 주 완료 시 Q1 달성률 100%</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="focusDone()">✅ 오늘 완료 체크</button>
+    <button class="btn">🔔 알림 설정</button>
+  </div>
+</div>
+
+<!-- ⑦ 3년 후 가상 이력서 + 구인공고 분석 -->
+<div class="card">
+  <div class="section-title"><span class="icon">📄</span>3년 후 가상 이력서 + 구인공고 분석</div>
+
+  <div class="res-grid">
+    <div>
+      <label style="font-size:.8rem;color:var(--text2);display:block;margin-bottom:5px">목표 직책·역할</label>
+      <input class="adj-input" style="width:100%" value="AI 컨설팅 대표" placeholder="예: AI 컨설팅 대표">
+    </div>
+    <div>
+      <label style="font-size:.8rem;color:var(--text2);display:block;margin-bottom:5px">목표 연 수입</label>
+      <input class="adj-input" style="width:100%" value="연매출 3억" placeholder="예: 연매출 3억">
+    </div>
+  </div>
+  <div style="margin-bottom:14px">
+    <label style="font-size:.8rem;color:var(--text2);display:block;margin-bottom:5px">핵심 보유 예정 기술·경력</label>
+    <input class="adj-input" style="width:100%" value="AI 도입 컨설팅, SME 디지털 전환, 법인 운영, 제안서 작성" placeholder="예: AI 도입 컨설팅, 법인 운영 3년">
+  </div>
+  <button class="btn btn-primary" style="width:100%;padding:12px;font-size:.95rem;margin-bottom:20px">🔍 구인공고 분석 후 실행 계획 생성</button>
+
+  <hr class="div">
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">📌 구인공고 요구 역량</div>
+  <div class="cap-list">
+    <span class="cap-tag cap-yes">✅ AI/LLM 활용 경험</span>
+    <span class="cap-tag cap-yes">✅ 제안서 작성 능력</span>
+    <span class="cap-tag cap-yes">✅ SME 업무 이해</span>
+    <span class="cap-tag cap-no">❌ SaaS 제품 운영 경험</span>
+    <span class="cap-tag cap-no">❌ 팀 빌딩 & HR</span>
+  </div>
+
+  <div class="feasibility">
+    🧭 <strong>달성 가능성 평가:</strong> 현재 보유 역량 3/5 항목 충족. 3년 내 SaaS 경험 및 팀 빌딩 역량을 확보하면 목표 직책 및 연매출 3억 달성 가능성 <strong style="color:var(--green)">높음 (78%)</strong>. Q3부터 SaaS 기획을 병행할 것을 권장합니다.
+  </div>
+
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">🗓 분기별 마일스톤 타임라인</div>
+  <div class="timeline-scroll">
+    <div class="timeline-row">
+      <div class="tl-box done-tl"><div class="tl-q">Q1</div><div class="tl-theme">법인 설립</div></div>
+      <div class="tl-box active-tl"><div class="tl-q">Q2</div><div class="tl-theme">첫 계약</div></div>
+      <div class="tl-box"><div class="tl-q">Q3</div><div class="tl-theme">고객 3곳</div></div>
+      <div class="tl-box"><div class="tl-q">Q4</div><div class="tl-theme">연매출 1억</div></div>
+      <div class="tl-box"><div class="tl-q">Q5</div><div class="tl-theme">SaaS MVP</div></div>
+      <div class="tl-box"><div class="tl-q">Q6</div><div class="tl-theme">팀원 채용</div></div>
+      <div class="tl-box"><div class="tl-q">Q7</div><div class="tl-theme">SaaS 출시</div></div>
+      <div class="tl-box"><div class="tl-q">Q8</div><div class="tl-theme">연매출 2억</div></div>
+      <div class="tl-box"><div class="tl-q">Q9</div><div class="tl-theme">해외 1건</div></div>
+      <div class="tl-box"><div class="tl-q">Q10</div><div class="tl-theme">팀 5인</div></div>
+      <div class="tl-box"><div class="tl-q">Q11</div><div class="tl-theme">파트너십</div></div>
+      <div class="tl-box"><div class="tl-q">Q12</div><div class="tl-theme">연매출 3억 🎯</div></div>
+    </div>
+  </div>
+
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">📋 월별 실행 계획</div>
+  <div class="month-acc">
+    <div class="month-hdr" onclick="toggleM('m1')">1개월차 — 법인 설립 집중 ▾</div>
+    <div class="month-body" id="m1">
+      <div class="month-meta">
+        <span class="meta-tag">📌 테마: 법적 기반 구축</span>
+        <span class="meta-tag">🎯 갭 포커스: 세무·법인 지식 부족</span>
+      </div>
+      <div class="check-item"><div class="chk done">✓</div><span class="done-text">세무사 상담 및 법인 설립 방식 결정</span></div>
+      <div class="check-item"><div class="chk done">✓</div><span class="done-text">사업자등록 서류 준비 완료</span></div>
+      <div class="check-item"><div class="chk"></div><span>법인 통장 개설 및 초기 운영비 분리</span></div>
+    </div>
+  </div>
+  <div class="month-acc">
+    <div class="month-hdr" onclick="toggleM('m2')">2개월차 — 첫 제안서 발송 ▸</div>
+    <div class="month-body" id="m2" style="display:none">
+      <div class="month-meta">
+        <span class="meta-tag">📌 테마: 영업 첫 발</span>
+        <span class="meta-tag">🎯 갭 포커스: 제안서 구조 강화</span>
+      </div>
+      <div class="check-item"><div class="chk"></div><span>잠재 고객 리스트 5곳 완성</span></div>
+      <div class="check-item"><div class="chk"></div><span>제안서 템플릿 최종 완성</span></div>
+      <div class="check-item"><div class="chk"></div><span>첫 발송 및 반응 트래킹</span></div>
+    </div>
+  </div>
+  <div class="month-acc">
+    <div class="month-hdr" style="opacity:.5;cursor:default">3 ~ 36개월차 ···</div>
+  </div>
+
+  <hr class="div">
+  <div class="bottom-bar">
+    <div class="overall-mini">
+      <div class="overall-mini-label">전체 진행률 (7 / 40 항목)</div>
+      <div class="progress-track" style="height:8px"><div class="progress-fill" style="width:18%"></div></div>
+    </div>
+    <button class="btn" onclick="alert('PDF 저장 기능은 실제 앱에서 지원됩니다.')">📥 PDF로 저장</button>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+function toggleTheme(){
+  const h=document.documentElement;
+  const isDark=h.getAttribute('data-theme')==='dark';
+  h.setAttribute('data-theme',isDark?'light':'dark');
+  document.querySelector('.toggle-btn').textContent=isDark?'🌙 다크 모드':'☀️ 라이트 모드';
+}
+function toggleQ(id){
+  const el=document.getElementById(id);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+function toggleM(id){
+  const el=document.getElementById(id);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+function addItem(){
+  const v=document.getElementById('newItem').value.trim();
+  const q=document.getElementById('newQ').value;
+  if(!v)return;
+  const id=q.toLowerCase();
+  const body=document.getElementById(id);
+  if(!body)return;
+  const d=document.createElement('div');d.className='check-item';
+  d.innerHTML=`<div class="chk"></div><span>${v} <span style="font-size:.75rem;color:var(--accent)">[${q} 추가]</span></span>`;
+  body.appendChild(d);
+  if(body.style.display==='none')body.style.display='block';
+  document.getElementById('newItem').value='';
+}
+const aiReplies=[
+  'Q2는 안정적인 수입 확보가 핵심입니다. 현재 진행 중인 제안서 3건 중 1건만 계약으로 이어져도 목표를 달성할 수 있습니다. 구체적인 후속 연락 일정을 잡아보는 건 어떨까요?',
+  '이번 달 가장 중요한 것은 "첫 계약 체결"입니다. 나머지 항목은 모두 그 이후에 움직입니다. 계약 미팅 일정을 이번 주 안에 확정해보세요.',
+  '슬럼프는 대부분 "결과 없이 행동만 지속되는 기간"에 찾아옵니다. 지금 당신이 해온 것들을 다시 적어보세요. 생각보다 많이 해온 자신을 발견하게 됩니다.',
+  '좋은 질문입니다! 현재 진행 상황을 보면 속도는 충분합니다. 방향을 잠깐 점검해볼 시점이에요. 목표 고객군을 더 좁혀도 될 것 같습니다.',
+];
+let aiIdx=0;
+function sendMsg(){
+  const inp=document.getElementById('chatInput');
+  const msg=inp.value.trim();
+  if(!msg)return;
+  const box=document.getElementById('chatBox');
+  const u=document.createElement('div');u.className='msg msg-user';
+  u.innerHTML=`<div class="msg-sender">나</div>${msg}`;
+  box.appendChild(u);
+  inp.value='';
+  setTimeout(()=>{
+    const a=document.createElement('div');a.className='msg msg-ai';
+    a.innerHTML=`<div class="msg-sender">AI 코치</div>${aiReplies[aiIdx%aiReplies.length]}`;
+    box.appendChild(a);aiIdx++;
+    box.scrollTop=box.scrollHeight;
+  },800);
+  box.scrollTop=box.scrollHeight;
+}
+function quickQ(t){
+  document.getElementById('chatInput').value=t;
+  sendMsg();
+}
+function focusDone(){
+  event.target.textContent='🎉 완료!';
+  event.target.style.background='var(--green)';
+  event.target.style.borderColor='var(--green)';
+  setTimeout(()=>{event.target.textContent='✅ 오늘 완료 체크';event.target.style.background='';event.target.style.borderColor='';},2500);
+}
+</script>
+</body>
+</html>

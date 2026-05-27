@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>커리어 심화 설계</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f1a;--card:#1a1a2e;--card2:#16213e;--border:#2a2a4a;
+  --text:#e8e8f0;--text2:#a0a0c0;--text3:#6060a0;
+  --blue:#4a7fff;--blue-bg:#1a2a5e;--blue-light:#7aafff;
+  --green:#2ecc71;--green-bg:#0d3d22;--green-light:#5dde94;
+  --red:#e74c3c;--red-bg:#3d0d0d;--red-light:#ff7070;
+  --orange:#f39c12;--purple:#9b59b6;--purple-bg:#2d1a3d;
+  --accent:#6c63ff;--shadow:0 4px 24px rgba(0,0,0,.4);
+  --radius:12px;--radius-sm:8px;
+}
+body.light{
+  --bg:#f0f2f8;--card:#fff;--card2:#f8f9ff;--border:#dde0f0;
+  --text:#1a1a2e;--text2:#4a4a7a;--text3:#9090b0;
+  --blue-bg:#dde8ff;--green-bg:#d4f5e5;--red-bg:#fde8e8;
+  --purple-bg:#ede0ff;--blue-light:#2255cc;--green-light:#1a7a45;
+  --shadow:0 4px 24px rgba(100,100,180,.12);
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh;transition:background .3s,color .3s}
+a{color:var(--blue-light);text-decoration:none}
+
+/* HEADER */
+.header{position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px;backdrop-filter:blur(10px)}
+.back-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:7px 14px;border-radius:20px;cursor:pointer;font-size:13px;white-space:nowrap;transition:all .2s}
+.back-btn:hover{border-color:var(--blue);color:var(--blue-light)}
+.header-center{flex:1;text-align:center}
+.header h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.header .sub{font-size:12px;color:var(--text2);margin-top:2px}
+.theme-btn{background:none;border:1px solid var(--border);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.theme-btn:hover{border-color:var(--blue);transform:rotate(20deg)}
+
+/* LAYOUT */
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 60px}
+.section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
+.sec-title{font-size:16px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';display:inline-block;width:4px;height:18px;background:var(--accent);border-radius:2px}
+
+/* S1 - INPUT */
+.radio-row{display:flex;gap:16px;margin-bottom:18px}
+.radio-label{display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1px solid var(--border);border-radius:20px;transition:all .2s;font-size:13px}
+.radio-label:hover{border-color:var(--blue)}
+.radio-label input{accent-color:var(--blue)}
+.radio-label.active{border-color:var(--blue);background:var(--blue-bg)}
+.input-panel{display:none}
+.input-panel.show{display:block}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field textarea{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;transition:border .2s;outline:none;font-family:inherit}
+.field input:focus,.field textarea:focus{border-color:var(--blue)}
+.field textarea{resize:vertical;min-height:70px;line-height:1.6}
+.field .hint{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* DROPZONE */
+.dropzone{border:2px dashed var(--border);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--card2)}
+.dropzone:hover,.dropzone.drag{border-color:var(--blue);background:var(--blue-bg)}
+.dropzone .dz-icon{font-size:36px;margin-bottom:10px}
+.dropzone p{color:var(--text2);font-size:13px}
+.badge-row{display:flex;justify-content:center;gap:8px;margin-top:12px}
+.badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:var(--border);color:var(--text2)}
+.file-result{display:none;background:var(--green-bg);border:1px solid var(--green);border-radius:var(--radius-sm);padding:12px;margin-top:12px}
+.file-result .file-name{color:var(--green-light);font-weight:600;font-size:13px}
+.preview-text{color:var(--text2);font-size:12px;margin-top:6px;line-height:1.5}
+#fileInput{display:none}
+
+.btn-primary{display:block;width:100%;margin-top:18px;padding:13px;background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 16px rgba(46,204,113,.3)}
+
+/* S2 - ANALYSIS */
+.badge-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.badge-blue{background:var(--blue-bg);color:var(--blue-light);border:1px solid var(--blue);padding:5px 12px;border-radius:16px;font-size:12px;font-weight:600}
+.badge-gray{background:var(--card2);color:var(--text2);border:1px solid var(--border);padding:5px 12px;border-radius:16px;font-size:12px;font-weight:600}
+.label-sm{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.8px;margin-bottom:8px}
+.link-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.link-btn{padding:7px 14px;border:1px solid var(--blue);color:var(--blue-light);background:var(--blue-bg);border-radius:20px;font-size:12px;cursor:pointer;transition:all .2s}
+.link-btn:hover{background:var(--blue);color:#fff}
+
+/* S3 - GAP */
+.gap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:500px){.gap-grid{grid-template-columns:1fr}}
+.gap-card{border-radius:var(--radius-sm);padding:16px}
+.gap-card.have{background:var(--green-bg);border:1px solid rgba(46,204,113,.3)}
+.gap-card.lack{background:var(--red-bg);border:1px solid rgba(231,76,60,.3)}
+.gap-card h4{font-size:13px;font-weight:700;margin-bottom:10px}
+.gap-card.have h4{color:var(--green-light)}
+.gap-card.lack h4{color:var(--red-light)}
+.gap-item{display:flex;align-items:flex-start;gap:7px;font-size:12px;margin-bottom:7px;color:var(--text2)}
+.gap-item .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.gap-card.have .dot{background:var(--green)}
+.gap-card.lack .dot{background:var(--red)}
+.eval-box{background:var(--card2);border-left:3px solid var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:14px 16px;font-size:13px;color:var(--text2);line-height:1.7}
+
+/* S4 - TIMELINE */
+.tl-wrap{overflow-x:auto;padding-bottom:8px}
+.tl-track{display:flex;gap:10px;padding:4px 4px 16px;min-width:max-content}
+.tl-item{width:130px;flex-shrink:0;border-radius:var(--radius-sm);padding:12px;position:relative}
+.tl-item::after{content:'→';position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
+.tl-item:last-child::after{display:none}
+.tl-q{font-size:11px;font-weight:800;letter-spacing:.5px;margin-bottom:5px}
+.tl-task{font-size:11px;line-height:1.5}
+.tl-y1{background:linear-gradient(135deg,#1a2a5e,#0d1a3a);border:1px solid var(--blue)}
+.tl-y1 .tl-q{color:var(--blue-light)}
+.tl-y1 .tl-task{color:#b0c8ff}
+.tl-y2{background:linear-gradient(135deg,#0d2a1a,#051505);border:1px solid rgba(46,204,113,.5)}
+.tl-y2 .tl-q{color:var(--green-light)}
+.tl-y2 .tl-task{color:#a0e8c0}
+.tl-y3{background:var(--purple-bg);border:1px solid rgba(155,89,182,.5)}
+.tl-y3 .tl-q{color:#c890ff}
+.tl-y3 .tl-task{color:#d4b0ff}
+.tl-star{font-size:14px;margin-top:4px}
+.tl-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.tl-leg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.tl-leg span{width:12px;height:12px;border-radius:3px}
+.leg-b{background:var(--blue)}
+.leg-g{background:var(--green)}
+.leg-p{background:var(--purple)}
+
+/* S5 - ACCORDION */
+.month-item{border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden}
+.month-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--card2);transition:background .2s;user-select:none}
+.month-hdr:hover{background:var(--border)}
+.month-hdr .m-num{font-size:11px;font-weight:700;color:var(--text3);min-width:60px}
+.month-hdr .m-theme{font-size:13px;font-weight:600}
+.month-hdr .m-focus{font-size:11px;color:var(--text3);margin-left:10px}
+.month-hdr .m-arr{font-size:14px;color:var(--text3);transition:transform .25s}
+.month-item.open .m-arr{transform:rotate(180deg)}
+.month-body{display:none;padding:14px 16px;background:var(--card);border-top:1px solid var(--border)}
+.month-item.open .month-body{display:block}
+.month-section{margin-bottom:12px}
+.month-section h5{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.6px;margin-bottom:7px}
+.month-goal{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--text2);margin-bottom:5px}
+.month-goal::before{content:'•';color:var(--accent);flex-shrink:0;margin-top:0}
+
+/* CHECKLIST */
+.chk-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:background .15s;margin-bottom:4px}
+.chk-item:hover{background:var(--card2)}
+.chk-item input[type=checkbox]{accent-color:var(--green);width:15px;height:15px;flex-shrink:0;margin-top:1px;cursor:pointer}
+.chk-item .chk-label{font-size:12px;color:var(--text2);flex:1;line-height:1.5;transition:all .2s}
+.chk-item.done .chk-label{text-decoration:line-through;color:var(--text3)}
+.chk-item .done-badge{background:var(--green-bg);color:var(--green-light);font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;white-space:nowrap}
+.dot-row{text-align:center;padding:10px 0;color:var(--text3);font-size:18px;letter-spacing:4px}
+
+/* S6 - PROGRESS */
+.prog-box{margin-bottom:20px}
+.prog-label{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px}
+.prog-label .count{font-weight:700}
+.prog-label .pct{font-weight:700;color:var(--text2)}
+.prog-track{height:14px;background:var(--border);border-radius:7px;overflow:hidden}
+.prog-fill{height:100%;border-radius:7px;transition:width .4s,background .4s}
+.btn-row{display:flex;gap:12px;flex-wrap:wrap}
+.btn-sec{flex:1;min-width:140px;padding:12px;border:1px solid var(--border);background:var(--card2);color:var(--text);border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center}
+.btn-sec:hover{border-color:var(--blue);color:var(--blue-light)}
+.btn-pdf{background:linear-gradient(135deg,var(--accent),#4a3fcc);border:none;color:#fff}
+.btn-pdf:hover{opacity:.9;transform:translateY(-1px)}
+
+/* UTIL */
+.divider{height:1px;background:var(--border);margin:16px 0}
+@media(max-width:768px){.wrap{padding:16px 10px 50px}.section{padding:16px}.header h1{font-size:15px}.back-btn span{display:none}.back-btn::before{content:'←'}}
+@media(max-width:480px){.tl-item{width:110px}.tl-task{font-size:10px}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--card)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <button class="back-btn" onclick="alert('← 실행 플랜 화면으로 이동')">
+    <span>← 실행 플랜으로 돌아가기</span>
+  </button>
+  <div class="header-center">
+    <h1>3년 후의 나를 설계하세요</h1>
+    <div class="sub">목표 직업을 입력하면 AI가 36개월 실행 계획을 생성합니다</div>
+  </div>
+  <button class="theme-btn" id="themeBtn" title="다크/라이트 모드 전환">🌙</button>
+</header>
+
+<div class="wrap">
+
+<!-- ─── S1: 입력 ─── -->
+<div class="section">
+  <div class="sec-title">3년 후의 나를 입력해주세요</div>
+
+  <div class="radio-row">
+    <label class="radio-label active" id="lbl-direct">
+      <input type="radio" name="inputMode" value="direct" checked onchange="switchMode('direct')">
+      ✏️ 직접 입력
+    </label>
+    <label class="radio-label" id="lbl-file">
+      <input type="radio" name="inputMode" value="file" onchange="switchMode('file')">
+      📎 이력서 파일 업로드
+    </label>
+  </div>
+
+  <!-- 직접 입력 -->
+  <div class="input-panel show" id="panel-direct">
+    <div class="field">
+      <label>목표 직책 · 역할</label>
+      <input type="text" value="AI 컨설팅 대표, 중소기업 디지털전환 전문가" placeholder="예) AI 컨설팅 대표">
+      <div class="hint">현재 없어도 괜찮습니다. 3년 뒤 원하는 타이틀을 자유롭게 입력하세요.</div>
+    </div>
+    <div class="field">
+      <label>목표 연 수입</label>
+      <input type="text" value="연매출 3억, 연봉 1억" placeholder="예) 연봉 1억, 연매출 3억">
+    </div>
+    <div class="field">
+      <label>핵심 보유 예정 기술 · 경력</label>
+      <textarea>AI 진단 SaaS 운영, MBA 졸업, 컨설팅 고객 10곳</textarea>
+    </div>
+  </div>
+
+  <!-- 파일 업로드 -->
+  <div class="input-panel" id="panel-file">
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="dz-icon">📄</div>
+      <p>PDF, DOCX, TXT 파일을 끌어다 놓거나<br><strong>클릭해서 선택</strong>하세요</p>
+      <div class="badge-row">
+        <span class="badge">PDF</span>
+        <span class="badge">DOCX</span>
+        <span class="badge">TXT</span>
+        <span class="badge">5MB 이하</span>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.docx,.txt" onchange="handleFile(event)">
+    <div class="file-result" id="fileResult">
+      <div class="file-name">✅ <span id="fileName">파일명.pdf</span></div>
+      <div class="preview-text" id="previewText">추출된 텍스트 미리보기가 여기에 표시됩니다...</div>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="runAnalysis()">🔍 구인공고 분석 후 실행 계획 생성</button>
+</div>
+
+<!-- ─── S2: 분석 결과 ─── -->
+<div class="section">
+  <div class="sec-title">이런 공고들을 분석했습니다</div>
+
+  <div class="label-sm">📌 요구 역량 TOP 5</div>
+  <div class="badge-group">
+    <span class="badge-blue">AI 기획 경험</span>
+    <span class="badge-blue">MBA 또는 석사</span>
+    <span class="badge-blue">컨설팅 3년 이상</span>
+    <span class="badge-blue">B2B 영업 경험</span>
+    <span class="badge-blue">SaaS 이해도</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="label-sm">⭐ 우대 사항 TOP 5</div>
+  <div class="badge-group">
+    <span class="badge-gray">스타트업 경험</span>
+    <span class="badge-gray">영어 가능</span>
+    <span class="badge-gray">데이터 분석</span>
+    <span class="badge-gray">프로젝트 관리</span>
+    <span class="badge-gray">네트워크 보유</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="label-sm">🔗 참고 출처</div>
+  <div class="link-row">
+    <button class="link-btn" onclick="alert('링크 이동: 공고 1')">공고 1 보기 ↗</button>
+    <button class="link-btn" onclick="alert('링크 이동: 공고 2')">공고 2 보기 ↗</button>
+    <button class="link-btn" onclick="alert('링크 이동: 공고 3')">공고 3 보기 ↗</button>
+  </div>
+</div>
+
+<!-- ─── S3: 갭 분석 ─── -->
+<div class="section">
+  <div class="sec-title">현재 나 vs 목표 직업 요구사항</div>
+
+  <div class="gap-grid">
+    <div class="gap-card have">
+      <h4>현재 보유 ✅</h4>
+      <div class="gap-item"><span class="dot"></span>웹기획 7년 경력</div>
+      <div class="gap-item"><span class="dot"></span>MBA 재학 중</div>
+      <div class="gap-item"><span class="dot"></span>B2B 영업 경험</div>
+      <div class="gap-item"><span class="dot"></span>AI 기획 경험</div>
+    </div>
+    <div class="gap-card lack">
+      <h4>부족한 것 ❌</h4>
+      <div class="gap-item"><span class="dot"></span>컨설팅 실적 3건 이상</div>
+      <div class="gap-item"><span class="dot"></span>SaaS 제품 운영 경험</div>
+      <div class="gap-item"><span class="dot"></span>해외 고객 네트워크</div>
+      <div class="gap-item"><span class="dot"></span>독립 법인 운영 경험</div>
+    </div>
+  </div>
+
+  <div class="eval-box">
+    💡 현재 보유 역량과 3년의 시간을 고려하면 <strong>목표 달성 가능성은 충분합니다.</strong><br>
+    단, <strong>컨설팅 실적 확보가 가장 빠른 첫 걸음</strong>입니다.
+    지금 당장 잠재 고객 리스트업부터 시작하세요.
+  </div>
+</div>
+
+<!-- ─── S4: 타임라인 ─── -->
+<div class="section">
+  <div class="sec-title">3년 로드맵</div>
+
+  <div class="tl-legend">
+    <div class="tl-leg"><span class="leg-b"></span>1년차 (Q1~Q4)</div>
+    <div class="tl-leg"><span class="leg-g"></span>2년차 (Q5~Q8)</div>
+    <div class="tl-leg"><span class="leg-p"></span>3년차 (Q9~Q12)</div>
+  </div>
+
+  <div class="tl-wrap">
+    <div class="tl-track">
+      <div class="tl-item tl-y1"><div class="tl-q">Q1</div><div class="tl-task">법인 설립 +<br>첫 계약 1건</div></div>
+      <div class="tl-item tl-y1"><div class="tl-q">Q2</div><div class="tl-task">고객 2곳 +<br>월 수입 유지</div></div>
+      <div class="tl-item tl-y1"><div class="tl-q">Q3</div><div class="tl-task">고객 3곳 +<br>SaaS 기획</div></div>
+      <div class="tl-item tl-y1"><div class="tl-q">Q4</div><div class="tl-task">연매출<br>1억 돌파</div></div>
+      <div class="tl-item tl-y2"><div class="tl-q">Q5</div><div class="tl-task">직원 1명<br>채용</div></div>
+      <div class="tl-item tl-y2"><div class="tl-q">Q6</div><div class="tl-task">SaaS 베타<br>출시</div></div>
+      <div class="tl-item tl-y2"><div class="tl-q">Q7</div><div class="tl-task">해외 고객<br>1곳</div></div>
+      <div class="tl-item tl-y2"><div class="tl-q">Q8</div><div class="tl-task">연매출<br>2억 달성</div></div>
+      <div class="tl-item tl-y3"><div class="tl-q">Q9</div><div class="tl-task">SaaS 유료<br>고객 20곳</div></div>
+      <div class="tl-item tl-y3"><div class="tl-q">Q10</div><div class="tl-task">팀 3명<br>운영</div></div>
+      <div class="tl-item tl-y3"><div class="tl-q">Q11</div><div class="tl-task">연매출<br>3억 달성</div></div>
+      <div class="tl-item tl-y3"><div class="tl-q">Q12</div><div class="tl-task">목표 달성<br><span class="tl-star">🏆</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── S5: 월별 실행 계획 ─── -->
+<div class="section">
+  <div class="sec-title">월별 실행 계획 (36개월)</div>
+  <div id="monthList"></div>
+</div>
+
+<!-- ─── S6: 진행률 ─── -->
+<div class="section">
+  <div class="sec-title">전체 진행률</div>
+  <div class="prog-box">
+    <div class="prog-label">
+      <span>체크된 항목: <span class="count" id="chkCount">7</span> / <span id="chkTotal">108</span></span>
+      <span class="pct" id="chkPct">6%</span>
+    </div>
+    <div class="prog-track">
+      <div class="prog-fill" id="progFill" style="width:6%;background:#e74c3c"></div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-sec btn-pdf" onclick="window.print()">📄 PDF로 저장</button>
+    <button class="btn-sec" onclick="alert('화면 3으로 이동')">← 화면 3으로 돌아가기</button>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ─── THEME TOGGLE ───
+const themeBtn = document.getElementById('themeBtn');
+let dark = true;
+themeBtn.addEventListener('click', () => {
+  dark = !dark;
+  document.body.classList.toggle('light', !dark);
+  themeBtn.textContent = dark ? '🌙' : '☀️';
+});
+
+// ─── INPUT MODE ───
+function switchMode(mode) {
+  document.getElementById('panel-direct').classList.toggle('show', mode === 'direct');
+  document.getElementById('panel-file').classList.toggle('show', mode === 'file');
+  document.getElementById('lbl-direct').classList.toggle('active', mode === 'direct');
+  document.getElementById('lbl-file').classList.toggle('active', mode === 'file');
+}
+
+// ─── FILE UPLOAD ───
+function handleFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (f.size > 5 * 1024 * 1024) { alert('5MB 이하 파일만 업로드 가능합니다.'); return; }
+  showFileResult(f.name, '이력서 내용이 추출되었습니다. AI 컨설팅 대표 포지션 지원을 위한 경력 7년, MBA 재학 중, B2B 영업 경험 보유. 웹 기획 전문가로서 디지털 전환 프로젝트 다수 수행...');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  if (f.size > 5 * 1024 * 1024) { alert('5MB 이하 파일만 업로드 가능합니다.'); return; }
+  showFileResult(f.name, '이력서 내용이 추출되었습니다...');
+}
+function showFileResult(name, text) {
+  const r = document.getElementById('fileResult');
+  document.getElementById('fileName').textContent = name;
+  document.getElementById('previewText').textContent = text.length > 300 ? text.slice(0,300) + '...' : text;
+  r.style.display = 'block';
+}
+
+function runAnalysis() {
+  const btn = event.target;
+  btn.textContent = '⏳ 분석 중...';
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = '✅ 분석 완료! 결과가 아래에 업데이트되었습니다';
+    btn.style.background = 'linear-gradient(135deg,#3498db,#2980b9)';
+  }, 1800);
+}
+
+// ─── MONTH DATA ───
+const months = [
+  { theme:'법인 설립 준비', focus:'컨설팅 실적 0→1건 달성',
+    goals:['세무사 상담 완료','잠재 고객 5곳 리스트업'],
+    checks:[
+      {text:'세무사 상담 — 법인 vs 개인사업자 비교',done:true},
+      {text:'잠재 고객 5곳 리스트업',done:true},
+      {text:'컨설팅 제안서 초안 작성',done:false}
+    ]
+  },
+  { theme:'첫 계약 체결', focus:'B2B 영업 → 계약 전환',
+    goals:['1:1 미팅 3회 이상','계약서 템플릿 완성'],
+    checks:[
+      {text:'잠재 고객 미팅 진행 (3곳)',done:true},
+      {text:'계약서 검토 (법무사 확인)',done:false},
+      {text:'첫 계약 체결 완료',done:false}
+    ]
+  }
+];
+// 3~36 더미
+const themes = ['사업 기반 구축','고객 확장','SaaS 기획 착수','매출 1억 돌파','팀 빌딩 시작',
+  'SaaS 개발 착수','해외 네트워킹','매출 2억 달성','SaaS 유료화','팀 확장',
+  '글로벌 마케팅','목표 달성 🏆'];
+const focuses = ['실적 쌓기','고객 리텐션','제품 기획','재무 관리','인사 관리',
+  '기술 개발','파트너십','수익 최적화','고객 성공','조직문화','글로벌화','마무리'];
+for (let i=3; i<=36; i++) {
+  months.push({
+    theme: themes[(i-1)%12],
+    focus: focuses[(i-1)%12],
+    goals: null,
+    checks: null
+  });
+}
+
+// ─── RENDER MONTHS ───
+let totalChecks = 0, doneChecks = 0;
+const list = document.getElementById('monthList');
+
+months.forEach((m, idx) => {
+  const n = idx + 1;
+  const item = document.createElement('div');
+  item.className = 'month-item' + (n===1?' open':'');
+
+  let bodyHTML = '';
+  if (m.goals) {
+    bodyHTML += `<div class="month-section"><h5>📌 이번 달 목표</h5>`;
+    m.goals.forEach(g => bodyHTML += `<div class="month-goal">${g}</div>`);
+    bodyHTML += `</div>`;
+  }
+  if (m.checks) {
+    bodyHTML += `<div class="month-section"><h5>✅ 체크리스트</h5>`;
+    m.checks.forEach((c, ci) => {
+      totalChecks++;
+      if (c.done) doneChecks++;
+      const cid = `chk_${n}_${ci}`;
+      bodyHTML += `
+        <div class="chk-item${c.done?' done':''}" id="wrap_${cid}" onclick="toggleCheck('${cid}')">
+          <input type="checkbox" id="${cid}" ${c.done?'checked':''} onclick="event.stopPropagation();toggleCheck('${cid}')">
+          <span class="chk-label">${c.text}</span>
+          ${c.done?`<span class="done-badge">완료</span>`:''}
+        </div>`;
+    });
+    bodyHTML += `</div>`;
+  }
+
+  if (n <= 2) {
+    item.innerHTML = `
+      <div class="month-hdr" onclick="toggleMonth(this)">
+        <span class="m-num">${n}개월차</span>
+        <span class="m-theme">${m.theme}</span>
+        <span class="m-focus">· ${m.focus}</span>
+        <span class="m-arr">▾</span>
+      </div>
+      <div class="month-body">${bodyHTML || `<div style="color:var(--text3);font-size:12px">상세 내용을 입력하거나 AI가 자동 생성합니다.</div>`}</div>`;
+  } else if (n <= 5) {
+    item.innerHTML = `
+      <div class="month-hdr" onclick="toggleMonth(this)">
+        <span class="m-num">${n}개월차</span>
+        <span class="m-theme">${m.theme}</span>
+        <span class="m-focus">· ${m.focus}</span>
+        <span class="m-arr">▾</span>
+      </div>
+      <div class="month-body"><div style="color:var(--text3);font-size:12px">상세 내용을 클릭하여 펼치고 편집하세요.</div></div>`;
+  } else if (n === 6) {
+    const dotDiv = document.createElement('div');
+    dotDiv.className = 'dot-row';
+    dotDiv.textContent = '· · ·';
+    list.appendChild(dotDiv);
+    return;
+  } else {
+    return; // 7+ 숨김
+  }
+  list.appendChild(item);
+});
+
+// 총 체크 수 동기화
+totalChecks = 108;
+updateProgress();
+
+function toggleMonth(hdr) {
+  const item = hdr.closest('.month-item');
+  item.classList.toggle('open');
+}
+
+// ─── CHECKBOX ───
+function toggleCheck(id) {
+  const cb = document.getElementById(id);
+  const wrap = document.getElementById('wrap_'+id);
+  cb.checked = !cb.checked;
+  wrap.classList.toggle('done', cb.checked);
+  const badge = wrap.querySelector('.done-badge');
+  if (cb.checked && !badge) {
+    const b = document.createElement('span');
+    b.className = 'done-badge';
+    b.textContent = '완료';
+    wrap.appendChild(b);
+  } else if (!cb.checked && badge) {
+    badge.remove();
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const all = document.querySelectorAll('input[type=checkbox]');
+  let done = 0;
+  all.forEach(c => { if (c.checked) done++; });
+  const total = totalChecks;
+  const pct = Math.round(done / total * 100);
+  document.getElementById('chkCount').textContent = done + (total - all.length);
+  document.getElementById('chkTotal').textContent = total;
+  document.getElementById('chkPct').textContent = pct + '%';
+  const fill = document.getElementById('progFill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct <= 30 ? '#e74c3c' : pct <= 70 ? '#f39c12' : '#2ecc71';
+}
+</script>
+</body>
+</html>

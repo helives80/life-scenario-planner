@@ -1,0 +1,927 @@
+import streamlit as st
+import json
+import os
+import io
+import html as _html
+import glob
+import datetime
+
+try:
+    from google import genai as genai_v2
+    from google.genai import types as gtypes
+    _GENAI_OK = True
+except ImportError:
+    _GENAI_OK = False
+
+
+def _get_client():
+    return genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+
+# ── 화면4 CSS (screen4_template.html 기반, s4- 스코프) ──────────────────────────
+S4_CSS = """<style>
+.s4-main-title{
+  font-size:2.2rem;font-weight:900;color:#e8e8f0;
+  letter-spacing:-.5px;margin:6px 0 2px;line-height:1.3;
+}
+.s4-main-sub{font-size:.85rem;color:#a0a0c0;margin:0}
+.s4-sec-title{
+  font-size:1rem;font-weight:700;color:#e8e8f0;
+  margin:0 0 14px;display:flex;align-items:center;gap:8px;
+}
+.s4-sec-title::before{
+  content:'';display:inline-block;width:4px;height:18px;
+  background:#6c63ff;border-radius:2px;flex-shrink:0;
+}
+.s4-hint{font-size:.75rem;color:#6060a0;margin:2px 0 6px}
+.s4-dropzone{
+  border:2px dashed #2a2a4a;border-radius:12px;
+  padding:24px 20px 18px;text-align:center;background:#16213e;margin-bottom:10px;
+}
+.s4-dz-icon{font-size:2.2rem;margin-bottom:6px}
+.s4-dropzone p{color:#a0a0c0;font-size:.85rem;margin:0}
+.s4-badge-row{display:flex;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.s4-badge{padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:600;background:#2a2a4a;color:#a0a0c0}
+.s4-file-ok{background:#0d3d22;border:1px solid #2ecc71;border-radius:8px;padding:12px 16px;margin-top:8px}
+.s4-file-name{color:#5dde94;font-weight:700;font-size:.85rem;margin-bottom:4px}
+.s4-preview{color:#a0a0c0;font-size:.73rem;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:110px;overflow-y:auto}
+/* Section 2 */
+.s4-label-sm{font-size:.7rem;font-weight:700;color:#6060a0;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px}
+.s4-badge-blue{background:#1a2a5e;color:#7aafff;border:1px solid #4a7fff;padding:5px 12px;border-radius:16px;font-size:.75rem;font-weight:600;display:inline-block;margin:3px 2px}
+.s4-badge-gray{background:#16213e;color:#a0a0c0;border:1px solid #2a2a4a;padding:5px 12px;border-radius:16px;font-size:.75rem;font-weight:600;display:inline-block;margin:3px 2px}
+.s4-divider{height:1px;background:#2a2a4a;margin:14px 0}
+.s4-link-btn{display:inline-block;padding:6px 14px;border:1px solid #4a7fff;color:#7aafff;background:#1a2a5e;border-radius:20px;font-size:.75rem;text-decoration:none;margin:3px 4px}
+/* Section 3 */
+.s4-gap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:600px){.s4-gap-grid{grid-template-columns:1fr}}
+.s4-gap-card{border-radius:10px;padding:16px}
+.s4-gap-have{background:#0d3d22;border:1px solid rgba(46,204,113,.35)}
+.s4-gap-lack{background:#3d0d0d;border:1px solid rgba(231,76,60,.35)}
+.s4-gap-h4{font-size:.85rem;font-weight:700;margin-bottom:10px}
+.s4-gap-have .s4-gap-h4{color:#5dde94}
+.s4-gap-lack .s4-gap-h4{color:#ff7070}
+.s4-gap-item{display:flex;align-items:flex-start;gap:7px;font-size:.8rem;margin-bottom:7px;color:#a0a0c0}
+.s4-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.s4-gap-have .s4-dot{background:#2ecc71}
+.s4-gap-lack .s4-dot{background:#e74c3c}
+.s4-eval-box{background:#16213e;border-left:3px solid #6c63ff;border-radius:0 10px 10px 0;padding:14px 16px;font-size:.85rem;color:#a0a0c0;line-height:1.75}
+/* Section 4 Timeline */
+.s4-tl-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.s4-tl-leg{display:flex;align-items:center;gap:6px;font-size:.73rem;color:#a0a0c0}
+.s4-tl-leg span{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.s4-leg-b{background:#4a7fff}
+.s4-leg-g{background:#2ecc71}
+.s4-leg-p{background:#9b59b6}
+.s4-tl-wrap{overflow-x:auto;padding-bottom:10px}
+.s4-tl-track{display:flex;gap:10px;padding:4px 4px 16px;min-width:max-content}
+.s4-tl-item{width:145px;flex-shrink:0;border-radius:8px;padding:12px;position:relative}
+.s4-tl-item::after{content:'→';position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:#3a3a5a;font-size:13px}
+.s4-tl-item:last-child::after{display:none}
+.s4-tl-q{font-size:.7rem;font-weight:800;letter-spacing:.5px;margin-bottom:5px}
+.s4-tl-task{font-size:.72rem;line-height:1.5}
+.s4-tl-y1{background:linear-gradient(135deg,#1a2a5e,#0d1a3a);border:1px solid #4a7fff}
+.s4-tl-y1 .s4-tl-q{color:#7aafff}
+.s4-tl-y1 .s4-tl-task{color:#b0c8ff}
+.s4-tl-y2{background:linear-gradient(135deg,#0d2a1a,#051505);border:1px solid rgba(46,204,113,.5)}
+.s4-tl-y2 .s4-tl-q{color:#5dde94}
+.s4-tl-y2 .s4-tl-task{color:#a0e8c0}
+.s4-tl-y3{background:#2d1a3d;border:1px solid rgba(155,89,182,.5)}
+.s4-tl-y3 .s4-tl-q{color:#c890ff}
+.s4-tl-y3 .s4-tl-task{color:#d4b0ff}
+/* Section 5 Progress */
+.s4-prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.s4-prog-count{font-size:.9rem;font-weight:700;color:#e8e8f0}
+.s4-prog-pct{font-size:.85rem;font-weight:700;color:#a0a0c0}
+</style>"""
+
+# 라이트 모드 오버라이드 CSS (.s4- 스코프)
+S4_CSS_LIGHT_OVERRIDE = """<style>
+.s4-main-title{color:#1a1a2e}
+.s4-main-sub{color:#4a4a7a}
+.s4-sec-title{color:#1a1a2e}
+.s4-hint{color:#9090b0}
+.s4-dropzone{border-color:#dde0f0;background:#f8f9ff}
+.s4-dropzone p{color:#4a4a7a}
+.s4-badge{background:#dde0f0;color:#4a4a7a}
+.s4-file-ok{background:#d4f5e5;border-color:#2ecc71}
+.s4-file-name{color:#1a7a45}
+.s4-preview{color:#4a4a7a}
+.s4-label-sm{color:#9090b0}
+.s4-badge-blue{background:#dde8ff;color:#2255cc;border-color:#4a7fff}
+.s4-badge-gray{background:#f8f9ff;color:#4a4a7a;border-color:#dde0f0}
+.s4-divider{background:#dde0f0}
+.s4-link-btn{border-color:#4a7fff;color:#2255cc;background:#dde8ff}
+.s4-gap-have{background:#d4f5e5;border-color:rgba(46,204,113,.5)}
+.s4-gap-lack{background:#fde8e8;border-color:rgba(231,76,60,.35)}
+.s4-gap-have .s4-gap-h4{color:#1a7a45}
+.s4-gap-lack .s4-gap-h4{color:#dc2626}
+.s4-gap-item{color:#4a4a7a}
+.s4-eval-box{background:#f8f9ff;border-left-color:#6c63ff;color:#4a4a7a}
+.s4-tl-leg{color:#4a4a7a}
+.s4-tl-item::after{color:#9090b0}
+.s4-tl-y1{background:linear-gradient(135deg,#dde8ff,#c8d8ff);border-color:#4a7fff}
+.s4-tl-y1 .s4-tl-q{color:#2255cc}
+.s4-tl-y1 .s4-tl-task{color:#4a4a7a}
+.s4-tl-y2{background:linear-gradient(135deg,#d4f5e5,#b8edcd);border-color:rgba(46,204,113,.5)}
+.s4-tl-y2 .s4-tl-q{color:#1a7a45}
+.s4-tl-y2 .s4-tl-task{color:#4a4a7a}
+.s4-tl-y3{background:#ede0ff;border-color:rgba(155,89,182,.5)}
+.s4-tl-y3 .s4-tl-q{color:#5b21b6}
+.s4-tl-y3 .s4-tl-task{color:#4a4a7a}
+.s4-prog-count{color:#1a1a2e}
+.s4-prog-pct{color:#4a4a7a}
+</style>"""
+
+# ── 갭 분석 프롬프트 / 스키마 ──────────────────────────────────────────────────
+
+GAP_SYSTEM_PROMPT = """
+당신은 커리어 갭 분석 엔진입니다.
+사용자의 현재 역량과 목표 직업 요구사항을 비교하여 갭 분석 결과를 생성합니다.
+응답은 반드시 단일 JSON 객체 하나만 반환합니다. 코드펜스·설명·공백 줄바꿈 외 어떤 문자도 추가 금지.
+
+생성 규칙:
+1. required_skills: 목표 직업에서 요구되는 핵심 역량 정확히 5개. 구인공고 데이터 기반, 없으면 Q1·Q4·목표로 추론.
+2. preferred_skills: 우대사항 정확히 5개.
+3. have: 사용자가 현재 보유하거나 3년 내 달성 가능한 역량 3~5개. Q1·Q4·시나리오 근거.
+4. lack: 현재 부족하고 목표 달성을 위해 반드시 채워야 할 역량 2~4개.
+5. gap_comment: 목표 달성 가능성 + 가장 빠른 첫걸음 2~3문장. 반드시 Q1·Q4 직접 언급. 수치 최소 1개 포함. 클리셰 금지.
+
+모든 텍스트는 한국어.
+"""
+
+GAP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "required_skills": {"type": "array", "items": {"type": "string"}},
+        "preferred_skills": {"type": "array", "items": {"type": "string"}},
+        "have":             {"type": "array", "items": {"type": "string"}},
+        "lack":             {"type": "array", "items": {"type": "string"}},
+        "gap_comment":      {"type": "string"},
+    },
+    "required": ["required_skills", "preferred_skills", "have", "lack", "gap_comment"],
+}
+
+# ── 로드맵 프롬프트 / 스키마 ───────────────────────────────────────────────────
+
+ROADMAP_SYSTEM_PROMPT = """
+당신은 AI 커리어 로드맵 설계 엔진입니다.
+갭 분석 결과와 사용자 목표를 반영해 3년 분기별 로드맵과 36개월 실행 과업을 생성합니다.
+응답은 반드시 단일 JSON 객체 하나만 반환합니다. 코드펜스·설명·공백 줄바꿈 외 어떤 문자도 추가 금지.
+
+생성 규칙:
+1. roadmap.y1: 1년차 Q1~Q4 핵심 과업 정확히 4개 문자열. 각 과업에 구체적 수치(금액·건수·%) 반드시 포함.
+2. roadmap.y2: 2년차 Q5~Q8 핵심 과업 정확히 4개 문자열. 갭 분석의 "lack" 항목 해결 반영.
+3. roadmap.y3: 3년차 Q9~Q12 핵심 과업 정확히 4개 문자열. 목표 달성 상태 반영.
+4. monthly_plan: 반드시 정확히 36개 (month 1~36). 한 개도 빠짐없이 생성.
+   - month: 1~36 정수
+   - task: 15~30자 동사형 구체 행동 목표. 측정 가능한 결과 포함.
+   Q5(저축액)·Q3(버틸기간)·Q6(가족지지)를 반영한 현실적 속도.
+
+비현실적 수치 절대 금지. 모든 텍스트 한국어.
+"""
+
+ROADMAP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "roadmap": {
+            "type": "object",
+            "properties": {
+                "y1": {"type": "array", "items": {"type": "string"}},
+                "y2": {"type": "array", "items": {"type": "string"}},
+                "y3": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["y1", "y2", "y3"],
+        },
+        "monthly_plan": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "month": {"type": "integer"},
+                    "task":  {"type": "string"},
+                },
+                "required": ["month", "task"],
+            },
+        },
+    },
+    "required": ["roadmap", "monthly_plan"],
+}
+
+# ── 공통 헬퍼 ─────────────────────────────────────────────────────────────────
+
+_ID_TO_Q = {
+    "job": 1, "satisfaction": 2, "endurance": 3, "skill": 4,
+    "saving": 5, "family_support": 6, "priority": 7, "fear": 8,
+    "rolemodel": 9, "goal": 10, "bucketlist": 11, "change_5y": 12,
+    "worry": 13, "changeable": 14,
+}
+
+
+def _inputs_to_q_lines(inputs: dict) -> list:
+    lines = []
+    for id_key, q_num in sorted(_ID_TO_Q.items(), key=lambda x: x[1]):
+        value = inputs.get(id_key, inputs.get(f"Q{q_num}", "입력 없음"))
+        lines.append(f"Q{q_num}: {value}")
+        if q_num == 1:
+            inc_sel = inputs.get("INCOME_SELECT", "직접 입력 안 함")
+            inc_txt = inputs.get("INCOME_TEXT", "")
+            if inc_sel == "직접 입력" and inc_txt:
+                lines.append(f"현재 소득: {inc_txt}")
+            elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""):
+                lines.append(f"현재 소득: {inc_sel}")
+    lines.append("Q15: 입력 없음")
+    for id_key, old_key, label in [
+        ("age", "AGE", "연령대"), ("gender", "GENDER", "성별"),
+        ("free_time", "TIME", "하루 평균 여유시간"),
+    ]:
+        val = inputs.get(id_key, inputs.get(old_key, ""))
+        if val:
+            lines.append(f"{label}: {val}")
+    return lines
+
+# ── 갭 분석 API ───────────────────────────────────────────────────────────────
+
+def _build_gap_prompt(inputs: dict, goal_info: dict, job_text: str = "", scenario: dict = None) -> str:
+    lines = ["=== 현재 상황 (화면1 입력값) ==="]
+    lines.extend(_inputs_to_q_lines(inputs))
+    if scenario:
+        lines += ["", "=== 선택된 인생 시나리오 (화면2) ==="]
+        lines.append(f"시나리오 유형: {scenario.get('type', '')}")
+        lines.append(f"시나리오 제목: {scenario.get('title', '')}")
+        if scenario.get("description"):
+            lines.append(f"설명: {scenario['description']}")
+    lines += ["", "=== 3년 후 목표 (화면4 입력) ==="]
+    if goal_info.get("role"):
+        lines.append(f"목표 직책·역할: {goal_info['role']}")
+    if goal_info.get("income"):
+        lines.append(f"목표 연 수입: {goal_info['income']}")
+    if goal_info.get("skills"):
+        lines.append(f"핵심 보유 예정 기술·경력: {goal_info['skills']}")
+    if job_text.strip():
+        lines += ["", "=== 구인공고 검색 결과 ===", job_text[:2000]]
+    return "\n".join(lines)
+
+
+def _generate_gap_analysis(inputs: dict, goal_info: dict, scenario: dict = None) -> tuple:
+    """갭 분석 수행. (gap_dict, grounding_used_bool) 반환."""
+    if not _GENAI_OK:
+        raise RuntimeError("google-genai SDK를 불러오지 못했습니다.")
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        raise RuntimeError("GEMINI_API_KEY가 설정되지 않았습니다.")
+
+    job_text = ""
+    sources  = []
+    grounding_used = False
+
+    try:
+        grounding_config = gtypes.GenerateContentConfig(
+            tools=[gtypes.Tool(google_search=gtypes.GoogleSearch())]
+        )
+        query = (
+            f"'{goal_info['role']}' 채용 자격요건 우대사항 핵심 역량 한국 구인공고 2024 2025 "
+            f"관련 기술: {goal_info.get('skills', '')[:100]}"
+        )
+        resp = _get_client().models.generate_content(
+            model="gemini-2.5-flash", contents=query, config=grounding_config,
+        )
+        job_text       = resp.text or ""
+        grounding_used = bool(job_text.strip())
+        try:
+            chunks = resp.candidates[0].grounding_metadata.grounding_chunks
+            seen   = set()
+            for chunk in chunks:
+                web = getattr(chunk, "web", None)
+                if web:
+                    url   = getattr(web, "uri",   "") or ""
+                    title = getattr(web, "title", "") or "공고"
+                    if url and url not in seen:
+                        sources.append({"title": title, "url": url})
+                        seen.add(url)
+                        if len(sources) >= 5:
+                            break
+        except Exception:
+            pass
+    except Exception:
+        grounding_used = False
+
+    prompt_text = _build_gap_prompt(inputs, goal_info, job_text, scenario)
+    response    = _get_client().models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt_text,
+        config=gtypes.GenerateContentConfig(
+            system_instruction=GAP_SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=GAP_SCHEMA,
+            temperature=0.7,
+        ),
+    )
+    raw = response.text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    result            = json.loads(raw.strip())
+    result["sources"] = sources
+    return result, grounding_used
+
+# ── 로드맵 API ────────────────────────────────────────────────────────────────
+
+def _build_roadmap_prompt(inputs: dict, goal_info: dict, gap_result: dict, scenario: dict = None) -> str:
+    lines = ["=== 현재 상황 (화면1) ==="]
+    lines.extend(_inputs_to_q_lines(inputs))
+    if scenario:
+        lines += ["", "=== 선택 시나리오 (화면2) ==="]
+        lines.append(f"유형: {scenario.get('type', '')} — {scenario.get('title', '')}")
+    lines += ["", "=== 3년 후 목표 (화면4) ==="]
+    if goal_info.get("role"):
+        lines.append(f"목표 직책·역할: {goal_info['role']}")
+    if goal_info.get("income"):
+        lines.append(f"목표 연 수입: {goal_info['income']}")
+    if goal_info.get("skills"):
+        lines.append(f"핵심 보유 예정 기술: {goal_info['skills']}")
+    if gap_result:
+        lines += ["", "=== 갭 분석 결과 ==="]
+        have = gap_result.get("have", [])
+        lack = gap_result.get("lack", [])
+        req  = gap_result.get("required_skills", [])
+        if have:
+            lines.append(f"현재 보유: {', '.join(have)}")
+        if lack:
+            lines.append(f"부족한 것(반드시 로드맵에 반영): {', '.join(lack)}")
+        if req:
+            lines.append(f"목표 직업 요구 역량: {', '.join(req)}")
+        comment = gap_result.get("gap_comment", "")
+        if comment:
+            lines.append(f"갭 코멘트: {comment}")
+    return "\n".join(lines)
+
+
+def _generate_roadmap(inputs: dict, goal_info: dict, gap_result: dict, scenario: dict = None) -> dict:
+    """3년 로드맵 + 36개월 실행 계획 생성."""
+    if not _GENAI_OK:
+        raise RuntimeError("google-genai SDK를 불러오지 못했습니다.")
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        raise RuntimeError("GEMINI_API_KEY가 설정되지 않았습니다.")
+
+    prompt_text = _build_roadmap_prompt(inputs, goal_info, gap_result, scenario)
+    response    = _get_client().models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt_text,
+        config=gtypes.GenerateContentConfig(
+            system_instruction=ROADMAP_SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=ROADMAP_SCHEMA,
+            temperature=0.7,
+        ),
+    )
+    raw = response.text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw.strip())
+
+# ── 파일 텍스트 추출 ──────────────────────────────────────────────────────────
+
+def _extract_file_text(uploaded_file) -> tuple:
+    name = uploaded_file.name.lower()
+    try:
+        data = uploaded_file.getvalue()
+    except Exception as e:
+        return "", f"파일 읽기 실패: {e}"
+
+    if name.endswith(".txt"):
+        try:
+            return data.decode("utf-8", errors="replace"), ""
+        except Exception as e:
+            return "", f"텍스트 파일 읽기 실패: {e}"
+
+    if name.endswith(".pdf"):
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(data))
+            text   = "\n".join(p.extract_text() or "" for p in reader.pages)
+            return text.strip(), ""
+        except ImportError:
+            pass
+        try:
+            import PyPDF2
+            reader = PyPDF2.PdfReader(io.BytesIO(data))
+            text   = "\n".join(p.extract_text() or "" for p in reader.pages)
+            return text.strip(), ""
+        except ImportError:
+            return "", "PDF 읽기에 pypdf가 필요합니다. `pip install pypdf` 를 실행해 주세요."
+        except Exception as e:
+            return "", f"PDF 텍스트 추출 실패: {e}"
+
+    if name.endswith(".docx"):
+        try:
+            import docx
+            doc  = docx.Document(io.BytesIO(data))
+            text = "\n".join(p.text for p in doc.paragraphs if p.text)
+            return text.strip(), ""
+        except ImportError:
+            return "", "DOCX 읽기에 python-docx가 필요합니다. `pip install python-docx` 를 실행해 주세요."
+        except Exception as e:
+            return "", f"DOCX 텍스트 추출 실패: {e}"
+
+    return "", "지원하지 않는 파일 형식입니다. PDF, DOCX, TXT만 가능합니다."
+
+# ── 체크리스트 저장 / 불러오기 ────────────────────────────────────────────────
+
+_CHECKLIST_PREFIX = "checklist_career_"
+
+
+def _save_checklist(checks: dict):
+    today = datetime.date.today().strftime("%Y%m%d")
+    path  = f"{_CHECKLIST_PREFIX}{today}.json"
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(checks, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def _load_latest_checklist() -> dict:
+    files = sorted(glob.glob(f"{_CHECKLIST_PREFIX}*.json"), reverse=True)
+    if not files:
+        return {}
+    try:
+        with open(files[0], "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _cleanup_old_checklists(days: int = 30):
+    cutoff = datetime.date.today() - datetime.timedelta(days=days)
+    for path in glob.glob(f"{_CHECKLIST_PREFIX}*.json"):
+        try:
+            date_str  = os.path.basename(path).replace(_CHECKLIST_PREFIX, "").replace(".json", "")
+            file_date = datetime.datetime.strptime(date_str, "%Y%m%d").date()
+            if file_date < cutoff:
+                os.remove(path)
+        except Exception:
+            pass
+
+# ── 섹션2: 구인공고 분석 결과 ─────────────────────────────────────────────────
+
+def _render_section2(gap: dict):
+    st.markdown('<div class="s4-sec-title">이런 공고들을 분석했습니다</div>', unsafe_allow_html=True)
+
+    req_skills  = gap.get("required_skills", [])
+    pref_skills = gap.get("preferred_skills", [])
+    sources     = gap.get("sources", [])
+
+    if not req_skills and not pref_skills:
+        st.caption("분석 결과가 없습니다.")
+        return
+
+    st.markdown('<div class="s4-label-sm">📌 요구 역량 TOP 5</div>', unsafe_allow_html=True)
+    badges = "".join(f'<span class="s4-badge-blue">{_html.escape(s)}</span>' for s in req_skills)
+    st.markdown(f'<div style="margin-bottom:14px">{badges}</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="s4-divider"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="s4-label-sm">⭐ 우대 사항 TOP 5</div>', unsafe_allow_html=True)
+    badges = "".join(f'<span class="s4-badge-gray">{_html.escape(s)}</span>' for s in pref_skills)
+    st.markdown(f'<div style="margin-bottom:14px">{badges}</div>', unsafe_allow_html=True)
+
+    valid_src = [s for s in sources if s.get("url")]
+    if valid_src:
+        st.markdown('<div class="s4-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="s4-label-sm">🔗 참고 출처</div>', unsafe_allow_html=True)
+        links = "".join(
+            f'<a class="s4-link-btn" href="{_html.escape(s["url"])}" target="_blank">'
+            f'{_html.escape(s["title"][:35])} ↗</a>'
+            for s in valid_src
+        )
+        st.markdown(f'<div style="margin-top:4px">{links}</div>', unsafe_allow_html=True)
+    else:
+        st.caption("구인공고 실시간 검색 결과 없음 — AI 추정 역량 기반으로 분석했습니다.")
+
+# ── 섹션3: 갭 분석 ───────────────────────────────────────────────────────────
+
+def _render_section3(gap: dict):
+    st.markdown('<div class="s4-sec-title">현재 나 vs 목표 직업 요구사항</div>', unsafe_allow_html=True)
+
+    have        = gap.get("have", [])
+    lack        = gap.get("lack", [])
+    gap_comment = gap.get("gap_comment", "")
+
+    have_items = "".join(
+        f'<div class="s4-gap-item"><span class="s4-dot"></span>{_html.escape(item)}</div>'
+        for item in have
+    )
+    lack_items = "".join(
+        f'<div class="s4-gap-item"><span class="s4-dot"></span>{_html.escape(item)}</div>'
+        for item in lack
+    )
+
+    st.markdown(
+        f'<div class="s4-gap-grid">'
+        f'<div class="s4-gap-card s4-gap-have"><div class="s4-gap-h4">현재 보유 ✅</div>{have_items}</div>'
+        f'<div class="s4-gap-card s4-gap-lack"><div class="s4-gap-h4">부족한 것 ❌</div>{lack_items}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    if gap_comment:
+        st.markdown(
+            f'<div class="s4-eval-box">💡 {_html.escape(gap_comment)}</div>',
+            unsafe_allow_html=True,
+        )
+
+# ── 섹션4: 3년 로드맵 타임라인 ───────────────────────────────────────────────
+
+def _render_section4(roadmap: dict):
+    st.markdown('<div class="s4-sec-title">3년 로드맵</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="s4-tl-legend">'
+        '<div class="s4-tl-leg"><span class="s4-leg-b"></span>1년차 (Q1~Q4)</div>'
+        '<div class="s4-tl-leg"><span class="s4-leg-g"></span>2년차 (Q5~Q8)</div>'
+        '<div class="s4-tl-leg"><span class="s4-leg-p"></span>3년차 (Q9~Q12)</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    y1 = list(roadmap.get("y1", [])) + [""] * 4
+    y2 = list(roadmap.get("y2", [])) + [""] * 4
+    y3 = list(roadmap.get("y3", [])) + [""] * 4
+
+    quarters = [
+        ("Q1",  y1[0], "s4-tl-y1"), ("Q2",  y1[1], "s4-tl-y1"),
+        ("Q3",  y1[2], "s4-tl-y1"), ("Q4",  y1[3], "s4-tl-y1"),
+        ("Q5",  y2[0], "s4-tl-y2"), ("Q6",  y2[1], "s4-tl-y2"),
+        ("Q7",  y2[2], "s4-tl-y2"), ("Q8",  y2[3], "s4-tl-y2"),
+        ("Q9",  y3[0], "s4-tl-y3"), ("Q10", y3[1], "s4-tl-y3"),
+        ("Q11", y3[2], "s4-tl-y3"), ("Q12", y3[3], "s4-tl-y3"),
+    ]
+
+    items_html = "".join(
+        f'<div class="s4-tl-item {cls}">'
+        f'<div class="s4-tl-q">{q}</div>'
+        f'<div class="s4-tl-task">{_html.escape(task) if task else "—"}</div>'
+        f'</div>'
+        for q, task, cls in quarters
+    )
+
+    st.markdown(
+        f'<div class="s4-tl-wrap"><div class="s4-tl-track">{items_html}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+# ── 섹션5: 월별 실행 계획 (36개월) ───────────────────────────────────────────
+
+def _render_section5(monthly_plan: list, loaded_checks: dict):
+    st.markdown('<div class="s4-sec-title">월별 실행 계획 (36개월)</div>', unsafe_allow_html=True)
+
+    # 36개 항목 보장
+    plan = list(monthly_plan)
+    if len(plan) < 36:
+        st.warning(f"월별 계획 항목이 {len(plan)}개입니다. 부족분({36 - len(plan)}개)은 빈 항목으로 채웁니다.")
+        while len(plan) < 36:
+            plan.append({"month": len(plan) + 1, "task": ""})
+    plan = plan[:36]
+
+    # session_state 초기화 (파일 로드 우선)
+    for p in plan:
+        ck_key = f"s4_check_{p['month']}"
+        if ck_key not in st.session_state:
+            st.session_state[ck_key] = loaded_checks.get(ck_key, False)
+
+    # 진행률 계산
+    has_task = [p for p in plan if p.get("task", "").strip()]
+    total    = len(has_task)
+    checked  = sum(1 for p in has_task if st.session_state.get(f"s4_check_{p['month']}", False))
+    pct      = checked / total if total > 0 else 0.0
+
+    st.markdown(
+        f'<div class="s4-prog-header">'
+        f'<span class="s4-prog-count">체크된 항목: {checked} / {total}</span>'
+        f'<span class="s4-prog-pct">{int(pct * 100)}%</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    st.progress(pct)
+    st.write("")
+
+    # 연도별 탭
+    year_labels = ["1년차 (1~12개월)", "2년차 (13~24개월)", "3년차 (25~36개월)"]
+    tabs        = st.tabs(year_labels)
+
+    for year_idx, tab in enumerate(tabs):
+        with tab:
+            year_plans = [
+                p for p in plan
+                if (year_idx * 12 + 1) <= p.get("month", 0) <= (year_idx + 1) * 12
+            ]
+            for p in year_plans:
+                month  = p.get("month", "?")
+                task   = p.get("task", "").strip()
+                ck_key = f"s4_check_{month}"
+                label  = f"{month}개월차: {task}" if task else f"{month}개월차: (항목 없음)"
+                if task:
+                    st.checkbox(label, key=ck_key)
+                else:
+                    st.checkbox(label, key=ck_key, disabled=True)
+
+# ── render() ─────────────────────────────────────────────────────────────────
+
+def render(pdf_fn=None):
+    theme = st.session_state.get("theme", "dark")
+    st.markdown(S4_CSS, unsafe_allow_html=True)
+    if theme == "light":
+        st.markdown(S4_CSS_LIGHT_OVERRIDE, unsafe_allow_html=True)
+
+    # 30일 경과 체크리스트 파일 정리 (세션당 1회)
+    if not st.session_state.get("s4_cleanup_done"):
+        _cleanup_old_checklists(days=30)
+        st.session_state["s4_cleanup_done"] = True
+
+    # ── 헤더: 홈 버튼 + 제목 ────────────────────────────────────────────────
+    col_back, col_title = st.columns([2, 10])
+    with col_back:
+        if st.button("🏠 홈으로", key="s4_back", use_container_width=True):
+            st.session_state.page = "home"
+            st.rerun()
+    with col_title:
+        st.markdown(
+            '<p class="s4-main-title">3년 후의 나를 설계하세요</p>'
+            '<p class="s4-main-sub">3년 후 목표 직업을 구체적으로 설계하세요</p>',
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+
+    # ── SDK · 환경 체크 ──────────────────────────────────────────────────────
+    if not _GENAI_OK:
+        st.error(
+            "google-genai SDK가 설치되지 않았습니다.  \n"
+            "`pip install google-genai --upgrade` 를 실행한 뒤 앱을 재시작하세요."
+        )
+        return
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        st.warning("GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+        return
+
+    # ── 기반 시나리오 표시 ───────────────────────────────────────────────────
+    inputs   = st.session_state.get("inputs") or {}
+    scenario = st.session_state.get("selected_scenario") or {}
+    if scenario:
+        st.caption(f"기반 시나리오: {scenario.get('type', '')} — {scenario.get('title', '')}")
+
+    # ── Section 1: 입력 ───────────────────────────────────────────────────────
+    st.markdown('<div class="s4-sec-title">3년 후의 나를 입력해주세요</div>', unsafe_allow_html=True)
+
+    input_mode = st.radio(
+        "입력 방식",
+        ["✏️ 직접 입력", "📎 이력서 파일 업로드"],
+        horizontal=True,
+        key="s4_mode",
+        label_visibility="collapsed",
+    )
+    st.write("")
+
+    goal_role = goal_income = goal_skills = ""
+
+    if input_mode == "✏️ 직접 입력":
+        with st.container(border=True):
+            goal_role = st.text_input(
+                "목표 직책 · 역할",
+                value=st.session_state.get("s4_goal_role", ""),
+                placeholder="예) AI 컨설팅 대표, 시니어 개발자",
+                key="s4_role_direct",
+            )
+            st.markdown('<p class="s4-hint">현재 없어도 괜찮습니다. 3년 뒤 원하는 타이틀을 자유롭게 입력하세요.</p>', unsafe_allow_html=True)
+            st.write("")
+            goal_income = st.text_input(
+                "목표 연 수입",
+                value=st.session_state.get("s4_goal_income", ""),
+                placeholder="예) 연봉 1억, 연매출 3억",
+                key="s4_income_direct",
+            )
+            st.write("")
+            goal_skills = st.text_area(
+                "핵심 보유 예정 기술 · 경력",
+                value=st.session_state.get("s4_goal_skills", inputs.get("skill", "")),
+                placeholder="AI 진단 SaaS 운영, MBA 졸업, 컨설팅 고객 10곳",
+                height=90,
+                key="s4_skills_direct",
+            )
+    else:
+        st.markdown(
+            '<div class="s4-dropzone"><div class="s4-dz-icon">📄</div>'
+            '<p>PDF, DOCX, TXT 이력서 파일을 업로드하세요</p>'
+            '<div class="s4-badge-row"><span class="s4-badge">PDF</span>'
+            '<span class="s4-badge">DOCX</span><span class="s4-badge">TXT</span>'
+            '<span class="s4-badge">5MB 이하</span></div></div>',
+            unsafe_allow_html=True,
+        )
+        uploaded = st.file_uploader("파일 선택", type=["pdf", "docx", "txt"],
+                                    key="s4_resume_upload", label_visibility="collapsed")
+        if uploaded is not None:
+            if uploaded.size > 5 * 1024 * 1024:
+                st.error("파일 크기가 5MB를 초과합니다.")
+            else:
+                extracted, err = _extract_file_text(uploaded)
+                if err:
+                    st.error(err)
+                else:
+                    goal_skills = extracted
+                    st.session_state["s4_file_text"] = extracted
+                    preview = _html.escape(extracted[:300]) + ("..." if len(extracted) > 300 else "")
+                    st.markdown(
+                        f'<div class="s4-file-ok">'
+                        f'<div class="s4-file-name">✅ {_html.escape(uploaded.name)}</div>'
+                        f'<div class="s4-preview">{preview}</div></div>',
+                        unsafe_allow_html=True,
+                    )
+        else:
+            goal_skills = st.session_state.get("s4_file_text", "")
+
+        st.write("")
+        with st.container(border=True):
+            goal_role = st.text_input(
+                "목표 직책 · 역할",
+                value=st.session_state.get("s4_goal_role", ""),
+                placeholder="예) AI 컨설팅 대표, 시니어 개발자",
+                key="s4_role_file",
+            )
+            st.markdown('<p class="s4-hint">현재 없어도 괜찮습니다. 3년 뒤 원하는 타이틀을 자유롭게 입력하세요.</p>', unsafe_allow_html=True)
+
+    st.write("")
+
+    # ── 갭 분석 버튼 + 초기화 ────────────────────────────────────────────────
+    col_gen, col_reset = st.columns([5, 1])
+    with col_gen:
+        generate_btn = st.button(
+            "🔍 구인공고 분석 후 실행 계획 생성",
+            type="primary", use_container_width=True, key="s4_generate",
+        )
+    with col_reset:
+        if st.button("초기화", use_container_width=True, key="s4_reset"):
+            for k in ("career_gap_result", "career_gap_goal", "career_roadmap_result",
+                      "career_grounding_used", "s4_file_text", "s4_trigger_generate",
+                      "s4_trigger_roadmap"):
+                st.session_state.pop(k, None)
+            for i in range(1, 37):
+                st.session_state.pop(f"s4_check_{i}", None)
+            st.rerun()
+
+    _do_generate = generate_btn or st.session_state.pop("s4_trigger_generate", False)
+
+    if _do_generate:
+        if not goal_role.strip():
+            st.warning("목표 직책·역할을 입력해 주세요.")
+        elif input_mode == "📎 이력서 파일 업로드" and not goal_skills.strip():
+            st.warning("이력서 파일을 업로드해 주세요.")
+        else:
+            st.session_state["s4_goal_role"]  = goal_role
+            st.session_state["s4_goal_income"] = goal_income
+            st.session_state["s4_goal_skills"] = goal_skills
+
+            goal_info  = {"role": goal_role.strip(), "income": goal_income.strip(), "skills": goal_skills.strip()}
+            _error_msg = None
+
+            with st.spinner("구인공고를 검색하고 갭 분석 중입니다... (30초~1분 소요)"):
+                try:
+                    gap_result, grounding_used = _generate_gap_analysis(inputs, goal_info, scenario)
+                    st.session_state.career_gap_result     = gap_result
+                    st.session_state.career_gap_goal       = goal_info
+                    st.session_state.career_grounding_used = grounding_used
+                    st.session_state.career_roadmap_result = None
+                    for i in range(1, 37):
+                        st.session_state.pop(f"s4_check_{i}", None)
+                    st.rerun()
+                except json.JSONDecodeError as e:
+                    _error_msg = f"AI 응답 파싱 실패: {e}"
+                except Exception as e:
+                    _error_msg = f"분석 중 오류가 발생했습니다: {e}"
+
+            if _error_msg:
+                st.error(_error_msg)
+                col_r, _ = st.columns([2, 8])
+                with col_r:
+                    if st.button("재시도", key="s4_retry_gap"):
+                        st.session_state["s4_trigger_generate"] = True
+                        st.rerun()
+
+    # ── 섹션2 · 섹션3: 갭 분석 결과 ─────────────────────────────────────────
+    gap_result = st.session_state.get("career_gap_result")
+    if not gap_result:
+        return
+
+    grounding_used = st.session_state.get("career_grounding_used", False)
+    if grounding_used:
+        st.caption("✅ Google Search Grounding으로 실제 구인공고를 분석했습니다.")
+    else:
+        st.caption("ℹ️ 구인공고 실시간 검색 미지원 환경 — AI 추정 역량으로 갭 분석을 수행했습니다.")
+
+    st.divider()
+    _render_section2(gap_result)
+    st.divider()
+    _render_section3(gap_result)
+
+    # ── 로드맵 생성 버튼 ─────────────────────────────────────────────────────
+    st.divider()
+    roadmap_btn = st.button(
+        "📅 3년 로드맵 + 월별 계획 생성",
+        type="primary", use_container_width=True, key="s4_roadmap_btn",
+    )
+    _do_roadmap = roadmap_btn or st.session_state.pop("s4_trigger_roadmap", False)
+
+    if _do_roadmap:
+        goal_info  = st.session_state.get("career_gap_goal") or {
+            "role":   st.session_state.get("s4_goal_role", ""),
+            "income": st.session_state.get("s4_goal_income", ""),
+            "skills": st.session_state.get("s4_goal_skills", ""),
+        }
+        _error_msg = None
+
+        with st.spinner("갭 분석 결과를 반영해 3년 로드맵을 생성 중입니다... (1~2분 소요)"):
+            try:
+                roadmap_result = _generate_roadmap(inputs, goal_info, gap_result, scenario)
+                st.session_state.career_roadmap_result = roadmap_result
+                for i in range(1, 37):
+                    st.session_state.pop(f"s4_check_{i}", None)
+                st.rerun()
+            except json.JSONDecodeError as e:
+                _error_msg = f"AI 응답 파싱 실패: {e}"
+            except Exception as e:
+                _error_msg = f"로드맵 생성 중 오류가 발생했습니다: {e}"
+
+        if _error_msg:
+            st.error(_error_msg)
+            col_r, _ = st.columns([2, 8])
+            with col_r:
+                if st.button("재시도", key="s4_retry_roadmap"):
+                    st.session_state["s4_trigger_roadmap"] = True
+                    st.rerun()
+
+    # ── 섹션4 · 섹션5: 로드맵 + 월별 계획 ───────────────────────────────────
+    roadmap_result = st.session_state.get("career_roadmap_result")
+    if not roadmap_result:
+        return
+
+    st.divider()
+    _render_section4(roadmap_result.get("roadmap", {}))
+
+    st.divider()
+    loaded_checks = _load_latest_checklist()
+    _render_section5(roadmap_result.get("monthly_plan", []), loaded_checks)
+
+    # 체크 상태 저장 (rerun마다 자동 갱신)
+    current_checks = {
+        f"s4_check_{i}": st.session_state.get(f"s4_check_{i}", False)
+        for i in range(1, 37)
+    }
+    _save_checklist(current_checks)
+
+    # ── 섹션5 하단: PDF 저장 버튼 ──────────────────────────────────────────
+    st.divider()
+    # ── [작성 내용 저장] 버튼 ────────────────────────────────────────────────
+    if st.button("💾 작성 내용 저장", use_container_width=True, key="s4_save_btn"):
+        try:
+            _s4_save_data = {
+                "saved_at":     datetime.datetime.now().isoformat(timespec="seconds"),
+                "goal_role":    st.session_state.get("s4_goal_role", ""),
+                "goal_income":  st.session_state.get("s4_goal_income", ""),
+                "goal_skills":  st.session_state.get("s4_goal_skills", ""),
+                "gap_result":   st.session_state.get("career_gap_result") or {},
+                "roadmap":      (roadmap_result or {}).get("roadmap", {}),
+                "monthly_plan": (roadmap_result or {}).get("monthly_plan", []),
+                "checks":       current_checks,
+            }
+            _s4_path = f"career_save_{datetime.date.today().strftime('%Y%m%d')}.json"
+            with open(_s4_path, "w", encoding="utf-8") as _f:
+                json.dump(_s4_save_data, _f, ensure_ascii=False, indent=2)
+            st.success("저장 완료")
+        except Exception as _e:
+            st.error(f"저장 실패: {_e}")
+
+    if pdf_fn is not None:
+        screen4_data = {
+            "goal_role":    st.session_state.get("s4_goal_role", ""),
+            "goal_income":  st.session_state.get("s4_goal_income", ""),
+            "goal_skills":  st.session_state.get("s4_goal_skills", ""),
+            "gap_result":   st.session_state.get("career_gap_result") or {},
+            "roadmap":      (roadmap_result or {}).get("roadmap", {}),
+            "monthly_plan": (roadmap_result or {}).get("monthly_plan", []),
+            "checks":       current_checks,
+        }
+        result_data = st.session_state.get("result") or {}
+        inputs_data = st.session_state.get("inputs") or {}
+        try:
+            pdf_bytes = pdf_fn(result_data, inputs_data, screen4_data=screen4_data)
+            fname = f"career_report_{datetime.date.today().strftime('%Y%m%d')}.pdf"
+            st.download_button(
+                label="📄 PDF로 저장",
+                data=pdf_bytes,
+                file_name=fname,
+                mime="application/pdf",
+                use_container_width=True,
+                key="s4_pdf_download",
+            )
+        except Exception as e:
+            st.error(f"PDF 생성 오류: {e}")

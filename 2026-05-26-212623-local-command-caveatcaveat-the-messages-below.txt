@@ -1,0 +1,1242 @@
+▗ ▗   ▖ ▖  Claude Code v2.1.150
+           Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Desktop/VibeCoding/Final
+
+❯ /clear                                                                        
+  ⎿  (no content)
+
+❯ 2026-05-25-232132-local-command-caveatcaveat-the-messages-below 읽어와서      
+  이어서 시작해                                                                 
+
+⏺ 해당 파일을 읽어오겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 이전 세션의 내용을 파악했습니다. 컨텍스트 한계에 도달하면서 작업이 중단된 것
+  같습니다. 현재 app.py 상태를 확인하겠습니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('OK')" 2>&1)
+  ⎿  OK
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ 구문 오류는 없지만, 작업이 미완성입니다. 상세히 확인하겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 문제 파악 완료. _build_status_section_html 함수 내에 죽은 코드(lines
+  1695-1912)가 남아있고, render_home_page()에서 호출하는 build_home_html()이
+  없습니다. 프롬프트대로 수정하겠습니다.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Bash(grep -c "{{STATUS_SECTION}}"
+      /Users/mary_shin/Desktop/VibeCoding/Final/screen0.html && python3 -c "
+      with open('/Users/mary_shin/Desktop/VibeCoding/Final/screen0…)
+  ⎿  2
+     '{{STATUS_SECTION}}'
+
+⏺ {{STATUS_SECTION}}이 이중 중괄호임을 확인. 이제 두 가지 작업을 합니다:
+
+  1. _build_status_section_html 내 죽은 코드(1695~1912) 삭제
+  2. build_home_html() 새 함수 추가 (screen0.html 읽기 + 플레이스홀더 치환)
+  3. render_home_page() 수정 (height=800, scrolling=True, 네이티브 버튼 추가)
+
+⏺ Update(app.py)
+  ⎿  Added 72 lines, removed 220 lines
+      1692      </div>
+      1693      <button class="cp-continue" onclick="toast('📋','플랜 진
+            행 화면으로 이동합니다')">이어서 진행하기 →</button>
+      1694    </div>"""
+      1695 -    LIGHT_VARS = """:root{                                   
+      1696 -  --bg:#f0f0f8;--surface:#fff;--surface2:#e8e8f4;            
+      1697 -  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.13);      
+      1698 -  --text1:#1a1a2e;--text2:#4a4a6a;--text3:#9090b0;           
+      1699 -  --lock:#e0e0ee;--lock-b:rgba(0,0,0,0.05);                  
+      1700 -  --shadow:0 8px 32px rgba(0,0,0,0.1);--toast-bg:#fff;       
+      1701 -}"""                                                         
+      1702 -    CSS_VARS = LIGHT_VARS if theme == "light" else DARK_VARS 
+      1695  
+      1704 -    CSS = CSS_VARS + """                                     
+      1705 -*,*::before,*::after{box-sizing:border-box;margin:0;padding:0
+           -}                                                            
+      1706 -html,body{width:100%}                                        
+      1707 -body{                                                        
+      1708 -  background:var(--bg);color:var(--text1);                   
+      1709 -  font-family:'Apple SD Gothic Neo','Noto Sans KR','Malgun Go
+           -thic',sans-serif;                                            
+      1710 -  display:flex;flex-direction:column;align-items:center;paddi
+           -ng-bottom:40px;                                              
+      1711 -}                                                            
+      1712 -.brand{                                                      
+      1713 -  display:flex;flex-direction:column;align-items:center;     
+      1714 -  margin:32px 0 28px;gap:12px;padding:0 24px;text-align:cente
+           -r;                                                           
+      1715 -}                                                            
+      1716 -.brand-icon{                                                 
+      1717 -  width:66px;height:66px;                                    
+      1718 -  filter:drop-shadow(0 0 16px rgba(100,120,255,.4));         
+      1719 -  animation:float 4s ease-in-out infinite;                   
+      1720 -}                                                            
+      1721 -@keyframes float{0%,100%{transform:translateY(0)}50%{transfor
+           -m:translateY(-7px)}}                                         
+      1722 -.brand h1{                                                   
+      1723 -  font-size:clamp(1.3rem,5vw,1.65rem);font-weight:800;letter-
+           -spacing:-.5px;                                               
+      1724 -  background:linear-gradient(135deg,#a0a8ff 0%,#7ef8c8 100%);
+      1725 -  -webkit-background-clip:text;-webkit-text-fill-color:transp
+           -arent;background-clip:text;                                  
+      1726 -}                                                            
+      1727 -.brand p{font-size:.9rem;color:var(--text2)}                 
+      1728 -.btn-list{width:100%;max-width:520px;padding:0 20px;display:f
+           -lex;flex-direction:column;gap:13px}                          
+      1729 -.plan-btn{                                                   
+      1730 -  position:relative;display:flex;align-items:center;gap:15px;
+      1731 -  border-radius:18px;padding:19px 20px;cursor:pointer;       
+      1732 -  border:1px solid transparent;text-align:left;width:100%;bac
+           -kground:none;                                                
+      1733 -  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-
+           -shadow .22s;overflow:hidden;                                 
+      1734 -}                                                            
+      1735 -.plan-btn::after{                                            
+      1736 -  content:'';position:absolute;inset:0;background:rgba(255,25
+           -5,255,.03);                                                  
+      1737 -  opacity:0;transition:opacity .2s;border-radius:inherit;    
+      1738 -}                                                            
+      1739 -.plan-btn:hover::after{opacity:1}                            
+      1740 -.plan-btn:hover{transform:translateY(-4px)}                  
+      1741 -.btn-s{background:linear-gradient(135deg,#0F6E56,#0d5c47)!imp
+           -ortant;border-color:rgba(19,149,122,.35)}                    
+      1742 -.btn-s:hover{box-shadow:0 10px 30px rgba(15,110,86,.5)}      
+      1743 -.btn-c{background:linear-gradient(135deg,#534AB7,#423b96)!imp
+           -ortant;border-color:rgba(107,98,212,.35)}                    
+      1744 -.btn-c:hover{box-shadow:0 10px 30px rgba(83,74,183,.5)}      
+      1745 -.btn-locked{background:var(--lock)!important;border:1px solid
+           - var(--lock-b)!important;cursor:not-allowed}                 
+      1746 -.btn-locked:hover{transform:none!important;box-shadow:none!im
+           -portant}                                                     
+      1747 -.btn-locked::after{display:none}                             
+      1748 -.btn-locked .b-label,.btn-locked .b-desc{color:var(--text3)!i
+           -mportant}                                                    
+      1749 -.b-icon{font-size:1.75rem;flex-shrink:0;line-height:1}       
+      1750 -.b-icon.lg{font-size:2rem}                                   
+      1751 -.b-text{flex:1}                                              
+      1752 -.b-label{font-size:.98rem;font-weight:700;color:#fff;margin-b
+           -ottom:3px;display:flex;align-items:center;gap:7px}           
+      1753 -.b-label.lg{font-size:1.08rem}                               
+      1754 -.b-desc{font-size:.77rem;color:rgba(255,255,255,.62);line-hei
+           -ght:1.5}                                                     
+      1755 -.b-arrow{font-size:1.05rem;color:rgba(255,255,255,.45);flex-s
+           -hrink:0;transition:transform .2s}                            
+      1756 -.plan-btn:not(.btn-locked):hover .b-arrow{transform:translate
+           -X(3px)}                                                      
+      1757 -.lock-tag{                                                   
+      1758 -  display:inline-flex;align-items:center;gap:3px;font-size:.6
+           -8rem;                                                        
+      1759 -  background:rgba(255,255,255,.08);border-radius:30px;padding
+           -:2px 8px;color:var(--text3);                                 
+      1760 -}                                                            
+      1761 -.card-result{                                                
+      1762 -  background:linear-gradient(135deg,#0e3f74,#0a2d55);border:1
+           -px solid rgba(30,127,212,.35);                               
+      1763 -  border-radius:18px;padding:20px 20px 16px;display:flex;flex
+           --direction:column;gap:14px;                                  
+      1764 -  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-
+           -shadow .22s;cursor:default;                                  
+      1765 -}                                                            
+      1766 -.card-result:hover{transform:translateY(-3px);box-shadow:0 10
+           -px 30px rgba(24,95,165,.45)}                                 
+      1767 -.cr-top{display:flex;justify-content:space-between;align-item
+           -s:flex-start;gap:10px}                                       
+      1768 -.cr-badge{                                                   
+      1769 -  display:inline-flex;align-items:center;gap:5px;font-size:.6
+           -8rem;font-weight:600;                                        
+      1770 -  background:rgba(30,127,212,.25);border:1px solid rgba(30,12
+           -7,212,.35);                                                  
+      1771 -  border-radius:30px;padding:3px 10px;color:#7ec8ff;margin-bo
+           -ttom:7px;                                                    
+      1772 -}                                                            
+      1773 -.cr-name{font-size:1.02rem;font-weight:800;color:#fff;line-he
+           -ight:1.3}                                                    
+      1774 -.cr-date{font-size:.72rem;color:rgba(255,255,255,.45);text-al
+           -ign:right;flex-shrink:0;padding-top:2px}                     
+      1775 -.cr-actions{display:flex;gap:8px}                            
+      1776 -.cr-btn{                                                     
+      1777 -  flex:1;padding:9px 10px;border-radius:11px;font-size:.78rem
+           -;font-weight:700;                                            
+      1778 -  cursor:pointer;border:none;transition:transform .18s,box-sh
+           -adow .18s;line-height:1.2;                                   
+      1779 -}                                                            
+      1780 -.cr-btn-outline{background:rgba(255,255,255,.07);border:1px s
+           -olid rgba(255,255,255,.15)!important;color:rgba(255,255,255,.
+           -8)}                                                          
+      1781 -.cr-btn-outline:hover{background:rgba(255,255,255,.12);transf
+           -orm:translateY(-2px)}                                        
+      1782 -.cr-btn-fill{background:linear-gradient(90deg,#185FA5,#1e7fd4
+           -);color:#fff}                                                
+      1783 -.cr-btn-fill:hover{box-shadow:0 6px 18px rgba(24,95,165,.5);t
+           -ransform:translateY(-2px)}                                   
+      1784 -.card-progress{                                              
+      1785 -  background:linear-gradient(135deg,#2a1e5c,#1f1848);border:1
+           -px solid rgba(107,98,212,.35);                               
+      1786 -  border-radius:18px;padding:20px 20px 16px;display:flex;flex
+           --direction:column;gap:13px;                                  
+      1787 -  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-
+           -shadow .22s;cursor:default;                                  
+      1788 -}                                                            
+      1789 -.card-progress:hover{transform:translateY(-3px);box-shadow:0 
+           -10px 30px rgba(83,74,183,.45)}                               
+      1790 -.cp-top{display:flex;justify-content:space-between;align-item
+           -s:center;gap:10px}                                           
+      1791 -.cp-name{font-size:1rem;font-weight:800;color:#fff}          
+      1792 -.cp-todo{                                                    
+      1793 -  display:inline-flex;align-items:center;gap:4px;font-size:.7
+           -rem;font-weight:700;                                         
+      1794 -  background:rgba(255,180,80,.12);border:1px solid rgba(255,1
+           -80,80,.22);                                                  
+      1795 -  border-radius:30px;padding:3px 9px;color:#ffb450;flex-shrin
+           -k:0;                                                         
+      1796 -}                                                            
+      1797 -.cp-bar-wrap{display:flex;flex-direction:column;gap:6px}     
+      1798 -.cp-bar-meta{display:flex;justify-content:space-between;font-
+           -size:.73rem;color:rgba(255,255,255,.5)}                      
+      1799 -.cp-pct{font-weight:700;color:#c3b8ff}                       
+      1800 -.cp-bar{height:7px;background:rgba(255,255,255,.1);border-rad
+           -ius:99px;overflow:hidden}                                    
+      1801 -.cp-fill{height:100%;background:linear-gradient(90deg,#534AB7
+           -,#9b8fff);border-radius:99px;transition:width 1.2s cubic-bezi
+           -er(.22,1,.36,1)}                                             
+      1802 -.cp-continue{                                                
+      1803 -  background:linear-gradient(90deg,#534AB7,#6b62d4);border:no
+           -ne;border-radius:11px;                                       
+      1804 -  padding:10px 16px;font-size:.82rem;font-weight:700;color:#f
+           -ff;cursor:pointer;                                           
+      1805 -  display:flex;align-items:center;justify-content:center;gap:
+           -6px;width:100%;                                              
+      1806 -  transition:transform .18s,box-shadow .18s;                 
+      1807 -}                                                            
+      1808 -.cp-continue:hover{transform:translateY(-2px);box-shadow:0 6p
+           -x 20px rgba(83,74,183,.55)}                                  
+      1809 -.toast{                                                      
+      1810 -  position:fixed;bottom:20px;left:50%;                       
+      1811 -  transform:translateX(-50%) translateY(70px);               
+      1812 -  background:var(--toast-bg);border:1px solid var(--border2);
+      1813 -  border-radius:14px;padding:12px 20px;font-size:.83rem;color
+           -:var(--text1);                                               
+      1814 -  box-shadow:0 8px 28px rgba(0,0,0,.4);display:flex;align-ite
+           -ms:center;gap:8px;                                           
+      1815 -  transition:transform .35s cubic-bezier(.34,1.56,.64,1),opac
+           -ity .35s;                                                    
+      1816 -  opacity:0;z-index:999;white-space:nowrap;                  
+      1817 -}                                                            
+      1818 -.toast.show{transform:translateX(-50%) translateY(0);opacity:
+           -1}                                                           
+      1819 -@media(max-width:400px){                                     
+      1820 -  .b-icon{font-size:1.45rem}.b-icon.lg{font-size:1.75rem}    
+      1821 -  .plan-btn{padding:15px 14px}                               
+      1822 -}                                                            
+      1823 -"""                                                          
+      1696  
+      1825 -    return f"""<!DOCTYPE html>                               
+      1826 -<html lang="ko">                                             
+      1827 -<head>                                                       
+      1828 -<meta charset="UTF-8">                                       
+      1829 -<meta name="viewport" content="width=device-width, initial-sc
+           -ale=1.0">                                                    
+      1830 -<style>{CSS}</style>                                         
+      1831 -</head>                                                      
+      1832 -<body>                                                       
+      1833 -<div class="brand">                                          
+      1834 -  <svg class="brand-icon" viewBox="0 0 72 72" fill="none" xml
+           -ns="http://www.w3.org/2000/svg">                             
+      1835 -    <circle cx="36" cy="36" r="34" stroke="url(#cg1)" stroke-
+           -width="2.5"/>                                                
+      1836 -    <circle cx="36" cy="36" r="26" stroke="url(#cg2)" stroke-
+           -width="1.2" stroke-dasharray="3 3"/>                         
+      1837 -    <polygon points="36,10 40,36 36,30 32,36" fill="url(#cg3)
+           -"/>                                                          
+      1838 -    <polygon points="36,62 32,36 36,42 40,36" fill="#4a4a6a"/
+           ->                                                            
+      1839 -    <circle cx="36" cy="36" r="4" fill="url(#cg3)"/>         
+      1840 -    <line x1="36" y1="4" x2="36" y2="12" stroke="rgba(160,168
+           -,255,0.4)" stroke-width="2" stroke-linecap="round"/>         
+      1841 -    <line x1="36" y1="60" x2="36" y2="68" stroke="rgba(160,16
+           -8,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>      
+      1842 -    <line x1="4" y1="36" x2="12" y2="36" stroke="rgba(160,168
+           -,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>       
+      1843 -    <line x1="60" y1="36" x2="68" y2="36" stroke="rgba(160,16
+           -8,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>      
+      1844 -    <circle cx="18" cy="18" r="1.5" fill="#a0a8ff" opacity=".
+           -7"/>                                                         
+      1845 -    <circle cx="54" cy="15" r="1" fill="#7ef8c8" opacity=".6"
+           -/>                                                           
+      1846 -    <circle cx="58" cy="52" r="1.2" fill="#a0a8ff" opacity=".
+           -5"/>                                                         
+      1847 -    <defs>                                                   
+      1848 -      <linearGradient id="cg1" x1="0" y1="0" x2="72" y2="72" 
+           -gradientUnits="userSpaceOnUse">                              
+      1849 -        <stop offset="0%" stop-color="#a0a8ff"/><stop offset=
+           -"100%" stop-color="#7ef8c8"/>                                
+      1850 -      </linearGradient>                                      
+      1851 -      <linearGradient id="cg2" x1="0" y1="0" x2="72" y2="72" 
+           -gradientUnits="userSpaceOnUse">                              
+      1852 -        <stop offset="0%" stop-color="#a0a8ff" stop-opacity="
+           -.5"/><stop offset="100%" stop-color="#7ef8c8" stop-opacity=".
+           -5"/>                                                         
+      1853 -      </linearGradient>                                      
+      1854 -      <linearGradient id="cg3" x1="36" y1="10" x2="36" y2="36
+           -" gradientUnits="userSpaceOnUse">                            
+      1855 -        <stop offset="0%" stop-color="#7ef8c8"/><stop offset=
+           -"100%" stop-color="#a0a8ff"/>                                
+      1856 -      </linearGradient>                                      
+      1857 -    </defs>                                                  
+      1858 -  </svg>                                                     
+      1859 -  <h1>AI 인생 시나리오 플래너</h1>                           
+      1860 -  <p>당신의 다음 10년을 설계하세요</p>                       
+      1861 -</div>                                                       
+      1862 -<div class="btn-list">                                       
+      1863 -  <button class="plan-btn btn-s" onclick="navigate('start')">
+      1864 -    <span class="b-icon lg">🎯</span>                        
+      1865 -    <span class="b-text">                                    
+      1866 -      <span class="b-label lg">인생 시나리오 시작</span>     
+      1867 -      <span class="b-desc">15개 질문으로 나만의 3가지 시나리 
+           -오 설계</span>                                               
+      1868 -    </span>                                                  
+      1869 -    <span class="b-arrow">›</span>                           
+      1870 -  </button>                                                  
+      1871 -  {btn2_html}                                                
+      1872 -  <button class="plan-btn btn-c" onclick="navigate('career')"
+           ->                                                            
+      1873 -    <span class="b-icon">💼</span>                           
+      1874 -    <span class="b-text">                                    
+      1875 -      <span class="b-label">3년 후 커리어 설계</span>        
+      1876 -      <span class="b-desc">목표 직업 구인공고 분석 + 월간 실 
+           -행 계획</span>                                               
+      1877 -    </span>                                                  
+      1878 -    <span class="b-arrow">›</span>                           
+      1879 -  </button>                                                  
+      1880 -</div>                                                       
+      1881 -<div class="toast" id="toastEl"><span id="ti"></span><span id
+           -="tm"></span></div>                                          
+      1882 -<script>                                                     
+      1883 -function navigate(action) {{                                 
+      1884 -  try {{                                                     
+      1885 -    window.parent.location.search = '?home_action=' + action;
+      1886 -  }} catch(e) {{                                             
+      1887 -    window.location.search = '?home_action=' + action;       
+      1888 -  }}                                                         
+      1889 -}}                                                           
+      1890 -function showLockToast() {{                                  
+      1891 -  showToast('🔒', '먼저 인생 시나리오를 설계해주세요');      
+      1892 -}}                                                           
+      1893 -let ttimer;                                                  
+      1894 -function showToast(icon, msg) {{                             
+      1895 -  const el = document.getElementById('toastEl');             
+      1896 -  document.getElementById('ti').textContent = icon + ' ';    
+      1897 -  document.getElementById('tm').textContent = msg;           
+      1898 -  el.classList.add('show');                                  
+      1899 -  clearTimeout(ttimer);                                      
+      1900 -  ttimer = setTimeout(() => el.classList.remove('show'), 2600
+           -);                                                           
+      1901 -}}                                                           
+      1902 -function sendHeight() {{                                     
+      1903 -  window.parent.postMessage({{type:'streamlit:setFrameHeight'
+           -,height:document.documentElement.scrollHeight}}, '*');       
+      1904 -}}                                                           
+      1905 -window.addEventListener('load', function() {{                
+      1906 -  sendHeight();                                              
+      1907 -  {cp_fill_js}                                               
+      1908 -}});                                                         
+      1909 -new MutationObserver(sendHeight).observe(document.documentEle
+           -ment, {{subtree:true,childList:true,attributes:true}});      
+      1910 -</script>                                                    
+      1911 -</body>                                                      
+      1912 -</html>"""                                                   
+      1697 +def build_home_html(status: int, hist_data: dict, checklist_d
+           +ata: dict, theme: str = "dark") -> str:                      
+      1698 +    """screen0.html을 읽어 {{STATUS_SECTION}} 플레이스홀더를 
+           +상태별 HTML로 치환해 반환."""                                
+      1699 +    html_path = os.path.join(os.path.dirname(__file__), "scre
+           +en0.html")                                                   
+      1700 +    if not os.path.exists(html_path):                        
+      1701 +        return ""                                            
+      1702  
+      1703 +    with open(html_path, "r", encoding="utf-8") as f:        
+      1704 +        html_content = f.read()                              
+      1705  
+      1706 +    status_section = _build_status_section_html(status, hist_
+           +data, checklist_data)                                        
+      1707 +    html_content = html_content.replace("{{STATUS_SECTION}}",
+           + status_section)                                             
+      1708 +                                                             
+      1709 +    return html_content                                      
+      1710 +                                                             
+      1711 +                                                             
+      1712  def render_home_page():
+      1713      # HTML 컴포넌트 버튼 클릭에서 오는 네비게이션 처리
+      1714      try:
+     ...
+      1735              st.session_state.page = "career"
+      1736          st.rerun()
+      1737  
+      1941 -    status        = get_user_status()                        
+      1942 -    hist_data     = _load_latest_history() if status >= 2 els
+           -e {}                                                         
+      1738 +    status         = get_user_status()                       
+      1739 +    hist_data      = _load_latest_history() if status >= 2 el
+           +se {}                                                        
+      1740      checklist_data = _load_latest_career_checklist() if statu
+            s >= 3 else {}
+      1944 -    theme         = st.session_state.get("theme", "dark")    
+      1741 +    theme          = st.session_state.get("theme", "dark")   
+      1742  
+      1743      html_content = build_home_html(status, hist_data, checkli
+            st_data, theme)
+      1947 -    components.html(html_content, height=680, scrolling=False
+           -)                                                            
+      1744  
+      1745 +    if not html_content:                                     
+      1746 +        st.warning("screen0.html 파일이 없습니다. Final 폴더 
+           +에 파일을 추가해주세요.")                                    
+      1747 +        _render_home_fallback(status, hist_data)             
+      1748 +        return                                               
+      1749  
+      1750 +    components.html(html_content, height=800, scrolling=True)
+      1751 +                                                             
+      1752 +    # Streamlit 네이티브 버튼 — HTML 디자인 아래 실제 동작 담
+           +당                                                           
+      1753 +    st.divider()                                             
+      1754 +    col1, col2, col3 = st.columns(3)                         
+      1755 +    with col1:                                               
+      1756 +        if st.button("✨ 인생 시나리오 시작", use_container_w
+           +idth=True, key="home_native_start"):                         
+      1757 +            st.session_state.page = "input"                  
+      1758 +            st.rerun()                                       
+      1759 +    with col2:                                               
+      1760 +        if status >= 2:                                      
+      1761 +            if st.button("📊 결과 다시 보기", use_container_w
+           +idth=True, key="home_native_result"):                        
+      1762 +                _restore_session_from_history(hist_data)     
+      1763 +                st.session_state.page = "result"             
+      1764 +                st.rerun()                                   
+      1765 +        elif status == 3:                                    
+      1766 +            if st.button("▶ 이어서 진행하기", use_container_w
+           +idth=True, key="home_native_plan"):                          
+      1767 +                _restore_session_from_history(hist_data)     
+      1768 +                st.session_state.page = "plan"               
+      1769 +                st.rerun()                                   
+      1770 +    with col3:                                               
+      1771 +        if st.button("💼 3년 후 커리어 설계", use_container_w
+           +idth=True, key="home_native_career"):                        
+      1772 +            st.session_state["s4_prev_page"] = "home"        
+      1773 +            st.session_state.page = "career"                 
+      1774 +            st.rerun()                                       
+      1775 +                                                             
+      1776 +                                                             
+      1777 +def _render_home_fallback(status: int, hist_data: dict):     
+      1778 +    """screen0.html이 없을 때 네이티브 UI로 fallback."""     
+      1779 +    st.title("AI 인생 시나리오 플래너")                      
+      1780 +    st.caption("나의 현재 상황을 입력하면 AI가 3가지 인생 시 
+           +나리오를 분석해 드립니다.")                                  
+      1781 +    if st.button("✨ 인생 시나리오 시작", type="primary", use
+           +_container_width=True):                                      
+      1782 +        st.session_state.page = "input"                      
+      1783 +        st.rerun()                                           
+      1784 +    if status >= 2:                                          
+      1785 +        col_v, col_p = st.columns(2)                         
+      1786 +        with col_v:                                          
+      1787 +            if st.button("📊 결과 다시 보기", use_container_w
+           +idth=True):                                                  
+      1788 +                _restore_session_from_history(hist_data)     
+      1789 +                st.session_state.page = "result"             
+      1790 +                st.rerun()                                   
+      1791 +        with col_p:                                          
+      1792 +            if st.button("🎯 목표달성플랜 시작", use_containe
+           +r_width=True):                                               
+      1793 +                _restore_session_from_history(hist_data)     
+      1794 +                st.session_state.page = "plan"               
+      1795 +                st.rerun()                                   
+      1796 +    if st.button("💼 3년 후 커리어 설계", use_container_width
+           +=True):                                                      
+      1797 +        st.session_state["s4_prev_page"] = "home"            
+      1798 +        st.session_state.page = "career"                     
+      1799 +        st.rerun()                                           
+      1800 +                                                             
+      1801 +                                                             
+      1802  def render_input_page():
+      1803      st.title("AI 인생 시나리오 플래너")
+      1804      st.caption("18개 질문에 답하면 AI가 현실형·도전형·파격형 
+            3가지 인생 시나리오를 분석해 드립니다.")
+
+⏺ 이제 os 모듈이 import 되어 있는지 확인합니다.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('OK')" 2>&1)
+  ⎿  OK
+
+⏺ 구문 정상. 마지막으로 전체 흐름이 올바른지 핵심 함수들의 연결을 검증합니다.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ 모든 연결이 정상입니다. 수정 내용을 정리하면:
+
+  ---
+  완료된 작업
+
+  이전 세션에서 컨텍스트 한계로 중단된 부분을 이어서 완성했습니다:
+
+  1. _build_status_section_html() — 함수 내에 남아있던 죽은 코드(구 CSS+HTML
+  블록 약 200줄) 완전 제거
+  2. build_home_html() 신규 추가 — 프롬프트 지시대로 구현:
+    - screen0.html 파일을 open()으로 읽기
+    - {{STATUS_SECTION}} 플레이스홀더를 _build_status_section_html() 결과로
+  replace() 치환
+    - 치환된 HTML 반환
+  3. render_home_page() 수정:
+    - build_home_html() 호출
+    - components.html(height=800, scrolling=True) 로 렌더링
+    - 파일 없을 때 fallback 안내 + _render_home_fallback() 호출
+    - HTML 아래 Streamlit 네이티브 버튼 3개(시나리오 시작 / 결과 보기 / 커리어
+  설계)로 실제 이동 처리
+  4. _render_home_fallback() 신규 추가 — screen0.html 미존재 시 기본 Streamlit
+  위젯으로 fallback
+
+✻ Cogitated for 2m 34s
+
+❯ app.py 전체를 검토하고 아래 항목을 확인해줘.                                  
+                                                                                
+  [화면 전환 검증]                                                              
+  □ 화면0 → 화면1·2·3·4 이동 로직 정상 여부                                     
+  □ 각 화면에서 화면0으로 돌아오는 버튼 존재 여부                               
+  □ page 변수값 누락 또는 오타 여부                                             
+                                                                                
+  [기능 검증]                                                                   
+  □ 저장/불러오기 정상 동작 여부                                                
+  □ Gemini API 호출 try/except 처리 여부                                        
+  □ JSON 파싱 오류 처리 여부                                                    
+  □ .env API 키 누락 시 안내 메시지 여부                                        
+                                                                                
+  [화면0 상태 판단]                                                             
+  □ 상태1·2·3 판단 로직 정상 여부                                               
+  □ 파일 없을 때 상태1 fallback 처리 여부                                       
+                                                                                
+  문제 있으면 바로 수정해줘.                                                    
+
+⏺ 전체 app.py를 체계적으로 검토하겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 이제 screen3와 screen4도 확인합니다.
+
+  Searched for 6 patterns (ctrl+o to expand)
+⏺ 전체 코드 검토 완료. 발견된 문제들을 정리하고 수정합니다.
+
+  ---
+  발견된 문제 (6개)
+
+  ┌─────┬────────────────────────┬──────────────────────────────────────────┐
+  │  #  │          위치          │                   문제                   │
+  ├─────┼────────────────────────┼──────────────────────────────────────────┤
+  │     │ render_home_page()     │ elif status == 3 가 if status >= 2 뒤에  │
+  │ 1   │ L1765                  │ 와서 status=3일 때 "이어서 진행하기"     │
+  │     │                        │ 버튼 영원히 미표시                       │
+  ├─────┼────────────────────────┼──────────────────────────────────────────┤
+  │ 2   │ render_input_page()    │ 홈으로 돌아가는 버튼 없음                │
+  ├─────┼────────────────────────┼──────────────────────────────────────────┤
+  │ 3   │ render_result_page()   │ "← 다시 입력하기"만 있고 홈으로 가는     │
+  │     │                        │ 경로 없음                                │
+  ├─────┼────────────────────────┼──────────────────────────────────────────┤
+  │ 4   │ generate_scenarios()   │ json.loads() 직접 호출 — JSONDecodeError │
+  │     │ L531                   │  시 내부 에러 메시지만 나옴              │
+  ├─────┼────────────────────────┼──────────────────────────────────────────┤
+  │ 5   │ generate_comparison()  │ 동일 JSON 파싱 문제                      │
+  │     │ L687                   │                                          │
+  ├─────┼────────────────────────┼──────────────────────────────────────────┤
+  │ 6   │ main() L2022           │ else: 가 "result" 포함 모든 미등록       │
+  │     │                        │ page를 처리 — 명시적으로 해야 함         │
+  └─────┴────────────────────────┴──────────────────────────────────────────┘
+
+  순서대로 수정합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 4 lines, removed 1 line
+      528          raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 
+           않았습니다.")
+      529      user_message = build_user_message(inputs, correction)
+      530      response = model.generate_content(user_message)
+      531 -    return json.loads(response.text)                          
+      531 +    try:                                                      
+      532 +        return json.loads(response.text)                      
+      533 +    except json.JSONDecodeError as e:                         
+      534 +        raise ValueError(f"AI 응답을 파싱할 수 없습니다 (JSON 
+          +오류). 잠시 후 다시 시도해 주세요.\n상세: {e}") from e        
+      535  
+      536  
+      537  def save_profile(inputs: dict):
+
+⏺ Update(app.py)
+  ⎿  Added 4 lines, removed 1 line
+      687          raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 
+           않았습니다.")
+      688      msg = build_compare_message(old_data, new_inputs)
+      689      response = model.generate_content(msg)
+      690 -    return json.loads(response.text)                          
+      690 +    try:                                                      
+      691 +        return json.loads(response.text)                      
+      692 +    except json.JSONDecodeError as e:                         
+      693 +        raise ValueError(f"AI 응답을 파싱할 수 없습니다 (JSON 
+          +오류). 잠시 후 다시 시도해 주세요.\n상세: {e}") from e        
+      694  
+      695  
+      696  def get_korean_font_path():
+
+⏺ Update(app.py)
+  ⎿  Added 6 lines, removed 6 lines
+      1763              st.session_state.page = "input"
+      1764              st.rerun()
+      1765      with col2:
+      1766 -        if status >= 2:                                      
+      1767 -            if st.button("📊 결과 다시 보기", use_container_w
+           -idth=True, key="home_native_result"):                        
+      1768 -                _restore_session_from_history(hist_data)     
+      1769 -                st.session_state.page = "result"             
+      1770 -                st.rerun()                                   
+      1771 -        elif status == 3:                                    
+      1766 +        if status == 3:                                      
+      1767              if st.button("▶ 이어서 진행하기", use_container_w
+            idth=True, key="home_native_plan"):
+      1768                  _restore_session_from_history(hist_data)
+      1769                  st.session_state.page = "plan"
+      1770                  st.rerun()
+      1771 +        elif status == 2:                                    
+      1772 +            if st.button("📊 결과 다시 보기", use_container_w
+           +idth=True, key="home_native_result"):                        
+      1773 +                _restore_session_from_history(hist_data)     
+      1774 +                st.session_state.page = "result"             
+      1775 +                st.rerun()                                   
+      1776      with col3:
+      1777          if st.button("💼 3년 후 커리어 설계", use_container_w
+            idth=True, key="home_native_career"):
+      1778              st.session_state["s4_prev_page"] = "home"
+
+⏺ Update(app.py)
+  ⎿  Added 4 lines
+      1806  
+      1807  
+      1808  def render_input_page():
+      1809 +    if st.button("← 홈으로", key="input_home"):              
+      1810 +        st.session_state.page = "home"                       
+      1811 +        st.rerun()                                           
+      1812 +                                                             
+      1813      st.title("AI 인생 시나리오 플래너")
+      1814      st.caption("18개 질문에 답하면 AI가 현실형·도전형·파격형 
+            3가지 인생 시나리오를 분석해 드립니다.")
+      1815  
+
+⏺ Update(app.py)
+  ⎿  Added 6 lines, removed 2 lines
+      1920      except Exception:
+      1921          pass
+      1922  
+      1923 -    col_back, col_save_hist, col_pdf, col_career, col_theme =
+           - st.columns([4, 2, 2, 2, 1])                                 
+      1923 +    col_home, col_back, col_save_hist, col_pdf, col_career, c
+           +ol_theme = st.columns([2, 3, 2, 2, 2, 1])                    
+      1924 +    with col_home:                                           
+      1925 +        if st.button("🏠 홈으로", use_container_width=True): 
+      1926 +            st.session_state.page = "home"                   
+      1927 +            st.rerun()                                       
+      1928      with col_back:
+      1925 -        if st.button("← 다시 입력하기"):                     
+      1929 +        if st.button("← 다시 입력하기", use_container_width=T
+           +rue):                                                        
+      1930              st.session_state.page = "input"
+      1931              st.session_state.result = None
+      1932              st.rerun()
+
+⏺ Update(app.py)
+  ⎿  Added 4 lines, removed 1 line
+      2033                  st.rerun()
+      2034      elif st.session_state.page == "career":
+      2035          screen4_career.render(pdf_fn=generate_pdf)
+      2036 -    else:                                                    
+      2036 +    elif st.session_state.page == "result":                  
+      2037          render_result_page()
+      2038 +    else:                                                    
+      2039 +        st.session_state.page = "home"                       
+      2040 +        st.rerun()                                           
+      2041  
+      2042  
+      2043  if __name__ == "__main__":
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('OK')" 2>&1)
+  ⎿  OK
+
+⏺ 구문 정상. 수정 결과를 최종 정리합니다.
+
+  ---
+  검토 결과 및 수정 완료
+
+  ✅ 화면 전환 검증
+
+  ┌──────────────┬──────────────────────┬──────────────────────────────────┐
+  │     항목     │         결과         │               조치               │
+  ├──────────────┼──────────────────────┼──────────────────────────────────┤
+  │ 화면0 →      │ ✅ 정상              │ —                                │
+  │ 1·2·3·4 이동 │                      │                                  │
+  ├──────────────┼──────────────────────┼──────────────────────────────────┤
+  │ 각 화면 →    │ ⚠️ input·result에    │ 수정: input에 ← 홈으로 버튼 추가 │
+  │ 화면0 버튼   │ 없음                 │  / result에 🏠 홈으로 버튼 추가  │
+  ├──────────────┼──────────────────────┼──────────────────────────────────┤
+  │ page 변수    │ ✅ 정상              │ —                                │
+  │ 오타         │                      │                                  │
+  ├──────────────┼──────────────────────┼──────────────────────────────────┤
+  │ main() else  │ ⚠️ 미등록 page도     │ 수정: elif "result" 명시 +       │
+  │ 절           │ result 렌더링        │ else는 home으로 리다이렉트       │
+  └──────────────┴──────────────────────┴──────────────────────────────────┘
+
+  ✅ 기능 검증
+
+  항목: 저장/불러오기
+  결과: ✅ 정상 (파일 존재 체크 포함)
+  조치: —
+  ────────────────────────────────────────
+  항목: Gemini API try/except
+  결과: ✅ 호출부에서 모두 래핑됨
+  조치: —
+  ────────────────────────────────────────
+  항목: JSON 파싱 오류 처리
+  결과: ⚠️ 오류 메시지 불명확
+  조치: 수정: generate_scenarios()·generate_comparison() 모두 JSONDecodeError
+    명시 처리 → 사용자 친화 메시지
+  ────────────────────────────────────────
+  항목: .env API 키 누락
+  결과: ✅ 시나리오 생성 버튼에서 체크 + ValueError로 catch됨
+  조치: —
+
+  ✅ 화면0 상태 판단
+
+  ┌────────────────┬────────────────────────────────┬──────────────────────┐
+  │      항목      │              결과              │         조치         │
+  ├────────────────┼────────────────────────────────┼──────────────────────┤
+  │ 상태1·2·3 판단 │ ✅ history/checklist 파일      │ —                    │
+  │  로직          │ 유무로 정확히 판단             │                      │
+  ├────────────────┼────────────────────────────────┼──────────────────────┤
+  │ status==3 버튼 │ ⚠️ Critical: elif status==3이  │ 수정: if status==3 → │
+  │  미표시 버그   │ if status>=2 뒤라 절대 실행 안 │  elif status==2      │
+  │                │  됨                            │ 순서로 변경          │
+  ├────────────────┼────────────────────────────────┼──────────────────────┤
+  │ 파일 없을 때   │ ✅ try/except → return 1 +     │ —                    │
+  │ 상태1 fallback │ html 없을 때 fallback          │                      │
+  └────────────────┴────────────────────────────────┴──────────────────────┘
+
+✻ Crunched for 3m 27s
+
+  /remote-control is active · Continue here, on your phone, or at https://claude.ai/code/session_012UhMuQpKbtxS7kDfcvVMTv
+
+❯ app.py 맨 상단에 Google 로그인 기능을 추가해줘. 사용자가 로그인하지 않은      
+  상태면 다른 화면을 보여주지 말고 'Google로 로그인' 버튼만 표시하고 st.stop()  
+  처리해줘. 로그인이 완료된 상태라면 기존 앱 화면이 정상 표시되게 하고, 화면    
+  우측 상단이나 적절한 위치에 사용자 이메일과 로그아웃 버튼을 표시해줘.         
+
+⏺ 현재 app.py 구조와 imports를 확인하고 구현 계획을 세웁니다.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+  ⎿  You've hit your session limit · resets 1:50am (Asia/Seoul)
+     /upgrade or /usage-credits to finish what you’re working on.
+
+✻ Cooked for 2m 32s
+
+❯ 화면0에서 각 버튼·카드 클릭 시 화면 이동이 되지 않는 문제를 수정해줘.         
+                                                                                
+  [문제 원인 파악]                                                              
+  화면0은 screen0.html을 st.components.v1.html()로 렌더링 중.                   
+  HTML 내부 버튼은 Streamlit의 session_state를 직접 변경할 수 없어서            
+  클릭해도 화면 전환이 안 됨.                                                   
+                                                                                
+  [수정 방법]                                                                   
+  HTML 버튼 클릭 이벤트 대신                                                    
+  Streamlit 네이티브 버튼으로 화면 전환을 처리해줘.                             
+                                                                                
+  screen0.html은 디자인(배경·레이아웃·카드 시각화)만 담당하고                   
+  실제 클릭 → 화면 전환은 Streamlit 버튼으로 처리.                              
+                                                                                
+  [3가지 상태별 버튼 구성]                                                      
+                                                                                
+  상태1 (신규 사용자):                                                          
+    st.button("🎯 인생 시나리오 시작")                                          
+    → st.session_state.page = "input"                                           
+    st.button("🔒 목표 달성 플랜", disabled=True)                               
+    st.button("💼 3년 후 커리어 설계")                                          
+    → st.session_state.page = "career"                                          
+                                                                                
+  상태2 (설문 완료, 플랜 미시작):                                               
+    st.button("🎯 인생 시나리오 시작")                                          
+    → st.session_state.page = "input"                                           
+    st.button("📊 결과 다시 보기")                                              
+    → st.session_state.page = "result"                                          
+    st.button("▶ 목표달성플랜 시작하기")                                        
+    → st.session_state.page = "plan"                                            
+    st.button("💼 3년 후 커리어 설계")                                          
+    → st.session_state.page = "career"                                          
+                                                                                
+  상태3 (플랜 진행 중):                                                         
+    st.button("🎯 인생 시나리오 시작")                                          
+    → st.session_state.page = "input"                                           
+    st.button("▶ 이어서 진행하기 →")                                            
+    → st.session_state.page = "plan"                                            
+    st.button("💼 3년 후 커리어 설계")                                          
+    → st.session_state.page = "career"                                          
+                                                                                
+  [버튼 스타일]                                                                 
+  st.markdown()으로 CSS 적용해서                                                
+  Streamlit 기본 버튼을 screen0.html 디자인과                                   
+  최대한 유사하게 스타일링해줘.                                                 
+                                                                                
+  [확인]                                                                        
+  3가지 상태 각각에서                                                           
+  모든 버튼 클릭 시 해당 화면으로 정상 이동되는지 확인.                         
+  완료 후 "화면0 버튼 수정 완료" 메시지 출력.                                   
+
+⏺ 현재 render_home_page() 전체를 확인합니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 현재 render_home_page() 전체와 관련 함수들을 파악했습니다. 문제 원인이
+  명확합니다: components.html() 안의 iframe 버튼은 Streamlit session_state에
+  접근 불가. 전면 재구성합니다.
+
+  작업 계획:
+  1. components.html() 제거
+  2. 브랜드 헤더 + 상태 정보 카드 → st.markdown() (시각 전용)
+  3. 모든 버튼 → st.button() (실제 네비게이션)
+  4. CSS 주입으로 screen0.html 디자인 최대 근사
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ CSS 상수와 SVG를 PROFILE_PATH 바로 아래에 삽입합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 100 lines
+      381  
+      382  PROFILE_PATH = "profile.json"
+      383  
+      384 +# ── 화면0 시각 상수 ─────────────────────────────────────────
+          +──────────────────                                            
+      385 +_HOME_PAGE_CSS = """<style>                                   
+      386 +.home-brand{display:flex;flex-direction:column;align-items:cen
+          +ter;                                                          
+      387 +  margin:28px auto 22px;gap:10px;text-align:center}           
+      388 +.home-brand-icon{width:66px;height:66px;                      
+      389 +  filter:drop-shadow(0 0 16px rgba(100,120,255,.4));          
+      390 +  animation:hbf 4s ease-in-out infinite}                      
+      391 +@keyframes hbf{0%,100%{transform:translateY(0)}50%{transform:t
+          +ranslateY(-7px)}}                                             
+      392 +.home-brand h1{font-size:clamp(1.3rem,4vw,1.6rem);font-weight:
+          +800;                                                          
+      393 +  letter-spacing:-.5px;margin:0;                              
+      394 +  background:linear-gradient(135deg,#a0a8ff 0%,#7ef8c8 100%); 
+      395 +  -webkit-background-clip:text;-webkit-text-fill-color:transpa
+          +rent;background-clip:text}                                    
+      396 +.home-brand p{font-size:.9rem;color:#9090b0;margin:0}         
+      397 +/* 상태2 결과 카드 */                                         
+      398 +.home-card-result{background:linear-gradient(135deg,#0e3f74,#0
+          +a2d55);                                                       
+      399 +  border:1px solid rgba(30,127,212,.35);border-radius:16px;   
+      400 +  padding:18px 20px 14px;margin-bottom:4px}                   
+      401 +.home-cr-top{display:flex;justify-content:space-between;      
+      402 +  align-items:flex-start;gap:10px}                            
+      403 +.home-cr-badge{display:inline-flex;align-items:center;gap:5px;
+      404 +  font-size:.68rem;font-weight:600;                           
+      405 +  background:rgba(30,127,212,.25);border:1px solid rgba(30,127
+          +,212,.35);                                                    
+      406 +  border-radius:30px;padding:3px 10px;color:#7ec8ff;margin-bot
+          +tom:6px}                                                      
+      407 +.home-cr-name{font-size:1rem;font-weight:800;color:#fff;line-h
+          +eight:1.3}                                                    
+      408 +.home-cr-date{font-size:.72rem;color:rgba(255,255,255,.45);   
+      409 +  text-align:right;flex-shrink:0;padding-top:2px}             
+      410 +/* 상태3 진행 카드 */                                         
+      411 +.home-card-progress{background:linear-gradient(135deg,#2a1e5c,
+          +#1f1848);                                                     
+      412 +  border:1px solid rgba(107,98,212,.35);border-radius:16px;   
+      413 +  padding:18px 20px 14px;margin-bottom:4px}                   
+      414 +.home-cp-top{display:flex;justify-content:space-between;      
+      415 +  align-items:center;gap:10px}                                
+      416 +.home-cp-name{font-size:1rem;font-weight:800;color:#fff}      
+      417 +.home-cp-todo{display:inline-flex;align-items:center;gap:4px; 
+      418 +  font-size:.7rem;font-weight:700;                            
+      419 +  background:rgba(255,180,80,.12);border:1px solid rgba(255,18
+          +0,80,.22);                                                    
+      420 +  border-radius:30px;padding:3px 9px;color:#ffb450;flex-shrink
+          +:0}                                                           
+      421 +.home-cp-meta{display:flex;justify-content:space-between;     
+      422 +  font-size:.73rem;color:rgba(255,255,255,.5);margin:8px 0 4px
+          +}                                                             
+      423 +.home-cp-pct{font-weight:700;color:#c3b8ff}                   
+      424 +.home-cp-bg{height:7px;background:rgba(255,255,255,.1);       
+      425 +  border-radius:99px;overflow:hidden}                         
+      426 +.home-cp-fill{height:100%;                                    
+      427 +  background:linear-gradient(90deg,#534AB7,#9b8fff);          
+      428 +  border-radius:99px;transition:width 1.2s cubic-bezier(.22,1,
+          +.36,1)}                                                       
+      429 +/* Streamlit 버튼 오버라이드 */                               
+      430 +[data-testid="stButton"]>button{                              
+      431 +  border-radius:18px!important;padding:18px 22px!important;   
+      432 +  font-size:.97rem!important;font-weight:700!important;       
+      433 +  min-height:66px!important;width:100%!important;             
+      434 +  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-s
+          +hadow .22s!important;                                         
+      435 +  letter-spacing:-.2px!important;text-align:left!important}   
+      436 +[data-testid="stButton"]>button:hover:not([disabled]){        
+      437 +  transform:translateY(-4px)!important}                       
+      438 +[data-testid="stButton"]>button[kind="primary"]{              
+      439 +  background:linear-gradient(135deg,#0F6E56,#0d5c47)!important
+          +;                                                             
+      440 +  border:1px solid rgba(19,149,122,.35)!important;color:#fff!i
+          +mportant}                                                     
+      441 +[data-testid="stButton"]>button[kind="primary"]:hover{        
+      442 +  box-shadow:0 10px 30px rgba(15,110,86,.5)!important}        
+      443 +[data-testid="stButton"]>button[kind="secondary"]{            
+      444 +  background:linear-gradient(135deg,#534AB7,#423b96)!important
+          +;                                                             
+      445 +  border:1px solid rgba(107,98,212,.35)!important;color:#fff!i
+          +mportant}                                                     
+      446 +[data-testid="stButton"]>button[kind="secondary"]:hover{      
+      447 +  box-shadow:0 10px 30px rgba(83,74,183,.5)!important}        
+      448 +[data-testid="stButton"]>button[disabled]{                    
+      449 +  background:rgba(37,37,64,.8)!important;                     
+      450 +  border:1px solid rgba(255,255,255,.06)!important;           
+      451 +  color:#5a5a7a!important;cursor:not-allowed!important;       
+      452 +  transform:none!important;box-shadow:none!important}         
+      453 +</style>"""                                                   
+      454 +                                                              
+      455 +_COMPASS_SVG = (                                              
+      456 +    '<svg class="home-brand-icon" viewBox="0 0 72 72" fill="no
+          +ne" '                                                         
+      457 +    'xmlns="http://www.w3.org/2000/svg">'                     
+      458 +    '<circle cx="36" cy="36" r="34" stroke="url(#hcg1)" stroke
+          +-width="2.5"/>'                                               
+      459 +    '<circle cx="36" cy="36" r="26" stroke="url(#hcg2)" stroke
+          +-width="1.2" stroke-dasharray="3 3"/>'                        
+      460 +    '<polygon points="36,10 40,36 36,30 32,36" fill="url(#hcg3
+          +)"/>'                                                         
+      461 +    '<polygon points="36,62 32,36 36,42 40,36" fill="#4a4a6a"/
+          +>'                                                            
+      462 +    '<circle cx="36" cy="36" r="4" fill="url(#hcg3)"/>'       
+      463 +    '<line x1="36" y1="4" x2="36" y2="12" stroke="rgba(160,168
+          +,255,0.4)" stroke-width="2" stroke-linecap="round"/>'         
+      464 +    '<line x1="36" y1="60" x2="36" y2="68" stroke="rgba(160,16
+          +8,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>'      
+      465 +    '<line x1="4" y1="36" x2="12" y2="36" stroke="rgba(160,168
+          +,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>'       
+      466 +    '<line x1="60" y1="36" x2="68" y2="36" stroke="rgba(160,16
+          +8,255,0.2)" stroke-width="1.5" stroke-linecap="round"/>'      
+      467 +    '<circle cx="18" cy="18" r="1.5" fill="#a0a8ff" opacity=".
+          +7"/>'                                                         
+      468 +    '<circle cx="54" cy="15" r="1" fill="#7ef8c8" opacity=".6"
+          +/>'                                                           
+      469 +    '<circle cx="58" cy="52" r="1.2" fill="#a0a8ff" opacity=".
+          +5"/>'                                                         
+      470 +    '<defs>'                                                  
+      471 +    '<linearGradient id="hcg1" x1="0" y1="0" x2="72" y2="72" g
+          +radientUnits="userSpaceOnUse">'                               
+      472 +    '<stop offset="0%" stop-color="#a0a8ff"/><stop offset="100
+          +%" stop-color="#7ef8c8"/>'                                    
+      473 +    '</linearGradient>'                                       
+      474 +    '<linearGradient id="hcg2" x1="0" y1="0" x2="72" y2="72" g
+          +radientUnits="userSpaceOnUse">'                               
+      475 +    '<stop offset="0%" stop-color="#a0a8ff" stop-opacity=".5"/
+          +>'                                                            
+      476 +    '<stop offset="100%" stop-color="#7ef8c8" stop-opacity=".5
+          +"/>'                                                          
+      477 +    '</linearGradient>'                                       
+      478 +    '<linearGradient id="hcg3" x1="36" y1="10" x2="36" y2="36"
+          + gradientUnits="userSpaceOnUse">'                             
+      479 +    '<stop offset="0%" stop-color="#7ef8c8"/><stop offset="100
+          +%" stop-color="#a0a8ff"/>'                                    
+      480 +    '</linearGradient>'                                       
+      481 +    '</defs></svg>'                                           
+      482 +)                                                             
+      483 +                                                              
+      484  Q3_OPTIONS = ["3개월 미만", "6개월", "1년", "1년 이상"]
+      485  Q5_OPTIONS = ["없음", "50만 미만", "50~150만", "150만 이상"]
+      486  Q6_OPTIONS = ["강하게 반대", "중립", "지지", "적극 응원"]
+
+⏺ 이제 render_home_page() 전체와 관련 함수들을 교체합니다.
+
+⏺ Update(app.py)
+  ⎿  Added 134 lines, removed 75 lines
+      1815      return html_content
+      1816  
+      1817  
+      1818 -def render_home_page():                                      
+      1819 -    # HTML 컴포넌트 버튼 클릭에서 오는 네비게이션 처리       
+      1820 -    try:                                                     
+      1821 -        action = st.query_params.get("home_action", "")      
+      1822 -    except Exception:                                        
+      1823 -        action = ""                                          
+      1818 +def _render_home_status_card(status: int, hist_data: dict, ch
+           +ecklist_data: dict) -> None:                                 
+      1819 +    """상태2·3의 시각 정보 카드를 st.markdown으로 렌더링 (클 
+           +릭 없음)."""                                                 
+      1820 +    result   = hist_data.get("result", {})                   
+      1821 +    rec      = result.get("recommendation", {})              
+      1822 +    rec_type = rec.get("type", "")                           
+      1823 +    scenarios = result.get("scenarios", [])                  
+      1824 +    rec_sc   = next((s for s in scenarios if s.get("type") ==
+           + rec_type), {})                                              
+      1825 +    sc_title = rec_sc.get("title", "")                       
+      1826 +    TYPE_EMOJI = {"현실형": "🔵", "도전형": "🟢", "파격형": "
+           +🟣"}                                                         
+      1827 +    emoji    = TYPE_EMOJI.get(rec_type, "⭐")                
+      1828 +    sc_disp  = _e(f"{emoji} {rec_type} — {sc_title}") if rec_
+           +type else "—"                                                
+      1829  
+      1825 -    if action:                                               
+      1826 -        try:                                                 
+      1827 -            st.query_params.clear()                          
+      1828 -        except Exception:                                    
+      1829 -            pass                                             
+      1830 -        hist = _load_latest_history()                        
+      1831 -        if action == "start":                                
+      1832 -            st.session_state.page = "input"                  
+      1833 -        elif action == "result" and hist:                    
+      1834 -            _restore_session_from_history(hist)              
+      1835 -            st.session_state.page = "result"                 
+      1836 -        elif action == "plan" and hist:                      
+      1837 -            _restore_session_from_history(hist)              
+      1838 -            st.session_state.page = "plan"                   
+      1839 -        elif action == "career":                             
+      1840 -            st.session_state["s4_prev_page"] = "home"        
+      1841 -            st.session_state.page = "career"                 
+      1842 -        st.rerun()                                           
+      1830 +    if status == 2:                                          
+      1831 +        saved_at     = (hist_data.get("saved_at", hist_data.g
+           +et("date", "")) or "")[:10]                                  
+      1832 +        display_date = saved_at.replace("-", ".") or "—"     
+      1833 +        st.markdown(                                         
+      1834 +            f'<div class="home-card-result">'                
+      1835 +            f'  <div class="home-cr-top">'                   
+      1836 +            f'    <div>'                                     
+      1837 +            f'      <div class="home-cr-badge">📊 내 시나리오
+           + 결과</div>'                                                 
+      1838 +            f'      <div class="home-cr-name">{sc_disp}</div>
+           +'                                                            
+      1839 +            f'    </div>'                                    
+      1840 +            f'    <div class="home-cr-date">분석일<br><strong
+           +>{_e(display_date)}</strong></div>'                          
+      1841 +            f'  </div>'                                      
+      1842 +            f'</div>',                                       
+      1843 +            unsafe_allow_html=True,                          
+      1844 +        )                                                    
+      1845 +    else:  # status == 3                                     
+      1846 +        checked   = sum(1 for i in range(1, 37) if checklist_
+           +data.get(f"s4_check_{i}", False))                            
+      1847 +        pct       = int(checked / 36 * 100)                  
+      1848 +        unchecked = sum(1 for i in range(1, 13) if not checkl
+           +ist_data.get(f"s4_check_{i}", False))                        
+      1849 +        st.markdown(                                         
+      1850 +            f'<div class="home-card-progress">'              
+      1851 +            f'  <div class="home-cp-top">'                   
+      1852 +            f'    <div class="home-cp-name">{sc_disp}</div>' 
+      1853 +            f'    <div class="home-cp-todo">⚠️ 미완료 {unchec
+           +ked}개</div>'                                                
+      1854 +            f'  </div>'                                      
+      1855 +            f'  <div>'                                       
+      1856 +            f'    <div class="home-cp-meta">'                
+      1857 +            f'      <span>전체 진행률</span>'                
+      1858 +            f'      <span class="home-cp-pct">{pct}%</span>' 
+      1859 +            f'    </div>'                                    
+      1860 +            f'    <div class="home-cp-bg">'                  
+      1861 +            f'      <div class="home-cp-fill" style="width:{p
+           +ct}%"></div>'                                                
+      1862 +            f'    </div>'                                    
+      1863 +            f'  </div>'                                      
+      1864 +            f'</div>',                                       
+      1865 +            unsafe_allow_html=True,                          
+      1866 +        )                                                    
+      1867  
+      1844 -    status         = get_user_status()                       
+      1845 -    hist_data      = _load_latest_history() if status >= 2 el
+           -se {}                                                        
+      1846 -    checklist_data = _load_latest_career_checklist() if statu
+           -s >= 3 else {}                                               
+      1847 -    theme          = st.session_state.get("theme", "dark")   
+      1868  
+      1849 -    html_content = build_home_html(status, hist_data, checkli
+           -st_data, theme)                                              
+      1869 +def _render_home_nav_buttons(status: int, hist_data: dict) ->
+           + None:                                                       
+      1870 +    """상태별 네이티브 네비게이션 버튼."""                   
+      1871 +    # ── 버튼 1: 인생 시나리오 시작 (항상) ──────────────────
+           +─────────────────                                            
+      1872 +    if st.button(                                            
+      1873 +        "🎯  인생 시나리오 시작",                            
+      1874 +        type="primary",                                      
+      1875 +        use_container_width=True,                            
+      1876 +        key="hn_start",                                      
+      1877 +    ):                                                       
+      1878 +        st.session_state.page = "input"                      
+      1879 +        st.rerun()                                           
+      1880  
+      1851 -    if not html_content:                                     
+      1852 -        st.warning("screen0.html 파일이 없습니다. Final 폴더 
+           -에 파일을 추가해주세요.")                                    
+      1853 -        _render_home_fallback(status, hist_data)             
+      1854 -        return                                               
+      1881 +    st.write("")                                             
+      1882  
+      1856 -    components.html(html_content, height=800, scrolling=True)
+      1883 +    # ── 버튼 2: 상태별 중간 영역 ───────────────────────────
+           +─────────────────                                            
+      1884 +    if status == 1:                                          
+      1885 +        st.button(                                           
+      1886 +            "🔒  목표 달성 플랜  (잠김)",                    
+      1887 +            disabled=True,                                   
+      1888 +            use_container_width=True,                        
+      1889 +            key="hn_plan_locked",                            
+      1890 +        )                                                    
+      1891  
+      1858 -    # Streamlit 네이티브 버튼 — HTML 디자인 아래 실제 동작 담
+           -당                                                           
+      1859 -    st.divider()                                             
+      1860 -    col1, col2, col3 = st.columns(3)                         
+      1861 -    with col1:                                               
+      1862 -        if st.button("✨ 인생 시나리오 시작", use_container_w
+           -idth=True, key="home_native_start"):                         
+      1863 -            st.session_state.page = "input"                  
+      1892 +    elif status == 2:                                        
+      1893 +        if st.button(                                        
+      1894 +            "📊  결과 다시 보기",                            
+      1895 +            use_container_width=True,                        
+      1896 +            type="secondary",                                
+      1897 +            key="hn_result",                                 
+      1898 +        ):                                                   
+      1899 +            _restore_session_from_history(hist_data)         
+      1900 +            st.session_state.page = "result"                 
+      1901              st.rerun()
+      1865 -    with col2:                                               
+      1866 -        if status == 3:                                      
+      1867 -            if st.button("▶ 이어서 진행하기", use_container_w
+           -idth=True, key="home_native_plan"):                          
+      1868 -                _restore_session_from_history(hist_data)     
+      1869 -                st.session_state.page = "plan"               
+      1870 -                st.rerun()                                   
+      1871 -        elif status == 2:                                    
+      1872 -            if st.button("📊 결과 다시 보기", use_container_w
+           -idth=True, key="home_native_result"):                        
+      1873 -                _restore_session_from_history(hist_data)     
+      1874 -                st.session_state.page = "result"             
+      1875 -                st.rerun()                                   
+      1876 -    with col3:                                               
+      1877 -        if st.button("💼 3년 후 커리어 설계", use_container_w
+           -idth=True, key="home_native_career"):                        
+      1878 -            st.session_state["s4_prev_page"] = "home"        
+      1879 -            st.session_state.page = "career"                 
+      1902 +        if st.button(                                        
+      1903 +            "▶  목표달성플랜 시작하기",                      
+      1904 +            use_container_width=True,                        
+      1905 +            type="secondary",                                
+      1906 +            key="hn_plan",                                   
+      1907 +        ):                                                   
+      1908 +            _restore_session_from_history(hist_data)         
+      1909 +            st.session_state.page = "plan"                   
+      1910              st.rerun()
+      1911  
+      1912 +    else:  # status == 3                                     
+      1913 +        if st.button(                                        
+      1914 +            "▶  이어서 진행하기 →",                          
+      1915 +            use_container_width=True,                        
+      1916 +            type="secondary",                                
+      1917 +            key="hn_continue",                               
+      1918 +        ):                                                   
+      1919 +            _restore_session_from_history(hist_data)         
+      1920 +            st.session_state.page = "plan"                   
+      1921 +            st.rerun()                                       
+      1922  
+      1883 -def _render_home_fallback(status: int, hist_data: dict):     
+      1884 -    """screen0.html이 없을 때 네이티브 UI로 fallback."""     
+      1885 -    st.title("AI 인생 시나리오 플래너")                      
+      1886 -    st.caption("나의 현재 상황을 입력하면 AI가 3가지 인생 시 
+           -나리오를 분석해 드립니다.")                                  
+      1887 -    if st.button("✨ 인생 시나리오 시작", type="primary", use
+           -_container_width=True):                                      
+      1888 -        st.session_state.page = "input"                      
+      1889 -        st.rerun()                                           
+      1890 -    if status >= 2:                                          
+      1891 -        col_v, col_p = st.columns(2)                         
+      1892 -        with col_v:                                          
+      1893 -            if st.button("📊 결과 다시 보기", use_container_w
+           -idth=True):                                                  
+      1894 -                _restore_session_from_history(hist_data)     
+      1895 -                st.session_state.page = "result"             
+      1896 -                st.rerun()                                   
+      1897 -        with col_p:                                          
+      1898 -            if st.button("🎯 목표달성플랜 시작", use_containe
+           -r_width=True):                                               
+      1899 -                _restore_session_from_history(hist_data)     
+      1900 -                st.session_state.page = "plan"               
+      1901 -                st.rerun()                                   
+      1902 -    if st.button("💼 3년 후 커리어 설계", use_container_width
+           -=True):                                                      
+      1923 +    st.write("")                                             
+      1924 +                                                             
+      1925 +    # ── 버튼 3: 커리어 설계 (항상) ─────────────────────────
+           +─────────────────                                            
+      1926 +    if st.button(                                            
+      1927 +        "💼  3년 후 커리어 설계",                            
+      1928 +        use_container_width=True,                            
+      1929 +        type="secondary",                                    
+      1930 +        key="hn_career",                                     
+      1931 +    ):                                                       
+      1932          st.session_state["s4_prev_page"] = "home"
+      1933          st.session_state.page = "career"
+      1934          st.rerun()
+      1935  
+      1936  
+      1937 +def render_home_page():                                      
+      1938 +    status         = get_user_status()                       
+      1939 +    hist_data      = _load_latest_history() if status >= 2 el
+           +se {}                                                        
+      1940 +    checklist_data = _load_latest_career_checklist() if statu
+           +s >= 3 else {}                                               
+      1941 +                                                             
+      1942 +    # ── CSS 주입 ───────────────────────────────────────────
+           +──────────────────                                           
+      1943 +    st.markdown(_HOME_PAGE_CSS, unsafe_allow_html=True)      
+      1944 +                                                             
+      1945 +    # ── 브랜드 헤더 ────────────────────────────────────────
+           +──────────────────                                           
+      1946 +    st.markdown(                                             
+      1947 +        f'<div class="home-brand">'                          
+      1948 +        f'  {_COMPASS_SVG}'                                  
+      1949 +        f'  <h1>AI 인생 시나리오 플래너</h1>'                
+      1950 +        f'  <p>당신의 다음 10년을 설계하세요</p>'            
+      1951 +        f'</div>',                                           
+      1952 +        unsafe_allow_html=True,                              
+      1953 +    )                                                        
+      1954 +                                                             
+      1955 +    # ── 중앙 컬럼 레이아웃 ─────────────────────────────────
+           +──────────────────                                           
+      1956 +    _, col, _ = st.columns([1, 2, 1])                        
+      1957 +    with col:                                                
+      1958 +        # 상태 정보 카드 (status 2, 3)                       
+      1959 +        if status >= 2:                                      
+      1960 +            _render_home_status_card(status, hist_data, check
+           +list_data)                                                   
+      1961 +            st.write("")                                     
+      1962 +                                                             
+      1963 +        # 네이티브 버튼                                      
+      1964 +        _render_home_nav_buttons(status, hist_data)          
+      1965 +                                                             
+      1966 +                                                             
+      1967  def render_input_page():
+      1968      if st.button("← 홈으로", key="input_home"):
+      1969          st.session_state.page = "home"
+  ⎿  Context limit reached · /compact or /clear to continue
+✻ Churned for 9m 26s

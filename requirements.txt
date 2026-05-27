@@ -3,3 +3,4 @@ google-generativeai
 google-genai
 python-dotenv
 fpdf2
+authlib>=1.3.2

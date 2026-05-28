@@ -383,6 +383,18 @@ PROFILE_PATH = "profile.json"
 
 def render_login_page() -> None:
     """로그인 전용 페이지 — Streamlit 내장 OIDC(st.login) 방식."""
+    # authlib 설치 여부 사전 확인 — 없으면 명확한 에러 메시지 표시
+    try:
+        from streamlit.auth_util import is_authlib_installed
+        if not is_authlib_installed():
+            st.error(
+                "설정 오류: `authlib>=1.3.2` 패키지가 설치되지 않았습니다. "
+                "requirements.txt에 `authlib>=1.3.2`를 추가하고 재배포해주세요."
+            )
+            st.stop()
+    except Exception:
+        pass
+
     st.markdown(
         """
         <style>
@@ -413,14 +425,16 @@ def render_login_page() -> None:
 
 def render_user_sidebar() -> None:
     """사이드바에 사용자 프로필 + 로그아웃 버튼 표시."""
-    if not st.user.is_logged_in:
-        return
-    name    = st.user.name or ""
-    email   = st.user.email or ""
     try:
-        picture = st.user["picture"] or ""
-    except (KeyError, Exception):
-        picture = ""
+        logged_in = st.user.is_logged_in
+    except Exception:
+        return
+    if not logged_in:
+        return
+    # .get()으로 접근: 클레임 없을 때 AttributeError 대신 "" 반환
+    name    = st.user.get("name", "")    or ""
+    email   = st.user.get("email", "")   or ""
+    picture = st.user.get("picture", "") or ""
     with st.sidebar:
         if picture:
             st.markdown(
@@ -435,7 +449,7 @@ def render_user_sidebar() -> None:
                 unsafe_allow_html=True,
             )
         else:
-            st.caption(email)
+            st.caption(email or "로그인됨")
         st.logout()
         st.divider()
 
@@ -2329,7 +2343,11 @@ def main():
     init_session()
 
     # ── 로그인 체크 (Streamlit 내장 OIDC) ────────────────────────────────────
-    if not st.user.is_logged_in:
+    try:
+        logged_in = st.user.is_logged_in
+    except Exception:
+        logged_in = False
+    if not logged_in:
         render_login_page()
 
     render_user_sidebar()

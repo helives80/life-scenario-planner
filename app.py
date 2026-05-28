@@ -381,8 +381,17 @@ COMPARE_RESPONSE_SCHEMA = {
 
 PROFILE_PATH = "profile.json"
 
+# ── Google 로그인 (임시 비활성화) ────────────────────────────────────────────
+# 아래 플래그를 True 로 바꾸면 로그인 기능이 다시 활성화됩니다.
+_LOGIN_ENABLED = False
+
+
 def _safe_get_user_info() -> dict:
     """st.user 에서 사용자 정보를 안전하게 dict 로 반환. 실패 시 빈 dict."""
+    # ── 로그인 비활성화 중 ──────────────────────────────────────────────────
+    if not _LOGIN_ENABLED:
+        return {"is_logged_in": True, "name": "", "email": "", "picture": ""}
+    # ── 활성화 시 아래 코드 사용 ────────────────────────────────────────────
     try:
         return {
             "is_logged_in": bool(st.user.is_logged_in),
@@ -396,17 +405,18 @@ def _safe_get_user_info() -> dict:
 
 def render_login_page() -> None:
     """로그인 전용 페이지 — Streamlit 내장 OIDC(st.login) 방식."""
+    # ── 로그인 비활성화 중: 이 함수는 호출되지 않음 ─────────────────────────
     # authlib 설치 여부 사전 확인
-    try:
-        from streamlit.auth_util import is_authlib_installed
-        if not is_authlib_installed():
-            st.error(
-                "설정 오류: `authlib>=1.3.2` 패키지가 설치되지 않았습니다. "
-                "requirements.txt에 `authlib>=1.3.2`를 추가하고 재배포해주세요."
-            )
-            st.stop()
-    except Exception:
-        pass
+    # try:
+    #     from streamlit.auth_util import is_authlib_installed
+    #     if not is_authlib_installed():
+    #         st.error(
+    #             "설정 오류: `authlib>=1.3.2` 패키지가 설치되지 않았습니다. "
+    #             "requirements.txt에 `authlib>=1.3.2`를 추가하고 재배포해주세요."
+    #         )
+    #         st.stop()
+    # except Exception:
+    #     pass
 
     st.markdown(
         """
@@ -441,6 +451,10 @@ def render_login_page() -> None:
 
 def render_user_sidebar() -> None:
     """사이드바에 사용자 프로필 + 로그아웃 버튼 표시."""
+    # ── 로그인 비활성화 중: 사이드바 사용자 정보 표시 안 함 ─────────────────
+    if not _LOGIN_ENABLED:
+        return
+    # ── 활성화 시 아래 코드 사용 ────────────────────────────────────────────
     user = _safe_get_user_info()
     if not user["is_logged_in"]:
         return

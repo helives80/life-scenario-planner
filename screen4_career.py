@@ -455,6 +455,45 @@ def _load_latest_checklist() -> dict:
         return {}
 
 
+def _load_latest_career_save() -> dict:
+    """가장 최신 career_save_*.json 파일을 읽어 반환. 없거나 실패 시 빈 dict."""
+    try:
+        files = sorted(glob.glob("career_save_*.json"), reverse=True)
+        if not files:
+            return {}
+        with open(files[0], "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _restore_career_save(data: dict) -> None:
+    """career_save 데이터를 session_state 에 복원한다."""
+    if not data:
+        return
+    st.session_state["s4_goal_role"]    = data.get("goal_role", "")
+    st.session_state["s4_goal_income"]  = data.get("goal_income", "")
+    st.session_state["s4_goal_skills"]  = data.get("goal_skills", "")
+    gap = data.get("gap_result")
+    if gap:
+        st.session_state["career_gap_result"] = gap
+        st.session_state["career_gap_goal"]   = {
+            "role":   data.get("goal_role", ""),
+            "income": data.get("goal_income", ""),
+            "skills": data.get("goal_skills", ""),
+        }
+    roadmap      = data.get("roadmap")
+    monthly_plan = data.get("monthly_plan")
+    if roadmap or monthly_plan:
+        st.session_state["career_roadmap_result"] = {
+            "roadmap":      roadmap      or {},
+            "monthly_plan": monthly_plan or [],
+        }
+    checks = data.get("checks", {})
+    for k, v in checks.items():
+        st.session_state[k] = v
+
+
 def _cleanup_old_checklists(days: int = 30):
     cutoff = datetime.date.today() - datetime.timedelta(days=days)
     for path in glob.glob(f"{_CHECKLIST_PREFIX}*.json"):
@@ -679,7 +718,21 @@ def render(pdf_fn=None):
         st.caption(f"기반 시나리오: {scenario.get('type', '')} — {scenario.get('title', '')}")
 
     # ── Section 1: 입력 ───────────────────────────────────────────────────────
-    st.markdown('<div class="s4-sec-title">3년 후의 나를 입력해주세요</div>', unsafe_allow_html=True)
+    _s4_title_col, _s4_load_col = st.columns([3, 1])
+    with _s4_title_col:
+        st.markdown('<div class="s4-sec-title">3년 후의 나를 입력해주세요</div>', unsafe_allow_html=True)
+    with _s4_load_col:
+        if st.button("📂 이전 기록 불러오기", use_container_width=True, key="s4_load_btn"):
+            try:
+                _saved = _load_latest_career_save()
+                if _saved:
+                    _restore_career_save(_saved)
+                    st.success("이전 기록을 불러왔습니다.")
+                    st.rerun()
+                else:
+                    st.info("이전 기록이 없습니다.")
+            except Exception as _load_err:
+                st.warning(f"불러오기 실패: {_load_err}")
 
     input_mode = st.radio(
         "입력 방식",

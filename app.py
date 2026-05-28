@@ -381,9 +381,22 @@ COMPARE_RESPONSE_SCHEMA = {
 
 PROFILE_PATH = "profile.json"
 
+def _safe_get_user_info() -> dict:
+    """st.user 에서 사용자 정보를 안전하게 dict 로 반환. 실패 시 빈 dict."""
+    try:
+        return {
+            "is_logged_in": bool(st.user.is_logged_in),
+            "name":         st.user.get("name", "")    or "",
+            "email":        st.user.get("email", "")   or "",
+            "picture":      st.user.get("picture", "") or "",
+        }
+    except Exception:
+        return {"is_logged_in": False, "name": "", "email": "", "picture": ""}
+
+
 def render_login_page() -> None:
     """로그인 전용 페이지 — Streamlit 내장 OIDC(st.login) 방식."""
-    # authlib 설치 여부 사전 확인 — 없으면 명확한 에러 메시지 표시
+    # authlib 설치 여부 사전 확인
     try:
         from streamlit.auth_util import is_authlib_installed
         if not is_authlib_installed():
@@ -419,39 +432,45 @@ def render_login_page() -> None:
     )
     _, col, _ = st.columns([1, 1, 1])
     with col:
-        st.login("google")
+        try:
+            st.login("google")
+        except Exception as _e:
+            st.error(f"로그인 버튼 초기화 오류: {_e}")
     st.stop()
 
 
 def render_user_sidebar() -> None:
     """사이드바에 사용자 프로필 + 로그아웃 버튼 표시."""
+    user = _safe_get_user_info()
+    if not user["is_logged_in"]:
+        return
+    name    = user["name"]
+    email   = user["email"]
+    picture = user["picture"]
     try:
-        logged_in = st.user.is_logged_in
+        with st.sidebar:
+            if picture:
+                st.markdown(
+                    f'<div style="display:flex;align-items:center;gap:10px;padding:10px 0 4px">'
+                    f'  <img src="{_e(picture)}" width="36" height="36"'
+                    f'       style="border-radius:50%;border:2px solid rgba(160,168,255,.4)">'
+                    f'  <div>'
+                    f'    <div style="font-size:.85rem;font-weight:700;color:#fff">{_e(name)}</div>'
+                    f'    <div style="font-size:.72rem;color:#9090b0">{_e(email)}</div>'
+                    f'  </div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.caption(email or "로그인됨")
+            try:
+                st.logout()
+            except Exception:
+                if st.button("로그아웃", use_container_width=True, key="sidebar_logout_fallback"):
+                    st.rerun()
+            st.divider()
     except Exception:
-        return
-    if not logged_in:
-        return
-    # .get()으로 접근: 클레임 없을 때 AttributeError 대신 "" 반환
-    name    = st.user.get("name", "")    or ""
-    email   = st.user.get("email", "")   or ""
-    picture = st.user.get("picture", "") or ""
-    with st.sidebar:
-        if picture:
-            st.markdown(
-                f'<div style="display:flex;align-items:center;gap:10px;padding:10px 0 4px">'
-                f'  <img src="{_e(picture)}" width="36" height="36"'
-                f'       style="border-radius:50%;border:2px solid rgba(160,168,255,.4)">'
-                f'  <div>'
-                f'    <div style="font-size:.85rem;font-weight:700;color:#fff">{_e(name)}</div>'
-                f'    <div style="font-size:.72rem;color:#9090b0">{_e(email)}</div>'
-                f'  </div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.caption(email or "로그인됨")
-        st.logout()
-        st.divider()
+        pass
 
 
 # ── 화면0 시각 상수 ───────────────────────────────────────────────────────────
@@ -2343,11 +2362,7 @@ def main():
     init_session()
 
     # ── 로그인 체크 (Streamlit 내장 OIDC) ────────────────────────────────────
-    try:
-        logged_in = st.user.is_logged_in
-    except Exception:
-        logged_in = False
-    if not logged_in:
+    if not _safe_get_user_info()["is_logged_in"]:
         render_login_page()
 
     render_user_sidebar()

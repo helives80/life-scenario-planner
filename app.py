@@ -934,7 +934,7 @@ def get_korean_font_path():
     return None
 
 
-def generate_pdf(result: dict, inputs: dict, screen3_data: dict = None, screen4_data: dict = None) -> bytes:
+def generate_pdf(result: dict, inputs: dict, screen3_data: dict = None, screen4_data: dict = None, scope: str = "full") -> bytes:
     """Gemini 결과를 fpdf2로 PDF 변환. 한국어 폰트 자동 적용."""
     from fpdf import FPDF
 
@@ -989,37 +989,50 @@ def generate_pdf(result: dict, inputs: dict, screen3_data: dict = None, screen4_
     final_msg = result.get("final_message", "")
     color_rgb = {"blue": (59, 130, 246), "green": (16, 185, 129), "purple": (139, 92, 246)}
 
-    # ── 표지 + 요약
-    pdf.add_page()
-    sfb(20)
-    pdf.set_text_color(30, 30, 30)
-    pdf.cell(0, 12, "AI 인생 시나리오 리포트", new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(2)
-    sf(10)
-    pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 6, datetime.date.today().strftime("%Y년 %m월 %d일"), new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(8)
+    if scope == "screen4_only":
+        # ── 화면4 전용 표지
+        pdf.add_page()
+        sfb(20)
+        pdf.set_text_color(108, 99, 255)
+        pdf.cell(0, 12, "3년 후 커리어 설계 리포트", new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.ln(2)
+        sf(10)
+        pdf.set_text_color(120, 120, 120)
+        pdf.cell(0, 6, datetime.date.today().strftime("%Y년 %m월 %d일"), new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.ln(8)
+        pdf.set_text_color(30, 30, 30)
+    else:
+        # ── 표지 + 요약
+        pdf.add_page()
+        sfb(20)
+        pdf.set_text_color(30, 30, 30)
+        pdf.cell(0, 12, "AI 인생 시나리오 리포트", new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.ln(2)
+        sf(10)
+        pdf.set_text_color(120, 120, 120)
+        pdf.cell(0, 6, datetime.date.today().strftime("%Y년 %m월 %d일"), new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.ln(8)
 
-    section("입력 정보 요약")
-    for key, label in [("job","직업·역할"),("satisfaction","현 상황 만족도"),("age","연령대"),("gender","성별"),("free_time","하루 평균 여유시간")]:
-        val = inputs.get(key, "")
-        if val and val != "입력 없음":
-            suffix = "/10" if key == "Q2" else ""
-            wl(f"  {label}: {val}{suffix}")
-    income_sel = inputs.get("INCOME_SELECT", "")
-    income_txt = inputs.get("INCOME_TEXT", "")
-    if income_sel == "직접 입력" and income_txt:
-        wl(f"  현재 소득: {income_txt}")
-    elif income_sel not in ("선택", "직접 입력", "", None):
-        wl(f"  현재 소득: {income_sel}")
+        section("입력 정보 요약")
+        for key, label in [("job","직업·역할"),("satisfaction","현 상황 만족도"),("age","연령대"),("gender","성별"),("free_time","하루 평균 여유시간")]:
+            val = inputs.get(key, "")
+            if val and val != "입력 없음":
+                suffix = "/10" if key == "Q2" else ""
+                wl(f"  {label}: {val}{suffix}")
+        income_sel = inputs.get("INCOME_SELECT", "")
+        income_txt = inputs.get("INCOME_TEXT", "")
+        if income_sel == "직접 입력" and income_txt:
+            wl(f"  현재 소득: {income_txt}")
+        elif income_sel not in ("선택", "직접 입력", "", None):
+            wl(f"  현재 소득: {income_sel}")
 
-    section("핵심 인사이트")
-    wl(summary.get("insight", ""), lh=7)
-    pdf.ln(2)
-    wl(f"핵심 갈등: {summary.get('conflict','')}", color=(160, 90, 0), lh=7)
+        section("핵심 인사이트")
+        wl(summary.get("insight", ""), lh=7)
+        pdf.ln(2)
+        wl(f"핵심 갈등: {summary.get('conflict','')}", color=(160, 90, 0), lh=7)
 
-    # ── 시나리오별 페이지
-    for sc in scenarios:
+    # ── 시나리오별 페이지 (scope=="full" 일 때만)
+    for sc in scenarios if scope == "full" else []:
         pdf.add_page()
         sc_type = sc.get("type", "")
         c_rgb   = color_rgb.get(sc.get("color", "blue"), (60, 60, 60))
@@ -1086,16 +1099,17 @@ def generate_pdf(result: dict, inputs: dict, screen3_data: dict = None, screen4_
                 pdf.set_text_color(60, 60, 100); sf(10)
                 pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, coach)
 
-    # ── 마지막 페이지: 추천 이유 + 최종 메시지
-    pdf.add_page()
-    section("AI 추천 이유", color=(16, 185, 129))
-    sfb(11); pdf.set_text_color(16, 185, 129)
-    pdf.cell(0, 7, f"추천 시나리오: {rec_type}", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_text_color(30, 30, 30); sf(10)
-    pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, rec.get("reason", ""))
+    # ── 마지막 페이지: 추천 이유 + 최종 메시지 (scope=="full" 일 때만)
+    if scope == "full":
+        pdf.add_page()
+        section("AI 추천 이유", color=(16, 185, 129))
+        sfb(11); pdf.set_text_color(16, 185, 129)
+        pdf.cell(0, 7, f"추천 시나리오: {rec_type}", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(30, 30, 30); sf(10)
+        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, rec.get("reason", ""))
 
-    section("AI 최종 메시지")
-    sf(10); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, final_msg)
+        section("AI 최종 메시지")
+        sf(10); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, final_msg)
 
     # ── 화면3 실행 계획 페이지 (screen3_data 있을 때만)
     if screen3_data:

@@ -973,7 +973,7 @@ def render(pdf_fn=None):
         result_data = st.session_state.get("result") or {}
         inputs_data = st.session_state.get("inputs") or {}
         try:
-            pdf_bytes = pdf_fn(result_data, inputs_data, screen4_data=screen4_data)
+            pdf_bytes = pdf_fn(result_data, inputs_data, screen4_data=screen4_data, scope="screen4_only")
             fname = f"career_report_{datetime.date.today().strftime('%Y%m%d')}.pdf"
             st.download_button(
                 label="📄 PDF로 저장",

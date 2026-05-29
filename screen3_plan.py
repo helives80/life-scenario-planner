@@ -297,6 +297,31 @@ def load_latest_quarterly_plan(scenario_type: str) -> dict:
 _FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
 
 
+def _quota_msg(err: Exception) -> str:
+    """429 오류에서 대기 시간을 파싱해 사용자 친화적 메시지를 반환."""
+    import re
+    s = str(err)
+    # 'retryDelay': '36s' 형식 우선 탐색
+    m = re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
+    # 없으면 'retry in 36.2s' 형식
+    if not m:
+        m = re.search(r"retry in (\d+)", s, re.IGNORECASE)
+    if m:
+        sec = min(int(m.group(1)), 86400)  # 최대 24시간으로 클램프
+        if sec >= 3600:
+            wait = f"{sec // 3600}시간"
+        elif sec >= 60:
+            wait = f"{sec // 60}분"
+        else:
+            wait = f"{sec}초"
+    else:
+        wait = "잠시"
+    return (
+        f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요.\n"
+        "(무료 티어: gemini-2.5-flash 20회/일, gemini-2.0-flash 200회/일)"
+    )
+
+
 def _genai_generate(contents: str, config) -> str:
     """gemini-2.5-flash → gemini-2.0-flash 순으로 폴백. 429 시 다음 모델 시도."""
     api_key = os.getenv("GEMINI_API_KEY", "")
@@ -314,13 +339,7 @@ def _genai_generate(contents: str, config) -> str:
                 continue
             raise
     # 모든 모델 429 소진
-    import re
-    delay_match = re.search(r"retry.*?(\d+)s", str(last_err), re.IGNORECASE)
-    wait = delay_match.group(1) if delay_match else "잠시"
-    raise RuntimeError(
-        f"Gemini API 일일 한도를 초과했습니다. {wait}초 후 다시 시도하세요.\n"
-        "(무료 티어: gemini-2.5-flash 20회/일, gemini-2.0-flash 200회/일)"
-    ) from last_err
+    raise RuntimeError(_quota_msg(last_err)) from last_err
 
 
 def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
@@ -832,12 +851,7 @@ def _call_coach_api(system_prompt: str, history: list, user_msg: str) -> str:
             if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                 continue
             raise
-    import re
-    delay_match = re.search(r"retry.*?(\d+)s", str(last_err), re.IGNORECASE)
-    wait = delay_match.group(1) if delay_match else "잠시"
-    raise RuntimeError(
-        f"Gemini API 일일 한도를 초과했습니다. {wait}초 후 다시 시도하세요."
-    ) from last_err
+    raise RuntimeError(_quota_msg(last_err)) from last_err
 
 
 def _render_chat(inputs: dict, scenario: dict, ns: dict, all_checks: dict):

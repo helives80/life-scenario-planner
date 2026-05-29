@@ -294,6 +294,35 @@ def load_latest_quarterly_plan(scenario_type: str) -> dict:
         return {}
 
 
+_FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+
+
+def _genai_generate(contents: str, config) -> str:
+    """gemini-2.5-flash → gemini-2.0-flash 순으로 폴백. 429 시 다음 모델 시도."""
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    last_err = None
+    for model in _FALLBACK_MODELS:
+        try:
+            client = genai_v2.Client(api_key=api_key)
+            resp = client.models.generate_content(
+                model=model, contents=contents, config=config
+            )
+            return resp.text
+        except Exception as e:
+            last_err = e
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                continue
+            raise
+    # 모든 모델 429 소진
+    import re
+    delay_match = re.search(r"retry.*?(\d+)s", str(last_err), re.IGNORECASE)
+    wait = delay_match.group(1) if delay_match else "잠시"
+    raise RuntimeError(
+        f"Gemini API 일일 한도를 초과했습니다. {wait}초 후 다시 시도하세요.\n"
+        "(무료 티어: gemini-2.5-flash 20회/일, gemini-2.0-flash 200회/일)"
+    ) from last_err
+
+
 def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
     """분기별(Q1~Q4) 구체 실행계획을 Gemini로 생성."""
     if not _GENAI_OK:
@@ -321,18 +350,15 @@ def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
         scenario.get("description", ""),
     ]
 
-    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents="\n".join(lines),
-        config=gtypes.GenerateContentConfig(
+    raw = _genai_generate(
+        "\n".join(lines),
+        gtypes.GenerateContentConfig(
             system_instruction=QUARTERLY_PLAN_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=QUARTERLY_PLAN_SCHEMA,
             temperature=0.7,
         ),
-    )
-    raw = response.text.strip()
+    ).strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -450,18 +476,15 @@ def _call_smart_ns_api(inputs: dict, scenario: dict, original_ns: dict) -> dict:
             for it in items:
                 lines.append(f"  - {_item_text(it)}")
 
-    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents="\n".join(lines),
-        config=gtypes.GenerateContentConfig(
+    raw = _genai_generate(
+        "\n".join(lines),
+        gtypes.GenerateContentConfig(
             system_instruction=SMART_NS_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=SMART_NS_SCHEMA,
             temperature=0.6,
         ),
-    )
-    raw = response.text.strip()
+    ).strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -535,18 +558,15 @@ def _build_eval_prompt(inputs: dict, scenario: dict, quarter_items: list) -> str
 def _call_eval_api(prompt_text: str) -> dict:
     if not _GENAI_OK:
         raise RuntimeError("google-genai SDK를 불러오지 못했습니다.")
-    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt_text,
-        config=gtypes.GenerateContentConfig(
+    raw = _genai_generate(
+        prompt_text,
+        gtypes.GenerateContentConfig(
             system_instruction=EVAL_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=EVAL_SCHEMA,
             temperature=0.7,
         ),
-    )
-    raw = response.text.strip()
+    ).strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -795,16 +815,29 @@ def _call_coach_api(system_prompt: str, history: list, user_msg: str) -> str:
         gtypes.Content(role="user", parts=[gtypes.Part(text=user_msg)])
     )
 
-    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=contents,
-        config=gtypes.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=0.8,
-        ),
+    config = gtypes.GenerateContentConfig(
+        system_instruction=system_prompt,
+        temperature=0.8,
     )
-    return response.text
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    last_err = None
+    for model in _FALLBACK_MODELS:
+        try:
+            client = genai_v2.Client(api_key=api_key)
+            return client.models.generate_content(
+                model=model, contents=contents, config=config
+            ).text
+        except Exception as e:
+            last_err = e
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                continue
+            raise
+    import re
+    delay_match = re.search(r"retry.*?(\d+)s", str(last_err), re.IGNORECASE)
+    wait = delay_match.group(1) if delay_match else "잠시"
+    raise RuntimeError(
+        f"Gemini API 일일 한도를 초과했습니다. {wait}초 후 다시 시도하세요."
+    ) from last_err
 
 
 def _render_chat(inputs: dict, scenario: dict, ns: dict, all_checks: dict):

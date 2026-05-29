@@ -12,9 +12,6 @@ except ImportError:
     _GENAI_OK = False
 
 
-def _get_client():
-    return genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-
 CHECKLIST_SECTIONS = [
     ("이번 주 바로 할 것",   "this_week",     "week"),
     ("1개월 내 준비 사항",   "one_month",     "month"),
@@ -216,7 +213,7 @@ def _call_smart_ns_api(inputs: dict, scenario: dict, original_ns: dict) -> dict:
             for it in items:
                 lines.append(f"  - {_item_text(it)}")
 
-    client = _get_client()
+    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents="\n".join(lines),
@@ -291,7 +288,7 @@ def _build_eval_prompt(inputs: dict, scenario: dict, completed_items: list) -> s
 def _call_eval_api(prompt_text: str) -> dict:
     if not _GENAI_OK:
         raise RuntimeError("google-genai SDK를 불러오지 못했습니다.")
-    client = _get_client()
+    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt_text,
@@ -457,7 +454,7 @@ def _call_coach_api(system_prompt: str, history: list, user_msg: str) -> str:
         gtypes.Content(role="user", parts=[gtypes.Part(text=user_msg)])
     )
 
-    client = _get_client()
+    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=contents,

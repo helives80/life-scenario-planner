@@ -1057,11 +1057,12 @@ def generate_pdf(result: dict, inputs: dict, screen3_data: dict = None, screen4_
         pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f"▼ 잃는 것: {trf.get('lose','')}")
         pdf.set_text_color(30, 30, 30)
 
-        if is_rec:
-            ns = sc.get("next_steps", {})
+        ns = sc.get("next_steps", {})
+        if ns:
             pdf.ln(6)
             sfb(13); pdf.set_text_color(*c_rgb)
-            pdf.cell(0, 8, "실행 계획 (AI 추천 시나리오)", new_x="LMARGIN", new_y="NEXT")
+            rec_mark = " (AI 추천)" if is_rec else ""
+            pdf.cell(0, 8, f"실행 계획{rec_mark}", new_x="LMARGIN", new_y="NEXT")
             pdf.set_text_color(30, 30, 30); pdf.ln(2)
             for ns_title, ns_key in [
                 ("이번 주 바로 할 것","this_week"),
@@ -1301,8 +1302,6 @@ def build_result_html(result: dict, inputs: dict, theme: str = "dark") -> str:
     # ── cards + panels (card-wrap 단위로 합쳐서 세로 스택)
     cards_html = ""
     inc = {"r": [0]*5, "c": [0]*5, "p": [0]*5}
-    rec_idx = next((i for i, sc in enumerate(scenarios) if sc.get("type") == rec_type), 0)
-
     for i, sc in enumerate(scenarios):
         color    = sc.get("color", "blue")
         cls      = COLOR_CLS.get(color, "r")
@@ -1499,8 +1498,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .toggle-btn.open{border-color:var(--c);color:var(--c)}
 .sel-btn{flex:1;padding:11px;border:1px solid var(--c);background:transparent;color:var(--c);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px}
 .sel-btn:hover,.sel-btn.on{background:var(--c);color:#0d1117}
-.panel{overflow:hidden;max-height:0;transition:max-height .5s cubic-bezier(.4,0,.2,1),opacity .35s;opacity:0}
-.panel.open{max-height:3000px;opacity:1}
+.panel{overflow:hidden;max-height:0;transition:max-height .6s cubic-bezier(.4,0,.2,1),opacity .4s;opacity:0}
+.panel.open{max-height:9000px;opacity:1;overflow:visible}
 .panel-inner{border-radius:12px;padding:26px;margin-top:4px;border:1px solid}
 .panel-r .panel-inner{background:#0a1220;border-color:#1d3557}
 .panel-c .panel-inner{background:#071410;border-color:#0e3728}
@@ -1670,15 +1669,8 @@ function togglePanel(i){{
     btn.classList.add('open');
     btn.textContent='▲ 접기';
   }}
-  setTimeout(sendHeight,350);
+  setTimeout(sendHeight,650);
 }}
-
-(function(){{
-  const p=document.getElementById('panel-{rec_idx}');
-  const btn=document.getElementById('toggle-{rec_idx}');
-  if(p){{p.classList.add('open');}}
-  if(btn){{btn.classList.add('open');btn.textContent='▲ 접기';}}
-}})();
 
 function sendHeight(){{
   const h=document.documentElement.scrollHeight;
@@ -2344,7 +2336,7 @@ def render_result_page():
 
     theme = st.session_state.get("theme", "dark")
     html_content = build_result_html(st.session_state.result, st.session_state.inputs, theme)
-    components.html(html_content, height=3200, scrolling=False)
+    components.html(html_content, height=4500, scrolling=False)
 
     st.divider()
     st.subheader("결과가 실제와 다른가요?")

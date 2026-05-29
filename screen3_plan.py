@@ -273,6 +273,18 @@ def save_quarterly_plan(scenario_type: str, plan_data: dict):
         pass
 
 
+def load_latest_quarterly_plan(scenario_type: str) -> dict:
+    """가장 최근 저장된 분기별 실행계획을 반환. 없으면 {}."""
+    files = sorted(glob.glob(f"checklist_구체화_*_{scenario_type}.json"), reverse=True)
+    if not files:
+        return {}
+    try:
+        with open(files[0], "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
     """분기별(Q1~Q4) 구체 실행계획을 Gemini로 생성."""
     if not _GENAI_OK:
@@ -754,7 +766,7 @@ def render():
 
     st.title("실행 계획")
 
-    col_home, col_back, col_save = st.columns([1, 1, 1])
+    col_home, col_back, col_load, col_save = st.columns([1, 1, 1, 1])
     with col_home:
         if st.button("🏠 홈으로", use_container_width=True):
             st.session_state.page = "home"
@@ -763,6 +775,33 @@ def render():
         if st.button("← 결과로 돌아가기", use_container_width=True):
             st.session_state.page = "result"
             st.rerun()
+    with col_load:
+        if st.button("📂 저장된 정보 불러오기", use_container_width=True, key="s3_load_btn"):
+            _load_scenario = st.session_state.get("selected_scenario") or {}
+            _load_type     = _load_scenario.get("type", "")
+            if not _load_type:
+                st.session_state["s3_load_msg"] = ("warn", "선택된 시나리오가 없어 불러올 수 없습니다.")
+            else:
+                _loaded_any = False
+                # 분기별 실행계획 불러오기
+                _qplan_data = load_latest_quarterly_plan(_load_type)
+                if _qplan_data.get("plan"):
+                    st.session_state["s3_qplan"]        = _qplan_data["plan"]
+                    st.session_state["s3_qplan_type"]   = _load_type
+                    st.session_state["s3_qplan_failed"] = False
+                    _loaded_any = True
+                # 체크박스 상태 불러오기
+                _check_data = load_latest_checklist(_load_type)
+                if _check_data.get("checks"):
+                    for _ck, _cv in _check_data["checks"].items():
+                        st.session_state[_ck] = _cv
+                    _loaded_any = True
+                if _loaded_any:
+                    _saved_at = (_qplan_data.get("saved_at") or _check_data.get("saved_at") or "")[:10]
+                    st.session_state["s3_load_msg"] = ("ok", f"불러오기 완료! (저장일: {_saved_at})")
+                    st.rerun()
+                else:
+                    st.session_state["s3_load_msg"] = ("warn", "저장된 데이터가 없습니다.")
     with col_save:
         if st.button("💾 저장하기", use_container_width=True, key="s3_save_btn"):
             _s3_scenario = st.session_state.get("selected_scenario") or {}
@@ -773,9 +812,18 @@ def render():
             }
             if _s3_type and _s3_checks:
                 save_checklist(_s3_type, _s3_checks, scenario=_s3_scenario)
-                st.success("저장 완료")
+                st.session_state["s3_load_msg"] = ("ok", "저장 완료!")
+                st.rerun()
             elif not _s3_type:
-                st.warning("선택된 시나리오가 없어 저장할 수 없습니다.")
+                st.session_state["s3_load_msg"] = ("warn", "선택된 시나리오가 없어 저장할 수 없습니다.")
+
+    # ── 버튼 피드백 메시지
+    _msg = st.session_state.pop("s3_load_msg", None)
+    if _msg:
+        if _msg[0] == "ok":
+            st.success(_msg[1])
+        else:
+            st.warning(_msg[1])
 
     scenario = st.session_state.get("selected_scenario")
     if not scenario:

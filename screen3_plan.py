@@ -50,6 +50,20 @@ S3_CSS = """<style>
   padding:2px 9px;border-radius:4px;font-size:.72rem;font-weight:600}
 .s3-smart-tag{display:inline-block;background:#1a2235;border:1px solid #2a3a55;
   color:#60a5fa;padding:1px 7px;border-radius:4px;font-size:.7rem;margin-left:6px}
+.s3-q-goal{background:linear-gradient(135deg,#1a1a3e,#0f2040);
+  border-left:4px solid #6c63ff;border-radius:10px;
+  padding:14px 18px;margin:4px 0 16px;font-size:1rem;font-weight:700;color:#e8e8f0}
+.s3-badge-week{background:#3d0f0f;border:1px solid #7f1d1d;color:#fca5a5;
+  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:6px}
+.s3-badge-month{background:#3d1f00;border:1px solid #7c2d12;color:#fdba74;
+  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:6px}
+.s3-badge-3m{background:#052e16;border:1px solid #14532d;color:#86efac;
+  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:6px}
+.s3-badge-res{background:#0c1a4a;border:1px solid #1e3a8a;color:#93c5fd;
+  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:6px}
+.s3-avoid-box{background:#1a0a0a;border:2px solid #7f1d1d;border-radius:10px;
+  padding:12px 16px;margin:10px 0 4px;color:#fca5a5;font-size:.9rem}
+.s3-res-item{color:#93c5fd;padding:3px 0 3px 8px;font-size:.9rem}
 </style>"""
 
 # ── AI 평가 프롬프트 / 스키마 ────────────────────────────────────────────────
@@ -138,6 +152,47 @@ SMART_NS_SCHEMA = {
     "required": ["this_week", "one_month", "three_months", "must_prepare", "must_avoid"],
 }
 
+# ── 화면3 분기별 실행계획 프롬프트/스키마 ───────────────────────────────────
+
+QUARTERLY_PLAN_SYSTEM_PROMPT = """당신은 커리어 코치입니다.
+사용자가 선택한 시나리오를 실제로 실행하기 위한
+구체적인 분기별 실행 계획을 작성해주세요.
+
+각 분기(Q1~Q4)마다:
+- 분기 핵심 목표 1개 (측정 가능한 수치 포함)
+- 이번 주 바로 할 것 2개 (오늘 당장 실행 가능한 행동)
+- 이번 달 완료 항목 3개 (구체적 행동 + 예상 소요 시간)
+- 3개월 내 달성 목표 2개 (검증 가능한 결과물)
+- 필요한 자원·도구 2개 (비용·시간 포함)
+- 이 분기에 반드시 피해야 할 것 1개
+
+사용자 직업·기술·두려움·연봉을 모두 반영해서
+현실적이고 구체적으로 작성하세요.
+코드펜스·설명·주석 등 JSON 외 어떤 문자도 금지."""
+
+_Q_ITEM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "quarter":          {"type": "string"},
+        "main_goal":        {"type": "string"},
+        "this_week":        {"type": "array", "items": {"type": "string"}},
+        "this_month":       {"type": "array", "items": {"type": "string"}},
+        "three_month_goal": {"type": "array", "items": {"type": "string"}},
+        "resources":        {"type": "array", "items": {"type": "string"}},
+        "avoid":            {"type": "string"},
+    },
+    "required": ["quarter", "main_goal", "this_week", "this_month",
+                 "three_month_goal", "resources", "avoid"],
+}
+
+QUARTERLY_PLAN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "quarters": {"type": "array", "items": _Q_ITEM_SCHEMA},
+    },
+    "required": ["quarters"],
+}
+
 # ── 체크리스트 저장/불러오기 ─────────────────────────────────────────────────
 
 def cleanup_old_checklists(days: int = 30):
@@ -176,6 +231,143 @@ def save_checklist(scenario_type: str, checks: dict, scenario: dict = None):
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
         st.warning(f"체크리스트 저장 중 오류가 발생했습니다: {e}")
+
+
+def save_quarterly_plan(scenario_type: str, plan_data: dict):
+    """분기별 실행계획을 checklist_구체화_*.json으로 저장."""
+    today = datetime.date.today().strftime("%Y%m%d")
+    path = f"checklist_구체화_{today}_{scenario_type}.json"
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({
+                "date": datetime.date.today().isoformat(),
+                "saved_at": datetime.datetime.now().isoformat(timespec="seconds"),
+                "scenario_type": scenario_type,
+                "plan": plan_data,
+            }, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
+    """분기별(Q1~Q4) 구체 실행계획을 Gemini로 생성."""
+    if not _GENAI_OK:
+        return {}
+
+    lines = ["=== 사용자 정보 ==="]
+    for id_key, label in [
+        ("job", "직업"), ("skill", "기술"), ("saving", "자금"),
+        ("fear", "두려움"), ("goal", "목표"), ("satisfaction", "만족도"),
+        ("family_support", "가족지지"),
+    ]:
+        val = inputs.get(id_key, "")
+        if val and val != "입력 없음":
+            lines.append(f"  {label}: {val}")
+    inc_sel = inputs.get("INCOME_SELECT", "")
+    inc_txt = inputs.get("INCOME_TEXT", "")
+    if inc_sel == "직접 입력" and inc_txt:
+        lines.append(f"  현재 소득: {inc_txt}")
+    elif inc_sel not in ("선택", "직접 입력", "", None):
+        lines.append(f"  현재 소득: {inc_sel}")
+
+    lines += [
+        "",
+        f"=== 선택 시나리오: {scenario.get('type', '')} — {scenario.get('title', '')} ===",
+        scenario.get("description", ""),
+    ]
+
+    client = genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents="\n".join(lines),
+        config=gtypes.GenerateContentConfig(
+            system_instruction=QUARTERLY_PLAN_SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=QUARTERLY_PLAN_SCHEMA,
+            temperature=0.7,
+        ),
+    )
+    raw = response.text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw.strip())
+
+
+def _render_quarter_card(qdata: dict, q_idx: int, all_checks: dict):
+    """분기 카드 한 개를 렌더링하고 all_checks에 체크박스 상태를 기록."""
+    q_label      = qdata.get("quarter", f"Q{q_idx + 1}")
+    main_goal    = qdata.get("main_goal", "")
+    this_week    = qdata.get("this_week", [])
+    this_month   = qdata.get("this_month", [])
+    three_m_goal = qdata.get("three_month_goal", [])
+    resources    = qdata.get("resources", [])
+    avoid        = qdata.get("avoid", "")
+
+    with st.expander(f"**{q_label}** — {main_goal}", expanded=(q_idx == 0)):
+        st.markdown(
+            f'<div class="s3-q-goal">🎯 {main_goal}</div>',
+            unsafe_allow_html=True,
+        )
+
+        if this_week:
+            st.markdown(
+                '<p class="s3-sec-hdr">✅ 이번 주 바로 할 것'
+                ' <span class="s3-badge-week">이번 주</span></p>',
+                unsafe_allow_html=True,
+            )
+            for i, item in enumerate(this_week):
+                ck_key = f"qplan_{q_idx}_week_{i}"
+                all_checks[ck_key] = st.checkbox(item, key=ck_key)
+
+        if this_month:
+            st.markdown(
+                '<p class="s3-sec-hdr">📌 이번 달 완료 항목'
+                ' <span class="s3-badge-month">이번 달</span></p>',
+                unsafe_allow_html=True,
+            )
+            for i, item in enumerate(this_month):
+                ck_key = f"qplan_{q_idx}_month_{i}"
+                all_checks[ck_key] = st.checkbox(item, key=ck_key)
+
+        if three_m_goal:
+            st.markdown(
+                '<p class="s3-sec-hdr">🎯 3개월 내 달성 목표'
+                ' <span class="s3-badge-3m">3개월 목표</span></p>',
+                unsafe_allow_html=True,
+            )
+            for i, item in enumerate(three_m_goal):
+                ck_key = f"qplan_{q_idx}_3m_{i}"
+                all_checks[ck_key] = st.checkbox(item, key=ck_key)
+
+        if resources:
+            st.markdown(
+                '<p class="s3-sec-hdr">⭐ 필요 자원·도구'
+                ' <span class="s3-badge-res">필요 자원</span></p>',
+                unsafe_allow_html=True,
+            )
+            for item in resources:
+                st.markdown(
+                    f'<div class="s3-res-item">• {item}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        if avoid:
+            st.markdown(
+                f'<div class="s3-avoid-box">⚠️ <strong>이 분기 반드시 피할 것:</strong> {avoid}</div>',
+                unsafe_allow_html=True,
+            )
+
+        # 분기별 완료율
+        q_keys   = [k for k in all_checks if k.startswith(f"qplan_{q_idx}_week_")
+                    or k.startswith(f"qplan_{q_idx}_month_")
+                    or k.startswith(f"qplan_{q_idx}_3m_")]
+        q_done   = sum(1 for k in q_keys if all_checks.get(k))
+        q_total  = len(q_keys)
+        if q_total:
+            pct = int(q_done / q_total * 100)
+            st.progress(pct / 100, text=f"완료율 {pct}% ({q_done}/{q_total})")
 
 
 def _item_text(item) -> str:
@@ -246,7 +438,8 @@ def _init_checks(scenario_type: str, ns: dict):
     st.session_state.coach_chat = []
     st.session_state.coach_error = None
     st.session_state.coach_pending_msg = None
-    for _k in ("s3_smart_ns", "s3_smart_ns_type", "s3_smart_ns_failed", "s3_smart_ns_err"):
+    for _k in ("s3_smart_ns", "s3_smart_ns_type", "s3_smart_ns_failed", "s3_smart_ns_err",
+               "s3_qplan", "s3_qplan_type", "s3_qplan_failed", "s3_qplan_err"):
         st.session_state.pop(_k, None)
 
 # ── AI 평가 ──────────────────────────────────────────────────────────────────
@@ -549,11 +742,8 @@ def render():
             _s3_scenario = st.session_state.get("selected_scenario") or {}
             _s3_type     = _s3_scenario.get("type", "")
             _s3_checks   = {
-                k: st.session_state.get(k, False)
-                for section_label, ns_key, key_prefix in CHECKLIST_SECTIONS
-                for idx in range(50)
-                for k in [f"check_{key_prefix}_{idx}"]
-                if k in st.session_state
+                k: v for k, v in st.session_state.items()
+                if isinstance(v, bool) and (k.startswith("qplan_") or k.startswith("check_"))
             }
             if _s3_type and _s3_checks:
                 save_checklist(_s3_type, _s3_checks, scenario=_s3_scenario)
@@ -576,93 +766,74 @@ def render():
     st.caption(scenario.get("description", ""))
     st.divider()
 
-    # ── SMART 실행계획 생성/캐시 ─────────────────────────────────────────────
-    _cached_stype = st.session_state.get("s3_smart_ns_type", "")
-    _cached_sns   = st.session_state.get("s3_smart_ns")
-    _smart_failed = st.session_state.get("s3_smart_ns_failed", False)
+    # ── 분기별 실행계획 생성/캐시 ────────────────────────────────────────────
+    _cached_qtype = st.session_state.get("s3_qplan_type", "")
+    _cached_qplan = st.session_state.get("s3_qplan")
+    _qplan_failed = st.session_state.get("s3_qplan_failed", False)
 
-    if _cached_stype != scenario_type or not _cached_sns:
-        if not _smart_failed and _GENAI_OK and os.environ.get("GEMINI_API_KEY", ""):
-            with st.spinner("더 구체적인 실행 계획을 준비 중입니다... (10~30초)"):
+    if _cached_qtype != scenario_type or not _cached_qplan:
+        if not _qplan_failed and _GENAI_OK and os.environ.get("GEMINI_API_KEY", ""):
+            with st.spinner("AI가 분기별 실행 계획을 작성 중입니다... (15~40초)"):
                 try:
-                    _new_sns = _call_smart_ns_api(inputs, scenario, ns)
-                    if _new_sns:
-                        st.session_state["s3_smart_ns_type"] = scenario_type
-                        st.session_state["s3_smart_ns"] = _new_sns
-                        st.session_state["s3_smart_ns_failed"] = False
+                    _new_qplan = _call_quarterly_plan_api(inputs, scenario)
+                    if _new_qplan:
+                        st.session_state["s3_qplan_type"] = scenario_type
+                        st.session_state["s3_qplan"] = _new_qplan
+                        st.session_state["s3_qplan_failed"] = False
+                        save_quarterly_plan(scenario_type, _new_qplan)
                         st.rerun()
-                except Exception as _smart_err:
-                    st.session_state["s3_smart_ns_failed"] = True
-                    st.session_state["s3_smart_ns_err"] = str(_smart_err)
+                except Exception as _qe:
+                    st.session_state["s3_qplan_failed"] = True
+                    st.session_state["s3_qplan_err"] = str(_qe)
 
-    _smart_ns = (
-        st.session_state.get("s3_smart_ns")
-        if st.session_state.get("s3_smart_ns_type") == scenario_type
-        else {}
-    ) or {}
+    _qplan = (
+        st.session_state.get("s3_qplan")
+        if st.session_state.get("s3_qplan_type") == scenario_type
+        else None
+    )
 
-    if st.session_state.get("s3_smart_ns_failed"):
+    if st.session_state.get("s3_qplan_failed"):
         _c1, _c2 = st.columns([4, 1])
         with _c1:
-            st.warning("실행 계획 구체화에 실패했습니다. 기본 계획을 표시합니다.")
+            st.warning("분기별 실행 계획 생성에 실패했습니다. 기본 계획을 표시합니다.")
         with _c2:
-            if st.button("🔄 재시도", key="s3_smart_retry"):
-                for _k in ("s3_smart_ns", "s3_smart_ns_type",
-                           "s3_smart_ns_failed", "s3_smart_ns_err"):
+            if st.button("🔄 재시도", key="s3_qplan_retry"):
+                for _k in ("s3_qplan", "s3_qplan_type", "s3_qplan_failed", "s3_qplan_err"):
                     st.session_state.pop(_k, None)
                 st.rerun()
-    elif _smart_ns:
-        st.caption("💡 AI가 각 항목을 SMART 형식(측정 지표·데드라인 포함)으로 구체화했습니다.")
+    elif _qplan:
+        st.caption("📅 AI가 선택한 시나리오를 기반으로 분기별(Q1~Q4) 구체 실행 계획을 작성했습니다.")
 
-    # ── 체크리스트
+    # ── 분기 카드 or 기본 체크리스트(fallback)
     all_checks: dict = {}
-    _smart_sections = {"this_week", "one_month", "three_months"}  # task/metric/deadline 표시 구간
 
-    for section_label, ns_key, key_prefix in CHECKLIST_SECTIONS:
-        orig_items = ns.get(ns_key, [])
-        if not orig_items:
-            continue
-
-        smart_items = _smart_ns.get(ns_key, orig_items)
-        # 항목 수가 다르면 원본 사용(안전 fallback)
-        if len(smart_items) != len(orig_items):
-            smart_items = orig_items
-
-        icon = _SEC_ICON.get(ns_key, "📋")
-        is_smart = bool(_smart_ns) and ns_key in _smart_sections
-        tag = '<span class="s3-smart-tag">SMART</span>' if is_smart else ""
-        st.markdown(
-            f'<p class="s3-sec-hdr">{icon} {section_label}{tag}</p>',
-            unsafe_allow_html=True,
-        )
-
-        checked_count = 0
-        for idx, item in enumerate(smart_items):
-            ck_key = f"check_{key_prefix}_{idx}"
-            task_text = _item_text(item)
-            checked = st.checkbox(task_text, key=ck_key)
-            all_checks[ck_key] = checked
-            if checked:
-                checked_count += 1
-
-            if is_smart and isinstance(item, dict):
-                metric   = item.get("metric", "")
-                deadline = item.get("deadline", "")
-                badges   = []
-                if metric:
-                    badges.append(f'<span class="s3-badge-metric">📊 {metric}</span>')
-                if deadline:
-                    badges.append(f'<span class="s3-badge-deadline">📅 {deadline}</span>')
-                if badges:
-                    st.markdown(
-                        f'<div class="s3-smart-badges">{"".join(badges)}</div>',
-                        unsafe_allow_html=True,
-                    )
-
-        total = len(orig_items)
-        pct = int(checked_count / total * 100) if total else 0
-        st.progress(pct / 100, text=f"완료율 {pct}% ({checked_count}/{total})")
-        st.write("")
+    if _qplan:
+        quarters = _qplan.get("quarters", [])
+        for q_idx, qdata in enumerate(quarters):
+            _render_quarter_card(qdata, q_idx, all_checks)
+    else:
+        # fallback: 화면2 next_steps 기반 기본 체크리스트
+        for section_label, ns_key, key_prefix in CHECKLIST_SECTIONS:
+            orig_items = ns.get(ns_key, [])
+            if not orig_items:
+                continue
+            icon = _SEC_ICON.get(ns_key, "📋")
+            st.markdown(
+                f'<p class="s3-sec-hdr">{icon} {section_label}</p>',
+                unsafe_allow_html=True,
+            )
+            checked_count = 0
+            for idx, item in enumerate(orig_items):
+                ck_key = f"check_{key_prefix}_{idx}"
+                task_text = _item_text(item)
+                checked = st.checkbox(task_text, key=ck_key)
+                all_checks[ck_key] = checked
+                if checked:
+                    checked_count += 1
+            total = len(orig_items)
+            pct = int(checked_count / total * 100) if total else 0
+            st.progress(pct / 100, text=f"완료율 {pct}% ({checked_count}/{total})")
+            st.write("")
 
     # ── 전체 달성률 대시보드
     total_done  = sum(1 for v in all_checks.values() if v)
@@ -715,11 +886,8 @@ def render():
     if all_checks:
         save_checklist(scenario_type, all_checks, scenario=scenario)
 
-    # eval·chat 에는 smart_ns(없으면 원본 ns)를 전달 — _item_text 로 텍스트 추출
-    _ns_for_ai = _smart_ns if _smart_ns else ns
-
     # ── AI 중간 평가
-    _render_ai_evaluation(inputs, scenario, _ns_for_ai, all_checks)
+    _render_ai_evaluation(inputs, scenario, ns, all_checks)
 
     # ── AI 코치 채팅
-    _render_chat(inputs, scenario, _ns_for_ai, all_checks)
+    _render_chat(inputs, scenario, ns, all_checks)

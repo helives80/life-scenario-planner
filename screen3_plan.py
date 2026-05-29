@@ -46,6 +46,13 @@ S3_CSS = """<style>
 [data-testid="stProgress"]>div>div{
   background:linear-gradient(90deg,#7c6fcd,#3b82f6)!important;
   border-radius:99px!important}
+.s3-smart-badges{display:flex;gap:8px;margin:2px 0 6px 28px;flex-wrap:wrap}
+.s3-badge-metric{background:#0d2a1a;border:1px solid #1a4a2a;color:#4ade80;
+  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weight:600}
+.s3-badge-deadline{background:#0f0f2e;border:1px solid #2a2a5a;color:#a78bfa;
+  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weight:600}
+.s3-smart-tag{display:inline-block;background:#1a2235;border:1px solid #2a3a55;
+  color:#60a5fa;padding:1px 7px;border-radius:4px;font-size:.7rem;margin-left:6px}
 </style>"""
 
 # ── AI 평가 프롬프트 / 스키마 ────────────────────────────────────────────────
@@ -94,6 +101,46 @@ EVAL_SCHEMA = {
     "required": ["evaluation", "message", "suggestions", "encouragement"],
 }
 
+# ── 화면3 SMART 실행계획 변환 프롬프트/스키마 ───────────────────────────────
+
+SMART_NS_SYSTEM_PROMPT = """
+당신은 실행 코치입니다. 화면2(시나리오 카드)의 next_steps 를 받아
+더 구체적인 SMART 실행 액션으로 변환한 JSON 한 개만 반환합니다.
+코드펜스·설명·주석 등 JSON 외 어떤 문자도 금지.
+
+변환 규칙:
+1. 각 항목을 SMART(구체·측정가능·달성가능·관련성·시한) 형식으로 재작성.
+2. task: 무엇을, 얼마나, 어떻게 할지 1문장으로 기술.
+3. metric: 완료를 판단하는 측정 지표 (횟수·금액·완료 여부 등) 1개.
+4. deadline: 이 항목을 마쳐야 할 요일·날짜·주차 등 구체적 시한.
+5. 사용자 입력값(직업·기술·자금·가족·두려움) 중 최소 1개를 task 에 직접 인용.
+6. "열심히", "꾸준히" 같은 추상어 금지.
+7. 각 섹션의 항목 개수는 원본과 반드시 동일하게 유지.
+8. must_prepare·must_avoid 는 더 구체적인 단문으로 재작성(단순 문자열).
+"""
+
+_SMART_ITEM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "task":     {"type": "string"},
+        "metric":   {"type": "string"},
+        "deadline": {"type": "string"},
+    },
+    "required": ["task", "metric", "deadline"],
+}
+
+SMART_NS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "this_week":    {"type": "array", "items": _SMART_ITEM_SCHEMA},
+        "one_month":    {"type": "array", "items": _SMART_ITEM_SCHEMA},
+        "three_months": {"type": "array", "items": _SMART_ITEM_SCHEMA},
+        "must_prepare": {"type": "array", "items": {"type": "string"}},
+        "must_avoid":   {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["this_week", "one_month", "three_months", "must_prepare", "must_avoid"],
+}
+
 # ── 체크리스트 저장/불러오기 ─────────────────────────────────────────────────
 
 def cleanup_old_checklists(days: int = 30):
@@ -134,6 +181,60 @@ def save_checklist(scenario_type: str, checks: dict, scenario: dict = None):
         st.warning(f"체크리스트 저장 중 오류가 발생했습니다: {e}")
 
 
+def _item_text(item) -> str:
+    """dict 또는 str 항목에서 표시 텍스트를 추출한다."""
+    if isinstance(item, dict):
+        return item.get("task", "")
+    return str(item)
+
+
+def _call_smart_ns_api(inputs: dict, scenario: dict, original_ns: dict) -> dict:
+    """화면2 next_steps 를 SMART 실행 액션으로 변환. 실패 시 빈 dict 반환."""
+    if not _GENAI_OK:
+        return {}
+
+    lines = ["=== 사용자 입력값 ==="]
+    for id_key, label in [
+        ("job", "직업"), ("satisfaction", "만족도"), ("skill", "기술"),
+        ("saving", "자금"), ("family_support", "가족지지"),
+        ("fear", "두려움"), ("goal", "목표"),
+    ]:
+        val = inputs.get(id_key, "")
+        if val and val != "입력 없음":
+            lines.append(f"  {label}: {val}")
+
+    lines += [
+        "",
+        f"=== 선택 시나리오: {scenario.get('type', '')} — {scenario.get('title', '')} ===",
+        "",
+        "=== 원본 next_steps (변환 대상) ===",
+    ]
+    for _, ns_key, _ in CHECKLIST_SECTIONS:
+        items = original_ns.get(ns_key, [])
+        if items:
+            lines.append(f"[{ns_key}]")
+            for it in items:
+                lines.append(f"  - {_item_text(it)}")
+
+    client = _get_client()
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents="\n".join(lines),
+        config=gtypes.GenerateContentConfig(
+            system_instruction=SMART_NS_SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=SMART_NS_SCHEMA,
+            temperature=0.6,
+        ),
+    )
+    raw = response.text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw.strip())
+
+
 def _init_checks(scenario_type: str, ns: dict):
     """시나리오가 바뀔 때만 체크 상태와 채팅 히스토리를 초기화."""
     if st.session_state.get("checklist_scenario_type") == scenario_type:
@@ -144,10 +245,12 @@ def _init_checks(scenario_type: str, ns: dict):
         for idx in range(len(ns.get(ns_key, []))):
             ck_key = f"check_{key_prefix}_{idx}"
             st.session_state[ck_key] = loaded.get(ck_key, False)
-    # 시나리오 전환 시 채팅 초기화
+    # 시나리오 전환 시 채팅 + SMART ns 캐시 초기화
     st.session_state.coach_chat = []
     st.session_state.coach_error = None
     st.session_state.coach_pending_msg = None
+    for _k in ("s3_smart_ns", "s3_smart_ns_type", "s3_smart_ns_failed", "s3_smart_ns_err"):
+        st.session_state.pop(_k, None)
 
 # ── AI 평가 ──────────────────────────────────────────────────────────────────
 
@@ -188,7 +291,8 @@ def _build_eval_prompt(inputs: dict, scenario: dict, completed_items: list) -> s
 def _call_eval_api(prompt_text: str) -> dict:
     if not _GENAI_OK:
         raise RuntimeError("google-genai SDK를 불러오지 못했습니다.")
-    response = _get_client().models.generate_content(
+    client = _get_client()
+    response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt_text,
         config=gtypes.GenerateContentConfig(
@@ -249,7 +353,7 @@ def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: di
         return
 
     completed_items = [
-        item
+        _item_text(item)
         for _, ns_key, key_prefix in CHECKLIST_SECTIONS
         for idx, item in enumerate(ns.get(ns_key, []))
         if all_checks.get(f"check_{key_prefix}_{idx}", False)
@@ -325,7 +429,7 @@ def _build_coach_system_prompt(inputs: dict, all_checks: dict, ns: dict, scenari
         "[체크 완료 항목 요약]",
     ]
     completed = [
-        item
+        _item_text(item)
         for _, ns_key, key_prefix in CHECKLIST_SECTIONS
         for idx, item in enumerate(ns.get(ns_key, []))
         if all_checks.get(f"check_{key_prefix}_{idx}", False)
@@ -353,7 +457,8 @@ def _call_coach_api(system_prompt: str, history: list, user_msg: str) -> str:
         gtypes.Content(role="user", parts=[gtypes.Part(text=user_msg)])
     )
 
-    response = _get_client().models.generate_content(
+    client = _get_client()
+    response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=contents,
         config=gtypes.GenerateContentConfig(
@@ -474,32 +579,99 @@ def render():
     st.caption(scenario.get("description", ""))
     st.divider()
 
+    # ── SMART 실행계획 생성/캐시 ─────────────────────────────────────────────
+    _cached_stype = st.session_state.get("s3_smart_ns_type", "")
+    _cached_sns   = st.session_state.get("s3_smart_ns")
+    _smart_failed = st.session_state.get("s3_smart_ns_failed", False)
+
+    if _cached_stype != scenario_type or not _cached_sns:
+        if not _smart_failed and _GENAI_OK and os.environ.get("GEMINI_API_KEY", ""):
+            with st.spinner("더 구체적인 실행 계획을 준비 중입니다... (10~30초)"):
+                try:
+                    _new_sns = _call_smart_ns_api(inputs, scenario, ns)
+                    if _new_sns:
+                        st.session_state["s3_smart_ns_type"] = scenario_type
+                        st.session_state["s3_smart_ns"] = _new_sns
+                        st.session_state["s3_smart_ns_failed"] = False
+                        st.rerun()
+                except Exception as _smart_err:
+                    st.session_state["s3_smart_ns_failed"] = True
+                    st.session_state["s3_smart_ns_err"] = str(_smart_err)
+
+    _smart_ns = (
+        st.session_state.get("s3_smart_ns")
+        if st.session_state.get("s3_smart_ns_type") == scenario_type
+        else {}
+    ) or {}
+
+    if st.session_state.get("s3_smart_ns_failed"):
+        _c1, _c2 = st.columns([4, 1])
+        with _c1:
+            st.warning("실행 계획 구체화에 실패했습니다. 기본 계획을 표시합니다.")
+        with _c2:
+            if st.button("🔄 재시도", key="s3_smart_retry"):
+                for _k in ("s3_smart_ns", "s3_smart_ns_type",
+                           "s3_smart_ns_failed", "s3_smart_ns_err"):
+                    st.session_state.pop(_k, None)
+                st.rerun()
+    elif _smart_ns:
+        st.caption("💡 AI가 각 항목을 SMART 형식(측정 지표·데드라인 포함)으로 구체화했습니다.")
+
     # ── 체크리스트
     all_checks: dict = {}
+    _smart_sections = {"this_week", "one_month", "three_months"}  # task/metric/deadline 표시 구간
 
     for section_label, ns_key, key_prefix in CHECKLIST_SECTIONS:
-        items = ns.get(ns_key, [])
-        if not items:
+        orig_items = ns.get(ns_key, [])
+        if not orig_items:
             continue
+
+        smart_items = _smart_ns.get(ns_key, orig_items)
+        # 항목 수가 다르면 원본 사용(안전 fallback)
+        if len(smart_items) != len(orig_items):
+            smart_items = orig_items
+
         icon = _SEC_ICON.get(ns_key, "📋")
-        st.markdown(f'<p class="s3-sec-hdr">{icon} {section_label}</p>', unsafe_allow_html=True)
+        is_smart = bool(_smart_ns) and ns_key in _smart_sections
+        tag = '<span class="s3-smart-tag">SMART</span>' if is_smart else ""
+        st.markdown(
+            f'<p class="s3-sec-hdr">{icon} {section_label}{tag}</p>',
+            unsafe_allow_html=True,
+        )
+
         checked_count = 0
-        for idx, item in enumerate(items):
+        for idx, item in enumerate(smart_items):
             ck_key = f"check_{key_prefix}_{idx}"
-            checked = st.checkbox(item, key=ck_key)
+            task_text = _item_text(item)
+            checked = st.checkbox(task_text, key=ck_key)
             all_checks[ck_key] = checked
             if checked:
                 checked_count += 1
-        total = len(items)
+
+            if is_smart and isinstance(item, dict):
+                metric   = item.get("metric", "")
+                deadline = item.get("deadline", "")
+                badges   = []
+                if metric:
+                    badges.append(f'<span class="s3-badge-metric">📊 {metric}</span>')
+                if deadline:
+                    badges.append(f'<span class="s3-badge-deadline">📅 {deadline}</span>')
+                if badges:
+                    st.markdown(
+                        f'<div class="s3-smart-badges">{"".join(badges)}</div>',
+                        unsafe_allow_html=True,
+                    )
+
+        total = len(orig_items)
         pct = int(checked_count / total * 100) if total else 0
         st.progress(pct / 100, text=f"완료율 {pct}% ({checked_count}/{total})")
         st.write("")
 
     # ── 전체 달성률 대시보드
-    total_done = sum(1 for v in all_checks.values() if v)
+    total_done  = sum(1 for v in all_checks.values() if v)
     total_items = len(all_checks)
-    pct_all = int(total_done / total_items * 100) if total_items else 0
-    remaining = total_items - total_done
+    pct_all     = int(total_done / total_items * 100) if total_items else 0
+    remaining   = total_items - total_done
     st.markdown(f"""<div class="s3-card">
 <div class="s3-title">📊 전체 달성률</div>
 <div class="s3-stats">
@@ -535,7 +707,7 @@ def render():
                 use_container_width=True,
             )
 
-    # ── AI 코치 메시지
+    # ── AI 코치 메시지 (원본 시나리오 coach_message)
     coach = ns.get("coach_message", "")
     if coach:
         st.divider()
@@ -546,8 +718,11 @@ def render():
     if all_checks:
         save_checklist(scenario_type, all_checks, scenario=scenario)
 
+    # eval·chat 에는 smart_ns(없으면 원본 ns)를 전달 — _item_text 로 텍스트 추출
+    _ns_for_ai = _smart_ns if _smart_ns else ns
+
     # ── AI 중간 평가
-    _render_ai_evaluation(inputs, scenario, ns, all_checks)
+    _render_ai_evaluation(inputs, scenario, _ns_for_ai, all_checks)
 
     # ── AI 코치 채팅
-    _render_chat(inputs, scenario, ns, all_checks)
+    _render_chat(inputs, scenario, _ns_for_ai, all_checks)

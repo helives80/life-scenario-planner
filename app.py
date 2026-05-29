@@ -381,6 +381,55 @@ COMPARE_RESPONSE_SCHEMA = {
 
 PROFILE_PATH = "profile.json"
 
+# ── 다크/라이트 테마 공통 CSS 변수 ────────────────────────────────────────────
+_THEME_DARK_CSS = """<style>
+:root{
+  --bg:#0d1117;--surface:#161b27;--card:#1a1a2e;--card2:#16213e;
+  --border:#2a2a4a;--text:#e8e8f0;--text2:#a0a0c0;--text3:#6060a0;
+  --accent:#6c63ff;--blue:#4a7fff;--green:#2ecc71;--red:#e74c3c;
+  --purple:#9b59b6;--shadow:0 4px 20px rgba(0,0,0,.35);
+  --radius:12px;--radius-sm:8px;
+}
+</style>"""
+
+_THEME_LIGHT_CSS = """<style>
+:root{
+  --bg:#f8f9ff;--surface:#ffffff;--card:#ffffff;--card2:#f0f2ff;
+  --border:#dde0f0;--text:#1a1a2e;--text2:#4a4a7a;--text3:#9090b0;
+  --accent:#6c63ff;--blue:#2255cc;--green:#1a7a45;--red:#dc2626;
+  --purple:#5b21b6;--shadow:0 2px 12px rgba(0,0,0,.08);
+  --radius:12px;--radius-sm:8px;
+}
+.stApp,[data-testid="stAppViewContainer"]{background-color:#f8f9ff!important}
+section[data-testid="stSidebar"]{background-color:#eef0fa!important}
+</style>"""
+
+
+def apply_theme() -> None:
+    """st.session_state.theme 값에 따라 공통 CSS 변수를 Streamlit에 주입한다."""
+    try:
+        theme = st.session_state.get("theme", "dark")
+        st.markdown(_THEME_LIGHT_CSS if theme == "light" else _THEME_DARK_CSS,
+                    unsafe_allow_html=True)
+    except Exception:
+        pass
+
+
+def render_theme_toggle() -> None:
+    """사이드바에 다크/라이트 모드 토글을 렌더링한다. 위치 이동 시 이 함수만 재배치."""
+    theme = st.session_state.get("theme", "dark")
+    is_dark = (theme == "dark")
+    with st.sidebar:
+        new_is_dark = st.toggle(
+            "🌙 다크 모드" if is_dark else "☀️ 라이트 모드",
+            value=is_dark,
+            key="theme_sidebar_toggle",
+        )
+        if new_is_dark != is_dark:
+            st.session_state.theme = "dark" if new_is_dark else "light"
+            st.rerun()
+
+
 # ── Google 로그인 (임시 비활성화) ────────────────────────────────────────────
 # 아래 플래그를 True 로 바꾸면 로그인 기능이 다시 활성화됩니다.
 _LOGIN_ENABLED = False
@@ -2275,7 +2324,7 @@ def render_result_page():
         unsafe_allow_html=True,
     )
 
-    col_home, col_back, col_save_hist, col_pdf, col_theme = st.columns([2, 3, 2, 2, 1])
+    col_home, col_back, col_save_hist, col_pdf = st.columns([2, 3, 2, 2])
     with col_home:
         if st.button("🏠 홈으로", use_container_width=True):
             st.session_state.page = "home"
@@ -2302,12 +2351,6 @@ def render_result_page():
                 mime="application/pdf",
                 use_container_width=True,
             )
-    with col_theme:
-        theme = st.session_state.get("theme", "dark")
-        if st.button("☀️" if theme == "dark" else "🌙", help="라이트/다크 모드 전환", use_container_width=True):
-            st.session_state.theme = "light" if theme == "dark" else "dark"
-            st.rerun()
-
     st.divider()
     _result = st.session_state.result
     _rec_type = _result.get("recommendation", {}).get("type", "")
@@ -2380,6 +2423,8 @@ def main():
         layout="wide"
     )
     init_session()
+    apply_theme()
+    render_theme_toggle()
 
     # ── 로그인 체크 (Streamlit 내장 OIDC) ────────────────────────────────────
     if not _safe_get_user_info()["is_logged_in"]:

@@ -451,6 +451,10 @@ hr{border-color:#dde0f0!important}
 /* ── chat ── */
 [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
 [data-testid="stChatInputContainer"]{background-color:#ffffff!important;border-color:#dde0f0!important}
+/* ── disabled 버튼 (라이트) ── */
+[data-testid="stButton"]>button[disabled]{
+  background:rgba(200,200,220,.4)!important;
+  border-color:#c0c0d8!important;color:#8888aa!important}
 </style>"""
 
 
@@ -654,6 +658,26 @@ _HOME_PAGE_CSS = """<style>
   border:1px solid rgba(255,255,255,.06)!important;
   color:#5a5a7a!important;cursor:not-allowed!important;
   transform:none!important;box-shadow:none!important}
+</style>"""
+
+_HOME_PAGE_CSS_LIGHT_OVERRIDE = """<style>
+/* 화면0 라이트: 퍼플/그린 버튼 배경·흰 글씨 유지 */
+body [data-testid="stButton"]>button[kind="primary"]{
+  background:linear-gradient(135deg,#0F6E56,#0d5c47)!important;
+  color:#fff!important}
+body [data-testid="stButton"]>button[kind="secondary"]{
+  background:linear-gradient(135deg,#534AB7,#423b96)!important;
+  color:#fff!important}
+body [data-testid="stButton"]>button[disabled]{
+  background:rgba(200,200,220,.4)!important;
+  border-color:#c0c0d8!important;color:#8888aa!important}
+/* 화면0 카드 — 어두운 배경 위 흰 글씨 유지 */
+.home-cr-name,.home-cr-badge{color:#fff!important}
+.home-cr-date{color:rgba(255,255,255,.55)!important}
+.home-cp-name{color:#fff!important}
+.home-cp-todo{color:#ffb450!important}
+.home-cp-meta{color:rgba(255,255,255,.55)!important}
+.home-cp-pct{color:#c3b8ff!important}
 </style>"""
 
 _COMPASS_SVG = (
@@ -2137,6 +2161,8 @@ def render_home_page():
 
     # ── CSS 주입 ─────────────────────────────────────────────────────────────
     st.markdown(_HOME_PAGE_CSS, unsafe_allow_html=True)
+    if st.session_state.get("theme", "dark") == "light":
+        st.markdown(_HOME_PAGE_CSS_LIGHT_OVERRIDE, unsafe_allow_html=True)
 
     # ── 브랜드 헤더 ──────────────────────────────────────────────────────────
     st.markdown(

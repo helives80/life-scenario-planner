@@ -400,8 +400,57 @@ _THEME_LIGHT_CSS = """<style>
   --purple:#5b21b6;--shadow:0 2px 12px rgba(0,0,0,.08);
   --radius:12px;--radius-sm:8px;
 }
+/* ── 앱 전체 배경 ── */
 .stApp,[data-testid="stAppViewContainer"]{background-color:#f8f9ff!important}
+/* ── 상단 헤더 ── */
+[data-testid="stHeader"]{background-color:#f8f9ff!important;border-bottom:1px solid #dde0f0!important}
+[data-testid="stHeader"] *{color:#1a1a2e!important}
+[data-testid="stToolbar"] *{color:#1a1a2e!important}
+[data-testid="stDecoration"]{background:none!important}
+/* ── 사이드바 ── */
 section[data-testid="stSidebar"]{background-color:#eef0fa!important}
+section[data-testid="stSidebar"] *{color:#1a1a2e!important}
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p{color:#1a1a2e!important}
+/* ── 기본 텍스트·마크다운 ── */
+.stApp p,.stApp span,.stApp label,.stApp div{color:#1a1a2e}
+[data-testid="stMarkdownContainer"],[data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
+h1,h2,h3,h4,h5,h6{color:#1a1a2e!important}
+/* ── 체크박스 ── */
+[data-testid="stCheckbox"] label,[data-testid="stCheckbox"] span{color:#1a1a2e!important}
+/* ── 버튼 ── */
+button[kind="secondary"],button[kind="secondaryFormSubmit"]{
+  background-color:#ffffff!important;color:#1a1a2e!important;border-color:#dde0f0!important}
+button[kind="primary"]{color:#ffffff!important}
+/* ── 입력 필드 ── */
+[data-testid="stTextInput"] input,[data-testid="stTextArea"] textarea{
+  background-color:#ffffff!important;color:#1a1a2e!important;border-color:#dde0f0!important}
+[data-testid="stTextInput"] label,[data-testid="stTextArea"] label{color:#1a1a2e!important}
+/* ── expander ── */
+[data-testid="stExpander"]{background-color:#ffffff!important;border-color:#dde0f0!important}
+[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *{color:#1a1a2e!important}
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
+/* ── 알림 박스 ── */
+[data-testid="stInfo"]{background-color:#eff6ff!important}
+[data-testid="stInfo"] *{color:#1e40af!important}
+[data-testid="stWarning"]{background-color:#fffbeb!important}
+[data-testid="stWarning"] *{color:#92400e!important}
+[data-testid="stSuccess"]{background-color:#f0fdf4!important}
+[data-testid="stSuccess"] *{color:#166534!important}
+[data-testid="stError"]{background-color:#fef2f2!important}
+[data-testid="stError"] *{color:#991b1b!important}
+/* ── caption/subtext ── */
+[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *{color:#4a4a7a!important}
+/* ── 구분선 ── */
+hr{border-color:#dde0f0!important}
+/* ── 메트릭 ── */
+[data-testid="stMetric"] label,[data-testid="stMetric"] [data-testid="stMetricLabel"]{color:#4a4a7a!important}
+[data-testid="stMetric"] [data-testid="stMetricValue"]{color:#1a1a2e!important}
+/* ── select box ── */
+[data-testid="stSelectbox"] label{color:#1a1a2e!important}
+[data-baseweb="select"] [data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
+/* ── chat ── */
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
+[data-testid="stChatInputContainer"]{background-color:#ffffff!important;border-color:#dde0f0!important}
 </style>"""
 
 

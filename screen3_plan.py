@@ -66,6 +66,30 @@ S3_CSS = """<style>
 .s3-res-item{color:#93c5fd;padding:3px 0 3px 8px;font-size:.9rem}
 </style>"""
 
+# ── 화면3 라이트 모드 override (screen4 방식과 동일) ───────────────────────────
+S3_CSS_LIGHT_OVERRIDE = """<style>
+.s3-card{background:#ffffff!important;border-color:#dde0f0!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.08)!important}
+.s3-title{color:#1a1a2e!important}
+.s3-sec-hdr{color:#1a1a2e!important;background:#f0f2ff!important;border-color:#dde0f0!important}
+.s3-stat{background:#f0f2ff!important;border-color:#dde0f0!important}
+.s3-lbl{color:#606080!important}
+.s3-g{color:#1a7a45!important}
+.s3-y{color:#b45309!important}
+.s3-p{color:#5b21b6!important}
+.s3-q-goal{background:linear-gradient(135deg,#eff0ff,#e8eeff)!important;
+  border-left-color:#6c63ff!important;color:#1a1a2e!important}
+.s3-avoid-box{background:#fff0f0!important;border-color:#dc2626!important;color:#7f1d1d!important}
+.s3-res-item{color:#1e40af!important}
+.s3-smart-tag{background:#eff0ff!important;border-color:#c7d2fe!important;color:#3730a3!important}
+.s3-badge-metric{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important}
+.s3-badge-deadline{background:#faf5ff!important;border-color:#d8b4fe!important;color:#6b21a8!important}
+.s3-badge-week{background:#fff0f0!important;border-color:#fca5a5!important;color:#991b1b!important}
+.s3-badge-month{background:#fff7ed!important;border-color:#fdba74!important;color:#9a3412!important}
+.s3-badge-3m{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important}
+.s3-badge-res{background:#eff6ff!important;border-color:#93c5fd!important;color:#1e40af!important}
+</style>"""
+
 # ── AI 평가 프롬프트 / 스키마 ────────────────────────────────────────────────
 
 EVAL_SYSTEM_PROMPT = """
@@ -725,6 +749,8 @@ def _render_chat(inputs: dict, scenario: dict, ns: dict, all_checks: dict):
 def render():
     cleanup_old_checklists(days=30)
     st.markdown(S3_CSS, unsafe_allow_html=True)
+    if st.session_state.get("theme", "dark") == "light":
+        st.markdown(S3_CSS_LIGHT_OVERRIDE, unsafe_allow_html=True)
 
     st.title("실행 계획")
 

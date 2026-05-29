@@ -1752,14 +1752,25 @@ function togglePanel(i){{
     btn.classList.add('open');
     btn.textContent='▲ 접기';
   }}
+  sendHeight();
   setTimeout(sendHeight,650);
+  setTimeout(sendHeight,1000);
 }}
 
 function sendHeight(){{
-  const h=document.documentElement.scrollHeight;
-  window.parent.postMessage({{type:'streamlit:setFrameHeight',height:h}},'*');
+  requestAnimationFrame(function(){{
+    var h=Math.max(
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight,
+      document.body.offsetHeight
+    );
+    window.parent.postMessage({{type:'streamlit:setFrameHeight',height:h}},'*');
+  }});
 }}
-window.addEventListener('load',sendHeight);
+window.addEventListener('load',function(){{setTimeout(sendHeight,100);}});
+if(window.ResizeObserver){{
+  new ResizeObserver(sendHeight).observe(document.body);
+}}
 new MutationObserver(sendHeight).observe(document.documentElement,{{subtree:true,childList:true,attributes:true}});
 
 </script>
@@ -2392,7 +2403,7 @@ def render_result_page():
 
     theme = st.session_state.get("theme", "dark")
     html_content = build_result_html(st.session_state.result, st.session_state.inputs, theme)
-    components.html(html_content, height=4500, scrolling=False)
+    components.html(html_content, height=200, scrolling=False)
 
     st.divider()
     st.subheader("결과가 실제와 다른가요?")

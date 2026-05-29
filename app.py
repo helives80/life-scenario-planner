@@ -1482,15 +1482,6 @@ def build_result_html(result: dict, inputs: dict, theme: str = "dark") -> str:
     # ── chart data
     max_inc = max(max(inc["r"]), max(inc["c"]), max(inc["p"]), 1)
 
-    # ── kakao share text
-    kakao_lines = ["[AI 인생 시나리오 리포트]"]
-    for sc in scenarios:
-        rec_mark = " ⭐ AI추천" if sc.get("type","") == rec_type else ""
-        kakao_lines.append(f"[{sc.get('type','')}] {sc.get('title','')}{rec_mark}")
-    kakao_lines.append(f"\nAI 추천: {rec_type}")
-    kakao_lines.append(f"\n{final_msg}")
-    kakao_share_js = json.dumps("\n".join(kakao_lines))
-
     DARK_VARS = """:root{
   --bg:#0d1117;--surface:#161b27;--border:#1f2a3c;--text:#e2e8f0;--muted:#8892a4;
   --blue:#3b82f6;--blue-dark:#1e3a5f;--blue-dim:#0f1e33;
@@ -1662,17 +1653,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .rec{background:var(--green-dim);border:1px solid #0e3728;border-radius:12px;padding:24px}
 .rec-lbl{font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px}
 .rec-tx{font-size:13.5px;line-height:1.95;color:#6ee7b7}
-.share-sec{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;text-align:center}
-.share-title{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
-.share-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.share-btn{padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s;letter-spacing:.2px}
-.s-li{background:#0A66C2;color:#fff}
-.s-li:hover{background:#004182}
-.s-kt{background:#FEE500;color:#3C1E1E}
-.s-kt:hover{background:#F5DB00}
-.s-cp{background:var(--border);color:var(--text)}
-.s-cp:hover{filter:brightness(1.2)}
-.share-msg{margin-top:12px;font-size:12px;font-weight:600;color:var(--green);min-height:18px}
 """ + CSS_EXTRA
 
     return f"""<!DOCTYPE html>
@@ -1721,15 +1701,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <div class="rec-tx">{_nl2br(rec.get("reason",""))}</div>
 </div>
 
-<div class="share-sec">
-  <div class="share-title">결과 공유하기</div>
-  <div class="share-btns">
-    <button class="share-btn s-li" onclick="shareLI()">💼 LinkedIn 공유</button>
-    <button class="share-btn s-kt" onclick="shareKT()">💬 카카오톡 공유</button>
-    <button class="share-btn s-cp" onclick="copyURL()">🔗 URL 복사</button>
-  </div>
-  <div class="share-msg" id="share-msg"></div>
-</div>
 
 </div>
 <script>
@@ -1791,27 +1762,6 @@ function sendHeight(){{
 window.addEventListener('load',sendHeight);
 new MutationObserver(sendHeight).observe(document.documentElement,{{subtree:true,childList:true,attributes:true}});
 
-const kakaoText={kakao_share_js};
-function getURL(){{try{{return window.parent.location.href;}}catch(e){{return window.location.href;}}}}
-function showMsg(txt){{
-  const el=document.getElementById('share-msg');
-  if(!el)return;
-  el.textContent=txt;
-  setTimeout(()=>{{el.textContent='';}},3000);
-}}
-function shareLI(){{
-  window.open('https://www.linkedin.com/sharing/share-offsite/?url='+encodeURIComponent(getURL()),'_blank');
-}}
-function shareKT(){{
-  navigator.clipboard.writeText(kakaoText)
-    .then(()=>showMsg('복사되었습니다. 카카오톡에 붙여넣기 하세요.'))
-    .catch(()=>showMsg('클립보드 접근이 차단되었습니다. 수동으로 복사해 주세요.'));
-}}
-function copyURL(){{
-  navigator.clipboard.writeText(getURL())
-    .then(()=>showMsg('URL이 복사되었습니다.'))
-    .catch(()=>showMsg('클립보드 접근이 차단되었습니다.'));
-}}
 </script>
 </body>
 </html>"""

@@ -94,46 +94,55 @@ S3_CSS_LIGHT_OVERRIDE = """<style>
 
 EVAL_SYSTEM_PROMPT = """
 당신은 AI 인생 시나리오 실행 코치입니다.
-사용자의 원본 입력값, 선택한 시나리오, 현재까지 완료한 실행 항목을 받아
+사용자의 원본 입력값, 선택한 시나리오, 분기별 완료/미완료 항목을 받아
 아래 JSON 한 개만 반환합니다. 코드펜스·설명·주석 등 JSON 외 어떤 문자도 금지.
 
 반환 JSON 스키마:
 {
-  "evaluation": {
-    "execution": "A~F 등급과 한 줄 평가 (예: B — 이번 주 2개 중 1개 완료, 속도 양호)",
-    "speed":     "A~F 등급과 한 줄 평가",
-    "direction": "A~F 등급과 한 줄 평가"
-  },
-  "message": "Q8 두려움과 Q13 고민을 직접 인용한 2~3문장 평가 메시지",
-  "suggestions": ["조정 제안 1", "조정 제안 2"],
-  "encouragement": "입력값을 반영한 1~2문장 격려 메시지"
+  "quarters": [
+    {
+      "quarter": "Q1",
+      "grade": "A~F 등급 한 글자",
+      "summary": "이 분기 실행 현황 한 줄 평가 (완료 수·미완료 언급 포함)",
+      "key_achievement": "이 분기에서 가장 의미 있는 달성 사항 1문장",
+      "next_focus": "다음 분기에 이어서 집중해야 할 행동 1문장"
+    }
+    ... Q2, Q3, Q4 동일 구조
+  ],
+  "overall_message": "Q8(두려움)·Q13(고민)을 큰따옴표로 직접 인용한 전체 평가 메시지 2~3문장",
+  "suggestions": ["미완료 항목 중 우선순위 높은 조정 제안 1", "제안 2"],
+  "encouragement": "Q10(목표) 또는 Q11(버킷리스트) 직접 인용한 1~2문장 격려"
 }
 
-evaluation.execution: 완료된 항목 비율과 항목 구체성을 기준으로 평가.
-evaluation.speed: 완료 속도(예상 대비 진척도)를 기준으로 평가.
-evaluation.direction: 선택 시나리오의 목표(Q10)와 현재 행동의 정렬도 평가.
-message: Q8(두려움)·Q13(고민)을 반드시 큰따옴표로 직접 인용.
-suggestions: 미완료 항목 중 우선순위가 높은 것 2개 제안.
-encouragement: Q10(목표)·Q11(버킷리스트) 중 하나를 직접 인용.
+quarters: 입력으로 받은 분기(Q1~Q4)마다 하나씩 반드시 생성.
+grade 기준 — A: 80%↑ 완료, B: 60~79%, C: 40~59%, D: 20~39%, F: 20% 미만.
+summary: 완료된 항목 수와 미완료 항목 수를 구체적으로 언급.
+key_achievement: 완료 항목이 없으면 "아직 시작 전" 으로 기재.
+next_focus: 미완료 항목 중 가장 임팩트 높은 것 1개 지목.
+overall_message: Q8·Q13 반드시 큰따옴표 인용.
 """
+
+_Q_EVAL_ITEM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "quarter":         {"type": "string"},
+        "grade":           {"type": "string"},
+        "summary":         {"type": "string"},
+        "key_achievement": {"type": "string"},
+        "next_focus":      {"type": "string"},
+    },
+    "required": ["quarter", "grade", "summary", "key_achievement", "next_focus"],
+}
 
 EVAL_SCHEMA = {
     "type": "object",
     "properties": {
-        "evaluation": {
-            "type": "object",
-            "properties": {
-                "execution": {"type": "string"},
-                "speed":     {"type": "string"},
-                "direction": {"type": "string"},
-            },
-            "required": ["execution", "speed", "direction"],
-        },
-        "message":       {"type": "string"},
-        "suggestions":   {"type": "array", "items": {"type": "string"}},
-        "encouragement": {"type": "string"},
+        "quarters":        {"type": "array", "items": _Q_EVAL_ITEM_SCHEMA},
+        "overall_message": {"type": "string"},
+        "suggestions":     {"type": "array", "items": {"type": "string"}},
+        "encouragement":   {"type": "string"},
     },
-    "required": ["evaluation", "message", "suggestions", "encouragement"],
+    "required": ["quarters", "overall_message", "suggestions", "encouragement"],
 }
 
 # ── 화면3 SMART 실행계획 변환 프롬프트/스키마 ───────────────────────────────
@@ -475,12 +484,14 @@ def _init_checks(scenario_type: str, ns: dict):
     st.session_state.coach_error = None
     st.session_state.coach_pending_msg = None
     for _k in ("s3_smart_ns", "s3_smart_ns_type", "s3_smart_ns_failed", "s3_smart_ns_err",
-               "s3_qplan", "s3_qplan_type", "s3_qplan_failed", "s3_qplan_err"):
+               "s3_qplan", "s3_qplan_type", "s3_qplan_failed", "s3_qplan_err",
+               "eval_result", "eval_q_items"):
         st.session_state.pop(_k, None)
 
 # ── AI 평가 ──────────────────────────────────────────────────────────────────
 
-def _build_eval_prompt(inputs: dict, scenario: dict, completed_items: list) -> str:
+def _build_eval_prompt(inputs: dict, scenario: dict, quarter_items: list) -> str:
+    """quarter_items: [{"quarter":"Q1","done":[...],"undone":[...],"pct":int}, ...]"""
     id_to_q = {
         "job": "Q1(직업)", "satisfaction": "Q2(만족도)", "endurance": "Q3(버틸기간)",
         "skill": "Q4(기술)", "saving": "Q5(저축)", "family_support": "Q6(가족지지)",
@@ -504,12 +515,19 @@ def _build_eval_prompt(inputs: dict, scenario: dict, completed_items: list) -> s
         f"=== 선택 시나리오: {scenario.get('type', '')} — {scenario.get('title', '')} ===",
         scenario.get("description", ""),
         "",
-        "=== 완료한 실행 항목 ===",
+        "=== 분기별 실행 현황 ===",
     ]
-    if completed_items:
-        lines += [f"  ✅ {item}" for item in completed_items]
-    else:
-        lines.append("  (아직 완료한 항목 없음)")
+    for q in quarter_items:
+        lines.append(f"\n[{q['quarter']}] 완료율 {q['pct']}% ({q['done_count']}/{q['total']})")
+        if q["done"]:
+            for item in q["done"]:
+                lines.append(f"  ✅ {item}")
+        else:
+            lines.append("  (완료 항목 없음)")
+        if q["undone"]:
+            lines.append("  미완료:")
+            for item in q["undone"]:
+                lines.append(f"  ⬜ {item}")
 
     return "\n".join(lines)
 
@@ -536,25 +554,88 @@ def _call_eval_api(prompt_text: str) -> dict:
     return json.loads(raw.strip())
 
 
-def _render_eval(eval_data: dict):
-    ev = eval_data.get("evaluation", {})
-    grade_color = {"A": "🟢", "B": "🟡", "C": "🟠", "D": "🔴", "E": "🔴", "F": "🔴"}
+_EVAL_GRADE_CSS = """<style>
+.eq-wrap{margin:12px 0 6px}
+.eq-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.eq-label{width:34px;font-size:.78rem;font-weight:700;color:#9090b0;flex-shrink:0;text-align:right}
+.eq-bar-bg{flex:1;height:22px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;position:relative}
+.eq-bar-fill{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.22,1,.36,1);display:flex;align-items:center;padding-left:8px}
+.eq-bar-fill span{font-size:.72rem;font-weight:700;color:#fff;white-space:nowrap}
+.eq-grade{width:28px;font-size:.9rem;font-weight:800;text-align:center;flex-shrink:0}
+.eq-summary{font-size:.8rem;color:#9090b0;flex:1.2}
+.eq-q1 .eq-bar-fill{background:linear-gradient(90deg,#1e3a8a,#3b82f6)}
+.eq-q2 .eq-bar-fill{background:linear-gradient(90deg,#065f46,#10b981)}
+.eq-q3 .eq-bar-fill{background:linear-gradient(90deg,#3b0764,#8b5cf6)}
+.eq-q4 .eq-bar-fill{background:linear-gradient(90deg,#7c2d12,#f97316)}
+.eq-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;padding:10px 14px;margin:4px 0 10px;font-size:.83rem;color:#c0c0d8}
+.eq-card b{color:#e0e0f0}
+.eq-card .eq-nf{color:#60a5fa;font-size:.8rem;margin-top:4px}
+/* 라이트 모드 */
+.light .eq-bar-bg{background:rgba(0,0,0,.08)}
+.light .eq-label{color:#606080}
+.light .eq-summary{color:#606080}
+.light .eq-card{background:#f0f2ff;border-color:#dde0f0;color:#1a1a2e}
+.light .eq-card b{color:#1a1a2e}
+.light .eq-card .eq-nf{color:#2255cc}
+</style>"""
 
-    st.markdown("#### 실행 평가")
-    col1, col2, col3 = st.columns(3)
-    for col, (label, key) in zip(
-        [col1, col2, col3],
-        [("실행력", "execution"), ("속도", "speed"), ("방향성", "direction")],
-    ):
-        val = ev.get(key, "")
-        grade = val[0].upper() if val else "?"
-        icon = grade_color.get(grade, "⚪")
-        with col:
-            st.metric(label=f"{icon} {label}", value=grade)
-            st.caption(val[2:].strip() if len(val) > 2 else val)
+_GRADE_ICON = {"A": "🟢", "B": "🟡", "C": "🟠", "D": "🔴", "F": "🔴"}
+_Q_COLOR_CLASS = ["eq-q1", "eq-q2", "eq-q3", "eq-q4"]
 
-    st.markdown("#### AI 평가 메시지")
-    st.info(eval_data.get("message", ""))
+
+def _render_eval(eval_data: dict, quarter_items: list):
+    theme_cls = "light" if st.session_state.get("theme", "dark") == "light" else ""
+    st.markdown(_EVAL_GRADE_CSS, unsafe_allow_html=True)
+
+    quarters_eval = eval_data.get("quarters", [])
+    if quarters_eval:
+        # ── 가로 막대 진행률 ──────────────────────────────
+        rows_html = ""
+        for i, qe in enumerate(quarters_eval):
+            q_label  = qe.get("quarter", f"Q{i+1}")
+            grade    = (qe.get("grade") or "?")[0].upper()
+            summary  = qe.get("summary", "")
+            pct      = next((q["pct"] for q in quarter_items if q["quarter"] == q_label), 0)
+            col_cls  = _Q_COLOR_CLASS[i % 4]
+            icon     = _GRADE_ICON.get(grade, "⚪")
+            rows_html += (
+                f'<div class="eq-row {col_cls}">'
+                f'  <span class="eq-label">{q_label}</span>'
+                f'  <div class="eq-bar-bg">'
+                f'    <div class="eq-bar-fill" style="width:{pct}%">'
+                f'      <span>{pct}%</span>'
+                f'    </div>'
+                f'  </div>'
+                f'  <span class="eq-grade">{icon} {grade}</span>'
+                f'</div>'
+                f'<div class="eq-summary">{summary}</div>'
+            )
+        st.markdown(
+            f'<div class="eq-wrap {theme_cls}">{rows_html}</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── 분기별 세부 카드 ──────────────────────────────
+        st.markdown("#### 분기별 상세 평가")
+        cols = st.columns(min(len(quarters_eval), 2))
+        for i, qe in enumerate(quarters_eval):
+            q_label   = qe.get("quarter", f"Q{i+1}")
+            achieve   = qe.get("key_achievement", "")
+            nxt_focus = qe.get("next_focus", "")
+            with cols[i % 2]:
+                st.markdown(
+                    f'<div class="eq-card {theme_cls}">'
+                    f'<b>{q_label} 핵심 달성</b><br>{achieve}'
+                    f'<div class="eq-nf">▶ 다음 집중: {nxt_focus}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+    overall = eval_data.get("overall_message", "")
+    if overall:
+        st.markdown("#### 종합 평가")
+        st.info(overall)
 
     suggestions = eval_data.get("suggestions", [])
     if suggestions:
@@ -565,6 +646,38 @@ def _render_eval(eval_data: dict):
     enc = eval_data.get("encouragement", "")
     if enc:
         st.success(enc)
+
+
+def _collect_quarter_items(all_checks: dict) -> list:
+    """session_state의 qplan 체크박스 상태에서 분기별 완료/미완료 항목 목록 생성."""
+    qplan = st.session_state.get("s3_qplan") or {}
+    quarters_data = qplan.get("quarters", [])
+    result = []
+    for q_idx, qdata in enumerate(quarters_data):
+        q_label = qdata.get("quarter", f"Q{q_idx + 1}")
+        done, undone = [], []
+
+        for i, item in enumerate(qdata.get("this_week", [])):
+            key = f"qplan_{q_idx}_week_{i}"
+            (done if all_checks.get(key) else undone).append(f"[이번 주] {item}")
+        for i, item in enumerate(qdata.get("this_month", [])):
+            key = f"qplan_{q_idx}_month_{i}"
+            (done if all_checks.get(key) else undone).append(f"[이번 달] {item}")
+        for i, item in enumerate(qdata.get("three_month_goal", [])):
+            key = f"qplan_{q_idx}_3m_{i}"
+            (done if all_checks.get(key) else undone).append(f"[3개월 목표] {item}")
+
+        total = len(done) + len(undone)
+        pct   = int(len(done) / total * 100) if total else 0
+        result.append({
+            "quarter":    q_label,
+            "done":       done,
+            "undone":     undone,
+            "done_count": len(done),
+            "total":      total,
+            "pct":        pct,
+        })
+    return result
 
 
 def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: dict):
@@ -578,15 +691,12 @@ def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: di
         st.warning("GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
         return
 
-    completed_items = [
-        _item_text(item)
-        for _, ns_key, key_prefix in CHECKLIST_SECTIONS
-        for idx, item in enumerate(ns.get(ns_key, []))
-        if all_checks.get(f"check_{key_prefix}_{idx}", False)
-    ]
-    total_checks = sum(len(ns.get(s[1], [])) for s in CHECKLIST_SECTIONS)
-    pct_overall = int(len(completed_items) / total_checks * 100) if total_checks else 0
+    quarter_items = _collect_quarter_items(all_checks)
 
+    # 전체 완료율 힌트
+    total_done  = sum(q["done_count"] for q in quarter_items)
+    total_all   = sum(q["total"] for q in quarter_items)
+    pct_overall = int(total_done / total_all * 100) if total_all else 0
     if pct_overall >= 70:
         st.info(f"전체 완료율 **{pct_overall}%** 달성! AI 평가를 받아보세요.")
 
@@ -599,12 +709,13 @@ def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: di
             st.rerun()
 
     if run_eval:
-        with st.spinner("AI가 실행 상황을 평가 중입니다... (20~40초 소요)"):
+        with st.spinner("AI가 분기별 실행 현황을 평가 중입니다... (20~40초 소요)"):
             try:
                 eval_data = _call_eval_api(
-                    _build_eval_prompt(inputs, scenario, completed_items)
+                    _build_eval_prompt(inputs, scenario, quarter_items)
                 )
-                st.session_state.eval_result = eval_data
+                st.session_state.eval_result   = eval_data
+                st.session_state.eval_q_items  = quarter_items
                 st.rerun()
             except json.JSONDecodeError as e:
                 st.error(f"AI 응답을 파싱하지 못했습니다: {e}")
@@ -618,7 +729,8 @@ def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: di
                     st.rerun()
 
     if st.session_state.get("eval_result"):
-        _render_eval(st.session_state.eval_result)
+        saved_q = st.session_state.get("eval_q_items", quarter_items)
+        _render_eval(st.session_state.eval_result, saved_q)
 
 # ── AI 코치 채팅 ──────────────────────────────────────────────────────────────
 

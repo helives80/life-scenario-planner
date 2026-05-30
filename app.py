@@ -797,6 +797,33 @@ OLD_KEY_MIGRATION = {
 }
 
 
+_APP_FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+
+
+def _app_quota_msg(err: Exception) -> str:
+    import re
+    s = str(err)
+    m = re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", s)
+    if not m:
+        m = re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
+    if not m:
+        m = re.search(r"retry in (\d+)", s, re.IGNORECASE)
+    if m:
+        sec = min(int(m.group(1)), 86400)
+        if sec >= 3600:
+            wait = f"{sec // 3600}시간"
+        elif sec >= 60:
+            wait = f"{sec // 60}분"
+        else:
+            wait = f"{sec}초"
+    else:
+        wait = "잠시"
+    return (
+        f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요.\n"
+        "(무료 티어: gemini-2.5-flash 20회/일, gemini-2.0-flash 200회/일)"
+    )
+
+
 def get_model():
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -851,15 +878,37 @@ def build_user_message(inputs: dict, correction: str = "") -> str:
 
 
 def generate_scenarios(inputs: dict, correction: str = "") -> dict:
-    model = get_model()
-    if model is None:
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
         raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
     user_message = build_user_message(inputs, correction)
-    response = model.generate_content(user_message)
-    try:
-        return json.loads(response.text)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}") from e
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json",
+        response_schema=RESPONSE_SCHEMA,
+        temperature=0.7,
+    )
+    genai.configure(api_key=api_key)
+    last_err = None
+    for model_name in _APP_FALLBACK_MODELS:
+        try:
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=SYSTEM_PROMPT,
+                generation_config=generation_config,
+            )
+            response = model.generate_content(user_message)
+            try:
+                return json.loads(response.text)
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+                ) from e
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                last_err = e
+                continue
+            raise
+    raise ValueError(_app_quota_msg(last_err))
 
 
 def save_profile(inputs: dict):
@@ -1013,15 +1062,37 @@ def build_compare_message(old_data: dict, new_inputs: dict) -> str:
 
 
 def generate_comparison(old_data: dict, new_inputs: dict) -> dict:
-    model = get_compare_model()
-    if model is None:
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
         raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
     msg = build_compare_message(old_data, new_inputs)
-    response = model.generate_content(msg)
-    try:
-        return json.loads(response.text)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}") from e
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json",
+        response_schema=COMPARE_RESPONSE_SCHEMA,
+        temperature=0.7,
+    )
+    genai.configure(api_key=api_key)
+    last_err = None
+    for model_name in _APP_FALLBACK_MODELS:
+        try:
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=COMPARE_SYSTEM_PROMPT,
+                generation_config=generation_config,
+            )
+            response = model.generate_content(msg)
+            try:
+                return json.loads(response.text)
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+                ) from e
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                last_err = e
+                continue
+            raise
+    raise ValueError(_app_quota_msg(last_err))
 
 
 def get_korean_font_path():

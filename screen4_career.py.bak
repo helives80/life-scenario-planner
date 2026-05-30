@@ -280,7 +280,8 @@ def _generate_gap_analysis(inputs: dict, goal_info: dict, scenario: dict = None)
             f"'{goal_info['role']}' 채용 자격요건 우대사항 핵심 역량 한국 구인공고 2024 2025 "
             f"관련 기술: {goal_info.get('skills', '')[:100]}"
         )
-        resp = _get_client().models.generate_content(
+        _client_grounding = _get_client()
+        resp = _client_grounding.models.generate_content(
             model="gemini-2.5-flash", contents=query, config=grounding_config,
         )
         job_text       = resp.text or ""
@@ -303,8 +304,9 @@ def _generate_gap_analysis(inputs: dict, goal_info: dict, scenario: dict = None)
     except Exception:
         grounding_used = False
 
-    prompt_text = _build_gap_prompt(inputs, goal_info, job_text, scenario)
-    response    = _get_client().models.generate_content(
+    prompt_text  = _build_gap_prompt(inputs, goal_info, job_text, scenario)
+    _client_gap  = _get_client()
+    response     = _client_gap.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt_text,
         config=gtypes.GenerateContentConfig(
@@ -362,8 +364,9 @@ def _generate_roadmap(inputs: dict, goal_info: dict, gap_result: dict, scenario:
     if not os.environ.get("GEMINI_API_KEY", ""):
         raise RuntimeError("GEMINI_API_KEY가 설정되지 않았습니다.")
 
-    prompt_text = _build_roadmap_prompt(inputs, goal_info, gap_result, scenario)
-    response    = _get_client().models.generate_content(
+    prompt_text    = _build_roadmap_prompt(inputs, goal_info, gap_result, scenario)
+    _client_roadmap = _get_client()
+    response        = _client_roadmap.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt_text,
         config=gtypes.GenerateContentConfig(
@@ -450,6 +453,45 @@ def _load_latest_checklist() -> dict:
             return json.load(f)
     except Exception:
         return {}
+
+
+def _load_latest_career_save() -> dict:
+    """가장 최신 career_save_*.json 파일을 읽어 반환. 없거나 실패 시 빈 dict."""
+    try:
+        files = sorted(glob.glob("career_save_*.json"), reverse=True)
+        if not files:
+            return {}
+        with open(files[0], "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _restore_career_save(data: dict) -> None:
+    """career_save 데이터를 session_state 에 복원한다."""
+    if not data:
+        return
+    st.session_state["s4_goal_role"]    = data.get("goal_role", "")
+    st.session_state["s4_goal_income"]  = data.get("goal_income", "")
+    st.session_state["s4_goal_skills"]  = data.get("goal_skills", "")
+    gap = data.get("gap_result")
+    if gap:
+        st.session_state["career_gap_result"] = gap
+        st.session_state["career_gap_goal"]   = {
+            "role":   data.get("goal_role", ""),
+            "income": data.get("goal_income", ""),
+            "skills": data.get("goal_skills", ""),
+        }
+    roadmap      = data.get("roadmap")
+    monthly_plan = data.get("monthly_plan")
+    if roadmap or monthly_plan:
+        st.session_state["career_roadmap_result"] = {
+            "roadmap":      roadmap      or {},
+            "monthly_plan": monthly_plan or [],
+        }
+    checks = data.get("checks", {})
+    for k, v in checks.items():
+        st.session_state[k] = v
 
 
 def _cleanup_old_checklists(days: int = 30):
@@ -639,18 +681,22 @@ def render(pdf_fn=None):
         _cleanup_old_checklists(days=30)
         st.session_state["s4_cleanup_done"] = True
 
-    # ── 헤더: 홈 버튼 + 제목 ────────────────────────────────────────────────
-    col_back, col_title = st.columns([2, 10])
+    # ── 헤더: 홈 버튼 ────────────────────────────────────────────────────────
+    col_back, _ = st.columns([2, 10])
     with col_back:
         if st.button("🏠 홈으로", key="s4_back", use_container_width=True):
             st.session_state.page = "home"
             st.rerun()
-    with col_title:
-        st.markdown(
-            '<p class="s4-main-title">3년 후의 나를 설계하세요</p>'
-            '<p class="s4-main-sub">3년 후 목표 직업을 구체적으로 설계하세요</p>',
-            unsafe_allow_html=True,
-        )
+
+    # ── 제목: 전체 너비, 크게 ──────────────────────────────────────────────
+    st.markdown(
+        '<h1 style="font-size:2.1rem;font-weight:900;color:#e8e8f0;'
+        'letter-spacing:-.5px;margin:16px 0 4px;line-height:1.25;">'
+        '3년 후의 나를 설계하세요</h1>'
+        '<p style="font-size:.95rem;color:#a0a0c0;margin:0 0 8px;">'
+        '3년 후 목표 직업을 구체적으로 설계하세요</p>',
+        unsafe_allow_html=True,
+    )
 
     st.divider()
 
@@ -672,7 +718,21 @@ def render(pdf_fn=None):
         st.caption(f"기반 시나리오: {scenario.get('type', '')} — {scenario.get('title', '')}")
 
     # ── Section 1: 입력 ───────────────────────────────────────────────────────
-    st.markdown('<div class="s4-sec-title">3년 후의 나를 입력해주세요</div>', unsafe_allow_html=True)
+    _s4_title_col, _s4_load_col = st.columns([3, 1])
+    with _s4_title_col:
+        st.markdown('<div class="s4-sec-title">3년 후의 나를 입력해주세요</div>', unsafe_allow_html=True)
+    with _s4_load_col:
+        if st.button("📂 이전 기록 불러오기", use_container_width=True, key="s4_load_btn"):
+            try:
+                _saved = _load_latest_career_save()
+                if _saved:
+                    _restore_career_save(_saved)
+                    st.success("이전 기록을 불러왔습니다.")
+                    st.rerun()
+                else:
+                    st.info("이전 기록이 없습니다.")
+            except Exception as _load_err:
+                st.warning(f"불러오기 실패: {_load_err}")
 
     input_mode = st.radio(
         "입력 방식",

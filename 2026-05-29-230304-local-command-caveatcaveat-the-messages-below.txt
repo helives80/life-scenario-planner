@@ -1,0 +1,1310 @@
+▗ ▗   ▖ ▖  Claude Code v2.1.156
+           Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Desktop/VibeCoding/Final
+
+❯ /clear                                                                        
+  ⎿  (no content)
+
+❯ 2026-05-29-224314-local-command-caveatcaveat-the-messages-below.txt 파일      
+  읽어와서 다음을 실행해                                                        
+
+⏺ 파일을 읽어오겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 파일이 더 있습니다. 나머지를 읽겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 파일을 모두 읽었습니다. 이전 세션의 작업 내역을 확인했으며, 모든 작업이 이미 
+  완료 및 배포된 상태입니다.
+
+  현재 앱 상태 요약:
+
+  ┌────────────────────────────────────────────────────────────────┬─────────┐
+  │                          완료된 작업                           │  커밋   │
+  ├────────────────────────────────────────────────────────────────┼─────────┤
+  │ 화면0: 초기화 버튼 추가, 상태별 버튼 로직 수정, 선택 시나리오  │ ✅      │
+  │ 표시 수정                                                      │         │
+  ├────────────────────────────────────────────────────────────────┼─────────┤
+  │ authlib>=1.3.2 requirements.txt 추가                           │ ✅      │
+  ├────────────────────────────────────────────────────────────────┼─────────┤
+  │ Google 로그인 → Streamlit 내장 OIDC(st.login) 교체             │ ✅      │
+  ├────────────────────────────────────────────────────────────────┼─────────┤
+  │ Google 로그인 에러 방어 코드 강화                              │ ✅      │
+  ├────────────────────────────────────────────────────────────────┼─────────┤
+  │ Google 로그인 임시 비활성화 (_LOGIN_ENABLED = False)           │ 1fa5c14 │
+  ├────────────────────────────────────────────────────────────────┼─────────┤
+  │ 화면4: 이전 기록 불러오기 버튼 추가                            │ 740aec3 │
+  └────────────────────────────────────────────────────────────────┴─────────┘
+
+  현재 git 상태와 일치하며 중단된 작업은 없습니다.
+
+  주요 참고사항:
+  - Google 로그인은 현재 비활성화 상태입니다. 재활성화하려면 app.py의
+  _LOGIN_ENABLED = False → True로 변경 후 push하면 됩니다.
+  - 앱은 Streamlit Cloud에 배포 완료 상태입니다.
+
+  다음에 작업할 내용을 말씀해주시면 바로 시작하겠습니다.
+
+✻ Worked for 38s
+
+❯ # 화면2(나의 인생 시나리오) 개선 작업                                         
+  # 대상: 화면2 렌더링 코드 (app.py 또는 화면2 모듈 파일)                       
+  # 작업 전 해당 파일을 .bak 으로 백업하라.                                     
+                                                                                
+  ## 개선 1: 진입 시 실행계획 영역 모두 닫힘                                    
+  현상: 화면2 진입 시 도전형 카드의 실행계획(또는 next_steps) 영역만 펼쳐져     
+  있다.                                                                         
+  수정: 3개 시나리오(현실형·도전형·파격형) 카드의 실행계획 영역을               
+        모두 닫힌 상태(접힘)로 진입하게 하라.                                   
+  - st.expander 사용 중이면 expanded=False 로 통일.                             
+  - 도전형에만 expanded=True 가 박혀 있다면 제거하라.                           
+  - 사용자가 명시적으로 클릭한 카드만 열리고, 다른 카드는 열리지 않도록 하라.   
+                                                                                
+  ## 개선 2: PDF 저장 시 3개 시나리오 실행계획 모두 포함                        
+  현상: PDF 저장 시 도전형 실행계획만 PDF에 들어간다.                           
+  원인 진단: PDF 생성 함수가 현재 펼쳐져(열려) 있는 카드 데이터만 수집하거나,   
+            선택된 한 개 시나리오 데이터만 인자로 받고 있을 가능성.             
+  수정: PDF 생성 시 현실형·도전형·파격형 3개 시나리오의 실행계획(next_steps)    
+        전체를 PDF에 포함시켜라.                                                
+  - result_*.json (또는 Gemini 응답 객체)에서 scenarios 배열을 순회해           
+    3개 모두의 next_steps 를 PDF에 렌더링하라.                                  
+  - UI 펼침 여부와 PDF 포함 여부는 무관하게 한다.                               
+                                                                                
+  ## 개선 3: 파격형 실행계획 펼침 시 콘텐츠 잘림 + 수입 시뮬레이션 그래프       
+  미표시                                                                        
+  현상: 파격형 "실행계획 보기" 클릭 시 콘텐츠가 잘리고, 그 아래 수입 변화       
+        시뮬레이션 그래프도 보이지 않는다.                                      
+  원인 진단(아래를 점검하라):                                                   
+  - 파격형 카드 컨테이너에 height·max-height 제한 CSS 가 박혀 있는지.           
+  - expander 안에 chart 가 들어 있을 때 chart 의 use_container_width 설정 누락. 
+  - 카드 색상(purple) 전용 CSS 에 overflow:hidden 등이 들어가 다른 색과         
+    다르게 동작하는지.                                                          
+  수정: 위 원인을 점검하여 파격형 카드의 콘텐츠가 끝까지 렌더링되고,            
+        펼침 시 수입 시뮬레이션 그래프도 정상 표시되게 하라.                    
+        현실형·도전형·파격형이 동일한 레이아웃·동작을 갖게 만들어라.            
+                                                                                
+  ## 절대 준수                                                                  
+  - 화면0·1·3·4 코드는 수정하지 마라.                                           
+  - 시나리오 생성 Gemini 프롬프트(시스템 프롬프트) 자체는 건드리지 마라.        
+    이번 작업은 화면2 렌더링·PDF 출력 로직 수정에 한정한다.                     
+                                                                                
+  ## [확인]                                                                     
+  - 화면2 진입 직후 3개 카드 모두 실행계획 영역이 접혀 있다.                    
+  - 각 카드를 펼쳐도 잘리지 않고 끝까지 보인다(파격형 포함).                    
+  - 파격형 펼침 시 수입 시뮬레이션 그래프가 정상 표시된다.                      
+  - PDF 저장 결과에 3개 시나리오 실행계획이 모두 들어가 있다.                   
+  보고 후 작업을 마쳐라.                                                        
+
+⏺ 먼저 화면2 코드 위치를 파악하겠습니다.
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+⏺ 화면2 렌더링 함수와 PDF 생성 코드를 함께 확인합니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ CSS와 JavaScript 부분을 더 읽겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ render_result_page 함수를 확인합니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 원인을 모두 파악했습니다. 백업 후 작업을 시작합니다.
+
+  - 개선 1: JS IIFE가 panel-{rec_idx}를 자동으로 열고 있음 (1676~1681줄)
+  - 개선 2: PDF 루프에서 if is_rec: 조건으로 추천 시나리오만 next_steps 포함
+  - 개선 3: .panel.open{max-height:3000px} 제한 + sendHeight 타임아웃(350ms)이
+  transition 완료(500ms) 이전 + components.html(height=3200) 고정값 부족
+
+⏺ Bash(cp /Users/mary_shin/Desktop/VibeCoding/Final/app.py
+      /Users/mary_shin/Desktop/VibeCoding/Final/app.py.bak1 && echo "백업 완료")
+  ⎿  백업 완료
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 개선 1: 자동 열림 IIFE 제거
+
+⏺ Update(app.py)
+  ⎿  Added 1 line, removed 8 lines
+      1670      btn.classList.add('open');
+      1671      btn.textContent='▲ 접기';
+      1672    }}
+      1673 -  setTimeout(sendHeight,350);                                
+      1673 +  setTimeout(sendHeight,650);                                
+      1674  }}
+      1675  
+      1676 -(function(){{                                                
+      1677 -  const p=document.getElementById('panel-{rec_idx}');        
+      1678 -  const btn=document.getElementById('toggle-{rec_idx}');     
+      1679 -  if(p){{p.classList.add('open');}}                          
+      1680 -  if(btn){{btn.classList.add('open');btn.textContent='▲ 접기'
+           -;}}                                                          
+      1681 -}})();                                                       
+      1682 -                                                             
+      1676  function sendHeight(){{
+      1677    const h=document.documentElement.scrollHeight;
+      1678    window.parent.postMessage({{type:'streamlit:setFrameHeight'
+            ,height:h}},'*');
+
+⏺ 개선 3-A: .panel.open max-height 증가 + overflow 명시
+
+⏺ Update(app.py)
+  ⎿  Added 2 lines, removed 2 lines
+      1499  .toggle-btn.open{border-color:var(--c);color:var(--c)}
+      1500  .sel-btn{flex:1;padding:11px;border:1px solid var(--c);backgr
+            ound:transparent;color:var(--c);border-radius:8px;font-size:1
+            2px;font-weight:700;cursor:pointer;transition:all .2s;letter-
+            spacing:.3px}
+      1501  .sel-btn:hover,.sel-btn.on{background:var(--c);color:#0d1117}
+      1502 -.panel{overflow:hidden;max-height:0;transition:max-height .5s
+           - cubic-bezier(.4,0,.2,1),opacity .35s;opacity:0}             
+      1503 -.panel.open{max-height:3000px;opacity:1}                     
+      1502 +.panel{overflow:hidden;max-height:0;transition:max-height .6s
+           + cubic-bezier(.4,0,.2,1),opacity .4s;opacity:0}              
+      1503 +.panel.open{max-height:9000px;opacity:1;overflow:visible}    
+      1504  .panel-inner{border-radius:12px;padding:26px;margin-top:4px;b
+            order:1px solid}
+      1505  .panel-r .panel-inner{background:#0a1220;border-color:#1d3557
+            }
+      1506  .panel-c .panel-inner{background:#071410;border-color:#0e3728
+            }
+
+⏺ 개선 3-B: components.html 초기 높이 4500으로 증가
+
+⏺ Update(app.py)
+  ⎿  Added 1 line, removed 1 line
+      2337  
+      2338      theme = st.session_state.get("theme", "dark")
+      2339      html_content = build_result_html(st.session_state.result,
+             st.session_state.inputs, theme)
+      2340 -    components.html(html_content, height=3200, scrolling=Fals
+           -e)                                                           
+      2340 +    components.html(html_content, height=4500, scrolling=Fals
+           +e)                                                           
+      2341  
+      2342      st.divider()
+      2343      st.subheader("결과가 실제와 다른가요?")
+⏺ 개선 2: PDF에 3개 시나리오 실행계획 모두 포함
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(app.py)
+  ⎿  Added 4 lines, removed 3 lines
+      1057          pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 6, f
+            "▼ 잃는 것: {trf.get('lose','')}")
+      1058          pdf.set_text_color(30, 30, 30)
+      1059  
+      1060 -        if is_rec:                                           
+      1061 -            ns = sc.get("next_steps", {})                    
+      1060 +        ns = sc.get("next_steps", {})                        
+      1061 +        if ns:                                               
+      1062              pdf.ln(6)
+      1063              sfb(13); pdf.set_text_color(*c_rgb)
+      1064 -            pdf.cell(0, 8, "실행 계획 (AI 추천 시나리오)", ne
+           -w_x="LMARGIN", new_y="NEXT")                                 
+      1064 +            rec_mark = " (AI 추천)" if is_rec else ""        
+      1065 +            pdf.cell(0, 8, f"실행 계획{rec_mark}", new_x="LMA
+           +RGIN", new_y="NEXT")                                         
+      1066              pdf.set_text_color(30, 30, 30); pdf.ln(2)
+      1067              for ns_title, ns_key in [
+      1068                  ("이번 주 바로 할 것","this_week"),
+
+⏺ 구문 검증 후 변경사항 최종 확인합니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('app.py OK')" 2>&1)
+  ⎿  app.py OK
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+⏺ rec_idx 변수는 이제 JavaScript에 전달되지 않습니다. Python 코드에만 남아
+  있는데 사용처가 없으니 확인합니다.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ rec_idx가 이제 사용되지 않으므로 깔끔하게 제거합니다.
+
+⏺ Update(app.py)
+  ⎿  Removed 2 lines
+      1302      # ── cards + panels (card-wrap 단위로 합쳐서 세로 스택)
+      1303      cards_html = ""
+      1304      inc = {"r": [0]*5, "c": [0]*5, "p": [0]*5}
+      1305 -    rec_idx = next((i for i, sc in enumerate(scenarios) if sc
+           -.get("type") == rec_type), 0)                                
+      1306 -                                                             
+      1305      for i, sc in enumerate(scenarios):
+      1306          color    = sc.get("color", "blue")
+      1307          cls      = COLOR_CLS.get(color, "r")
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('OK')" 2>&1)
+  ⎿  OK
+
+⏺ 구문 오류 없음. 변경 내용을 최종 확인합니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 모든 수정이 정확합니다. 이제 배포합니다.
+
+⏺ Bash(git add app.py && git commit -m "$(cat <<'EOF'
+      화면2 개선: 실행계획 자동펼침 제거 + PDF 3개 시나리오 포함 + 파격형 콘텐츠
+      잘림 수정…)
+  ⎿  [main a22aeba] 화면2 개선: 실행계획 자동펼침 제거 + PDF 3개 시나리오
+     포
+     함 + 파격형 콘텐츠 잘림 수정
+      Committer: Mary_Shin <mary_shin@Mary-Shins-MacBook-Pro.local>
+     … +15 lines (ctrl+o to expand)
+
+⏺ 배포 완료됐습니다.
+
+  ---
+  작업 완료 보고
+
+  항목: 백업
+  원인: —
+  수정: app.py → app.py.bak1
+  ────────────────────────────────────────
+  항목: 개선 1 (자동 펼침)
+  원인: JavaScript IIFE가 panel-{rec_idx}를 자동으로 open 클래스 추가
+  수정: IIFE 완전 제거 → 진입 시 3개 카드 모두 접힌 상태
+  ────────────────────────────────────────
+  항목: 개선 2 (PDF 3개 포함)
+  원인: if is_rec: 조건으로 추천 시나리오 1개만 실행계획 PDF 렌더링
+  수정: 조건 제거, ns = sc.get("next_steps", {}) 전 시나리오 순회. 추천
+    시나리오는 제목에 "(AI 추천)" 표기
+  ────────────────────────────────────────
+  항목: 개선 3 (파격형 잘림)
+  원인: ① .panel.open{max-height:3000px} 제한 ② sendHeight 타임아웃 350ms
+    (transition 500ms보다 짧음) ③ components.html(height=3200) 고정값 부족
+  수정: ① max-height:9000px;overflow:visible ② 타임아웃 650ms로 증가 ③ 초기 높이
+
+    4500px
+
+✻ Worked for 3m 36s
+
+❯ # 화면3(지금 당장 실행하기) 개선 작업                                         
+  # 대상: screen3_plan.py (필요 시 app.py)                                      
+  # 작업 전 screen3_plan.py 를 screen3_plan.py.bak 으로 백업하라.               
+                                                                                
+  ## 개선 1: AI 호출 client closed 오류 수정 (AI 평가 + AI 코치 채팅 공통)      
+  현상:                                                                         
+  - "AI 평가 받기" 클릭 → "AI 평가 호출 중 오류: Cannot send a request,         
+     as the client has been closed."                                            
+  - AI 코치 채팅 입력 → "코치 응답 중 오류: Cannot send a request,              
+     as the client has been closed."                                            
+  원인 진단(둘 다 동일):                                                        
+  - google-genai 의 genai.Client() 가 with 컨텍스트 매니저로 생성됐거나,        
+    전역/캐시된 client 에 .close() 가 호출되어 닫힌 상태에서 재요청되는 패턴.   
+  - 화면4에서 동일 오류를 해결한 방식과 같은 패턴으로 화면3 의 두 호출          
+    지점을 모두 수정하라.                                                       
+  수정:                                                                         
+  - with genai.Client(...) as client: 형태 사용 금지.                           
+  - Gemini 호출 함수 내부에서 호출 시점마다 client 를 새로 생성하라:            
+      client = genai.Client(api_key=<.env의 GEMINI_API_KEY>)                    
+      response = client.models.generate_content(...)                            
+    또는 @st.cache_resource 로 client 생성 함수를 캐싱하되,                     
+    코드 어디에서도 client.close() 를 호출하지 마라.                            
+  - 화면3 의 AI 평가 호출 지점과 AI 코치 채팅 호출 지점 모두에 적용하라.        
+                                                                                
+  ## 개선 2: 화면3 실행계획을 화면2와 차별화 (더 구체적인 실행 플랜)            
+  현상: 현재 화면3 의 실행계획이 화면2(시나리오 카드)의 next_steps 와           
+        동일해 화면을 옮긴 의미가 없다.                                         
+  수정 방침: 화면2 가 "전략 단계"라면, 화면3 은 "실행 가능한 액션 단위"로       
+            한 단계 더 분해해 표시한다. 아래 규칙으로 재구성하라.               
+                                                                                
+  A. 데이터 생성 방식 변경                                                      
+  - 화면3 진입 시(또는 첫 표시 시) Gemini 를 1회 호출해                         
+    화면2 의 next_steps 를 더 구체적인 실행 액션으로 변환하라.                  
+  - 시스템 프롬프트는 다음을 강제한다:                                          
+    · 각 항목을 SMART(구체·측정가능·달성가능·관련성·시한) 형식으로 재작성       
+    · 각 항목에 측정 지표(횟수/금액/완료 여부 등) 1개 이상 포함                 
+    · 각 항목에 데드라인(요일·날짜·주차) 명시                                   
+    · 화면1 입력값(직업·기술·자금·가족·두려움) 중 최소 1개를 직접 인용          
+    · "열심히", "꾸준히" 같은 추상어 금지                                       
+                                                                                
+  B. 출력 JSON 강제                                                             
+  {                                                                             
+    "this_week":   [{"task":"", "metric":"", "deadline":""}, "..."],            
+    "one_month":   [{"task":"", "metric":"", "deadline":""}, "..."],            
+    "three_months":[{"task":"", "metric":"", "deadline":""}, "..."],            
+    "must_prepare":["", "..."],                                                 
+    "must_avoid":  ["", "..."]                                                  
+  }                                                                             
+                                                                                
+  C. 렌더링                                                                     
+  - 각 항목을 task / metric / deadline 3열 형태로 분명히 보이게 표시.           
+  - 체크박스는 유지(저장/불러오기 기존 로직 그대로).                            
+  - 결과는 캐시해 두고, 시나리오가 바뀌지 않는 한 재호출하지 마라               
+    (예: result 파일 또는 session_state 에 저장).                               
+                                                                                
+  ## 절대 준수                                                                  
+  - 화면0·1·2·4 코드는 수정하지 마라.                                           
+  - 화면3 의 체크리스트 저장/불러오기, AI 평가 출력 스키마,                     
+    AI 코치 채팅 UI 는 그대로 유지하라(client 생성 방식만 바꾼다).              
+                                                                                
+  ## 에러 처리                                                                  
+  - 변환 호출 실패 시 화면2 의 기존 next_steps 를 그대로 표시하는               
+    fallback 을 두고, 화면 상단에 "재시도" 버튼을 둬라.                         
+                                                                                
+  ## [확인]                                                                     
+  - "AI 평가 받기"·AI 코치 채팅 모두 오류 없이 응답 수신.                       
+  - 연속 2~3회 호출해도 client 오류가 재발하지 않는다.                          
+  - 화면3 실행 항목이 task/metric/deadline 형태로 화면2 와 시각적·내용적으로    
+    분명히 다르게 표시된다.                                                     
+  보고 후 작업을 마쳐라.                                                        
+
+⏺ 먼저 screen3_plan.py 전체 구조를 파악합니다.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ 전체 파일을 읽겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 구조를 완전히 파악했습니다. 백업 후 작업 시작합니다.
+
+  개선 1: _get_client().models... 체인 → 로컬 변수 패턴(GC 소멸 방지)
+  개선 2: SMART 변환 API 추가 + task/metric/deadline 렌더링
+
+⏺ Bash(cp /Users/mary_shin/Desktop/VibeCoding/Final/screen3_plan.py
+      /Users/mary_shin/Desktop/VibeCoding/Final/screen3_plan.py.bak && echo
+      "백업 완료")
+  ⎿  백업 완료
+
+⏺ ① CSS: SMART 배지 스타일 추가
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 7 lines
+      46  [data-testid="stProgress"]>div>div{
+      47    background:linear-gradient(90deg,#7c6fcd,#3b82f6)!important;
+      48    border-radius:99px!important}
+      49 +.s3-smart-badges{display:flex;gap:8px;margin:2px 0 6px 28px;fle
+         +x-wrap:wrap}                                                   
+      50 +.s3-badge-metric{background:#0d2a1a;border:1px solid #1a4a2a;co
+         +lor:#4ade80;                                                   
+      51 +  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weigh
+         +t:600}                                                         
+      52 +.s3-badge-deadline{background:#0f0f2e;border:1px solid #2a2a5a;
+         +color:#a78bfa;                                                 
+      53 +  padding:2px 9px;border-radius:4px;font-size:.72rem;font-weigh
+         +t:600}                                                         
+      54 +.s3-smart-tag{display:inline-block;background:#1a2235;border:1p
+         +x solid #2a3a55;                                               
+      55 +  color:#60a5fa;padding:1px 7px;border-radius:4px;font-size:.7r
+         +em;margin-left:6px}                                            
+      56  </style>"""
+      57  
+      58  # ── AI 평가 프롬프트 / 스키마 ────────────────────────────────
+          ────────────────
+
+⏺ ② SMART 변환 프롬프트·스키마 추가 (EVAL_SCHEMA 뒤)
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 40 lines
+      101      "required": ["evaluation", "message", "suggestions", "enco
+           uragement"],
+      102  }
+      103  
+      104 +# ── 화면3 SMART 실행계획 변환 프롬프트/스키마 ───────────────
+          +────────────────                                              
+      105 +                                                              
+      106 +SMART_NS_SYSTEM_PROMPT = """                                  
+      107 +당신은 실행 코치입니다. 화면2(시나리오 카드)의 next_steps 를  
+          +받아                                                          
+      108 +더 구체적인 SMART 실행 액션으로 변환한 JSON 한 개만 반환합니다
+          +.                                                             
+      109 +코드펜스·설명·주석 등 JSON 외 어떤 문자도 금지.               
+      110 +                                                              
+      111 +변환 규칙:                                                    
+      112 +1. 각 항목을 SMART(구체·측정가능·달성가능·관련성·시한) 형식으 
+          +로 재작성.                                                    
+      113 +2. task: 무엇을, 얼마나, 어떻게 할지 1문장으로 기술.          
+      114 +3. metric: 완료를 판단하는 측정 지표 (횟수·금액·완료 여부 등) 
+          +1개.                                                          
+      115 +4. deadline: 이 항목을 마쳐야 할 요일·날짜·주차 등 구체적 시한
+          +.                                                             
+      116 +5. 사용자 입력값(직업·기술·자금·가족·두려움) 중 최소 1개를 tas
+          +k 에 직접 인용.                                               
+      117 +6. "열심히", "꾸준히" 같은 추상어 금지.                       
+      118 +7. 각 섹션의 항목 개수는 원본과 반드시 동일하게 유지.         
+      119 +8. must_prepare·must_avoid 는 더 구체적인 단문으로 재작성(단순
+          + 문자열).                                                     
+      120 +"""                                                           
+      121 +                                                              
+      122 +_SMART_ITEM_SCHEMA = {                                        
+      123 +    "type": "object",                                         
+      124 +    "properties": {                                           
+      125 +        "task":     {"type": "string"},                       
+      126 +        "metric":   {"type": "string"},                       
+      127 +        "deadline": {"type": "string"},                       
+      128 +    },                                                        
+      129 +    "required": ["task", "metric", "deadline"],               
+      130 +}                                                             
+      131 +                                                              
+      132 +SMART_NS_SCHEMA = {                                           
+      133 +    "type": "object",                                         
+      134 +    "properties": {                                           
+      135 +        "this_week":    {"type": "array", "items": _SMART_ITEM
+          +_SCHEMA},                                                     
+      136 +        "one_month":    {"type": "array", "items": _SMART_ITEM
+          +_SCHEMA},                                                     
+      137 +        "three_months": {"type": "array", "items": _SMART_ITEM
+          +_SCHEMA},                                                     
+      138 +        "must_prepare": {"type": "array", "items": {"type": "s
+          +tring"}},                                                     
+      139 +        "must_avoid":   {"type": "array", "items": {"type": "s
+          +tring"}},                                                     
+      140 +    },                                                        
+      141 +    "required": ["this_week", "one_month", "three_months", "mu
+          +st_prepare", "must_avoid"],                                   
+      142 +}                                                             
+      143 +                                                              
+      144  # ── 체크리스트 저장/불러오기 ────────────────────────────────
+           ─────────────────
+      145  
+      146  def cleanup_old_checklists(days: int = 30):
+⏺ ③ _item_text 헬퍼 + _call_smart_ns_api 추가 (save_checklist 뒤)
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 54 lines
+      181          st.warning(f"체크리스트 저장 중 오류가 발생했습니다: {
+           e}")
+      182  
+      183  
+      184 +def _item_text(item) -> str:                                  
+      185 +    """dict 또는 str 항목에서 표시 텍스트를 추출한다."""      
+      186 +    if isinstance(item, dict):                                
+      187 +        return item.get("task", "")                           
+      188 +    return str(item)                                          
+      189 +                                                              
+      190 +                                                              
+      191 +def _call_smart_ns_api(inputs: dict, scenario: dict, original_
+          +ns: dict) -> dict:                                            
+      192 +    """화면2 next_steps 를 SMART 실행 액션으로 변환. 실패 시  
+          +빈 dict 반환."""                                              
+      193 +    if not _GENAI_OK:                                         
+      194 +        return {}                                             
+      195 +                                                              
+      196 +    lines = ["=== 사용자 입력값 ==="]                         
+      197 +    for id_key, label in [                                    
+      198 +        ("job", "직업"), ("satisfaction", "만족도"), ("skill",
+          + "기술"),                                                     
+      199 +        ("saving", "자금"), ("family_support", "가족지지"),   
+      200 +        ("fear", "두려움"), ("goal", "목표"),                 
+      201 +    ]:                                                        
+      202 +        val = inputs.get(id_key, "")                          
+      203 +        if val and val != "입력 없음":                        
+      204 +            lines.append(f"  {label}: {val}")                 
+      205 +                                                              
+      206 +    lines += [                                                
+      207 +        "",                                                   
+      208 +        f"=== 선택 시나리오: {scenario.get('type', '')} — {sce
+          +nario.get('title', '')} ===",                                 
+      209 +        "",                                                   
+      210 +        "=== 원본 next_steps (변환 대상) ===",                
+      211 +    ]                                                         
+      212 +    for _, ns_key, _ in CHECKLIST_SECTIONS:                   
+      213 +        items = original_ns.get(ns_key, [])                   
+      214 +        if items:                                             
+      215 +            lines.append(f"[{ns_key}]")                       
+      216 +            for it in items:                                  
+      217 +                lines.append(f"  - {_item_text(it)}")         
+      218 +                                                              
+      219 +    client = _get_client()                                    
+      220 +    response = client.models.generate_content(                
+      221 +        model="gemini-2.5-flash",                             
+      222 +        contents="\n".join(lines),                            
+      223 +        config=gtypes.GenerateContentConfig(                  
+      224 +            system_instruction=SMART_NS_SYSTEM_PROMPT,        
+      225 +            response_mime_type="application/json",            
+      226 +            response_schema=SMART_NS_SCHEMA,                  
+      227 +            temperature=0.6,                                  
+      228 +        ),                                                    
+      229 +    )                                                         
+      230 +    raw = response.text.strip()                               
+      231 +    if raw.startswith("```"):                                 
+      232 +        raw = raw.split("```")[1]                             
+      233 +        if raw.startswith("json"):                            
+      234 +            raw = raw[4:]                                     
+      235 +    return json.loads(raw.strip())                            
+      236 +                                                              
+      237 +                                                              
+      238  def _init_checks(scenario_type: str, ns: dict):
+      239      """시나리오가 바뀔 때만 체크 상태와 채팅 히스토리를 초기화
+           ."""
+      240      if st.session_state.get("checklist_scenario_type") == scen
+           ario_type:
+
+⏺ ④ _init_checks에 SMART ns 캐시 초기화 추가
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 3 lines, removed 1 line
+      245          for idx in range(len(ns.get(ns_key, []))):
+      246              ck_key = f"check_{key_prefix}_{idx}"
+      247              st.session_state[ck_key] = loaded.get(ck_key, Fals
+           e)
+      248 -    # 시나리오 전환 시 채팅 초기화                            
+      248 +    # 시나리오 전환 시 채팅 + SMART ns 캐시 초기화            
+      249      st.session_state.coach_chat = []
+      250      st.session_state.coach_error = None
+      251      st.session_state.coach_pending_msg = None
+      252 +    for _k in ("s3_smart_ns", "s3_smart_ns_type", "s3_smart_ns
+          +_failed", "s3_smart_ns_err"):                                 
+      253 +        st.session_state.pop(_k, None)                        
+      254  
+      255  # ── AI 평가 ─────────────────────────────────────────────────
+           ─────────────────
+      256  
+
+⏺ ⑤ AI 평가 API 호출 — 로컬 변수 패턴으로 수정 (개선 1)
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 2 lines, removed 1 line
+      291  def _call_eval_api(prompt_text: str) -> dict:
+      292      if not _GENAI_OK:
+      293          raise RuntimeError("google-genai SDK를 불러오지 못했습
+           니다.")
+      294 -    response = _get_client().models.generate_content(         
+      294 +    client = _get_client()                                    
+      295 +    response = client.models.generate_content(                
+      296          model="gemini-2.5-flash",
+      297          contents=prompt_text,
+      298          config=gtypes.GenerateContentConfig(
+
+⏺ ⑥ _build_eval_prompt completed_items — _item_text 적용
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 1 line, removed 1 line
+      353          return
+      354  
+      355      completed_items = [
+      356 -        item                                                  
+      356 +        _item_text(item)                                      
+      357          for _, ns_key, key_prefix in CHECKLIST_SECTIONS
+      358          for idx, item in enumerate(ns.get(ns_key, []))
+      359          if all_checks.get(f"check_{key_prefix}_{idx}", False)
+
+⏺ ⑦ AI 코치 API 호출 — 로컬 변수 패턴으로 수정 (개선 1)
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 2 lines, removed 1 line
+      457          gtypes.Content(role="user", parts=[gtypes.Part(text=us
+           er_msg)])
+      458      )
+      459  
+      460 -    response = _get_client().models.generate_content(         
+      460 +    client = _get_client()                                    
+      461 +    response = client.models.generate_content(                
+      462          model="gemini-2.5-flash",
+      463          contents=contents,
+      464          config=gtypes.GenerateContentConfig(
+
+⏺ ⑧ _build_coach_system_prompt completed items — _item_text 적용
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 1 line, removed 1 line
+      429          "[체크 완료 항목 요약]",
+      430      ]
+      431      completed = [
+      432 -        item                                                  
+      432 +        _item_text(item)                                      
+      433          for _, ns_key, key_prefix in CHECKLIST_SECTIONS
+      434          for idx, item in enumerate(ns.get(ns_key, []))
+      435          if all_checks.get(f"check_{key_prefix}_{idx}", False)
+
+⏺ ⑨ render() — SMART ns 로딩·체크리스트 렌더링 전면 교체 (개선 2)
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(screen3_plan.py)
+  ⎿  Added 82 lines, removed 12 lines
+      579      st.caption(scenario.get("description", ""))
+      580      st.divider()
+      581  
+      582 +    # ── SMART 실행계획 생성/캐시 ────────────────────────────
+          +─────────────────                                             
+      583 +    _cached_stype = st.session_state.get("s3_smart_ns_type", "
+          +")                                                            
+      584 +    _cached_sns   = st.session_state.get("s3_smart_ns")       
+      585 +    _smart_failed = st.session_state.get("s3_smart_ns_failed",
+          + False)                                                       
+      586 +                                                              
+      587 +    if _cached_stype != scenario_type or not _cached_sns:     
+      588 +        if not _smart_failed and _GENAI_OK and os.environ.get(
+          +"GEMINI_API_KEY", ""):                                        
+      589 +            with st.spinner("더 구체적인 실행 계획을 준비 중입
+          +니다... (10~30초)"):                                          
+      590 +                try:                                          
+      591 +                    _new_sns = _call_smart_ns_api(inputs, scen
+          +ario, ns)                                                     
+      592 +                    if _new_sns:                              
+      593 +                        st.session_state["s3_smart_ns_type"] =
+          + scenario_type                                                
+      594 +                        st.session_state["s3_smart_ns"] = _new
+          +_sns                                                          
+      595 +                        st.session_state["s3_smart_ns_failed"]
+          + = False                                                      
+      596 +                        st.rerun()                            
+      597 +                except Exception as _smart_err:               
+      598 +                    st.session_state["s3_smart_ns_failed"] = T
+          +rue                                                           
+      599 +                    st.session_state["s3_smart_ns_err"] = str(
+          +_smart_err)                                                   
+      600 +                                                              
+      601 +    _smart_ns = (                                             
+      602 +        st.session_state.get("s3_smart_ns")                   
+      603 +        if st.session_state.get("s3_smart_ns_type") == scenari
+          +o_type                                                        
+      604 +        else {}                                               
+      605 +    ) or {}                                                   
+      606 +                                                              
+      607 +    if st.session_state.get("s3_smart_ns_failed"):            
+      608 +        _c1, _c2 = st.columns([4, 1])                         
+      609 +        with _c1:                                             
+      610 +            st.warning("실행 계획 구체화에 실패했습니다. 기본 
+          +계획을 표시합니다.")                                          
+      611 +        with _c2:                                             
+      612 +            if st.button("🔄 재시도", key="s3_smart_retry"):  
+      613 +                for _k in ("s3_smart_ns", "s3_smart_ns_type", 
+      614 +                           "s3_smart_ns_failed", "s3_smart_ns_
+          +err"):                                                        
+      615 +                    st.session_state.pop(_k, None)            
+      616 +                st.rerun()                                    
+      617 +    elif _smart_ns:                                           
+      618 +        st.caption("💡 AI가 각 항목을 SMART 형식(측정 지표·데 
+          +드라인 포함)으로 구체화했습니다.")                            
+      619 +                                                              
+      620      # ── 체크리스트
+      621      all_checks: dict = {}
+      622 +    _smart_sections = {"this_week", "one_month", "three_months
+          +"}  # task/metric/deadline 표시 구간                          
+      623  
+      624      for section_label, ns_key, key_prefix in CHECKLIST_SECTION
+           S:
+      586 -        items = ns.get(ns_key, [])                            
+      587 -        if not items:                                         
+      625 +        orig_items = ns.get(ns_key, [])                       
+      626 +        if not orig_items:                                    
+      627              continue
+      628 +                                                              
+      629 +        smart_items = _smart_ns.get(ns_key, orig_items)       
+      630 +        # 항목 수가 다르면 원본 사용(안전 fallback)           
+      631 +        if len(smart_items) != len(orig_items):               
+      632 +            smart_items = orig_items                          
+      633 +                                                              
+      634          icon = _SEC_ICON.get(ns_key, "📋")
+      590 -        st.markdown(f'<p class="s3-sec-hdr">{icon} {section_la
+          -bel}</p>', unsafe_allow_html=True)                            
+      635 +        is_smart = bool(_smart_ns) and ns_key in _smart_sectio
+          +ns                                                            
+      636 +        tag = '<span class="s3-smart-tag">SMART</span>' if is_
+          +smart else ""                                                 
+      637 +        st.markdown(                                          
+      638 +            f'<p class="s3-sec-hdr">{icon} {section_label}{tag
+          +}</p>',                                                       
+      639 +            unsafe_allow_html=True,                           
+      640 +        )                                                     
+      641 +                                                              
+      642          checked_count = 0
+      592 -        for idx, item in enumerate(items):                    
+      643 +        for idx, item in enumerate(smart_items):              
+      644              ck_key = f"check_{key_prefix}_{idx}"
+      594 -            checked = st.checkbox(item, key=ck_key)           
+      645 +            task_text = _item_text(item)                      
+      646 +            checked = st.checkbox(task_text, key=ck_key)      
+      647              all_checks[ck_key] = checked
+      648              if checked:
+      649                  checked_count += 1
+      598 -        total = len(items)                                    
+      650 +                                                              
+      651 +            if is_smart and isinstance(item, dict):           
+      652 +                metric   = item.get("metric", "")             
+      653 +                deadline = item.get("deadline", "")           
+      654 +                badges   = []                                 
+      655 +                if metric:                                    
+      656 +                    badges.append(f'<span class="s3-badge-metr
+          +ic">📊 {metric}</span>')                                      
+      657 +                if deadline:                                  
+      658 +                    badges.append(f'<span class="s3-badge-dead
+          +line">📅 {deadline}</span>')                                  
+      659 +                if badges:                                    
+      660 +                    st.markdown(                              
+      661 +                        f'<div class="s3-smart-badges">{"".joi
+          +n(badges)}</div>',                                            
+      662 +                        unsafe_allow_html=True,               
+      663 +                    )                                         
+      664 +                                                              
+      665 +        total = len(orig_items)                               
+      666          pct = int(checked_count / total * 100) if total else 0
+      667          st.progress(pct / 100, text=f"완료율 {pct}% ({checked_
+           count}/{total})")
+      668          st.write("")
+      669  
+      670      # ── 전체 달성률 대시보드
+      604 -    total_done = sum(1 for v in all_checks.values() if v)     
+      671 +    total_done  = sum(1 for v in all_checks.values() if v)    
+      672      total_items = len(all_checks)
+      606 -    pct_all = int(total_done / total_items * 100) if total_ite
+          -ms else 0                                                     
+      607 -    remaining = total_items - total_done                      
+      673 +    pct_all     = int(total_done / total_items * 100) if total
+          +_items else 0                                                 
+      674 +    remaining   = total_items - total_done                    
+      675      st.markdown(f"""<div class="s3-card">
+      676  <div class="s3-title">📊 전체 달성률</div>
+      677  <div class="s3-stats">
+     ...
+      707                  use_container_width=True,
+      708              )
+      709  
+      643 -    # ── AI 코치 메시지                                       
+      710 +    # ── AI 코치 메시지 (원본 시나리오 coach_message)         
+      711      coach = ns.get("coach_message", "")
+      712      if coach:
+      713          st.divider()
+     ...
+      718      if all_checks:
+      719          save_checklist(scenario_type, all_checks, scenario=sce
+           nario)
+      720  
+      721 +    # eval·chat 에는 smart_ns(없으면 원본 ns)를 전달 — _item_t
+          +ext 로 텍스트 추출                                            
+      722 +    _ns_for_ai = _smart_ns if _smart_ns else ns               
+      723 +                                                              
+      724      # ── AI 중간 평가
+      655 -    _render_ai_evaluation(inputs, scenario, ns, all_checks)   
+      725 +    _render_ai_evaluation(inputs, scenario, _ns_for_ai, all_ch
+          +ecks)                                                         
+      726  
+      727      # ── AI 코치 채팅
+      658 -    _render_chat(inputs, scenario, ns, all_checks)            
+      728 +    _render_chat(inputs, scenario, _ns_for_ai, all_checks)    
+
+⏺ 구문 검증합니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/screen3_plan.py').read()); print('screen3_plan.py OK')" 2>&1)
+  ⎿  screen3_plan.py OK
+
+⏺ 핵심 변경 사항을 최종 확인합니다.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ 모두 정상입니다. 배포합니다.
+
+⏺ Bash(git add screen3_plan.py && git commit -m "$(cat <<'EOF'
+      화면3 개선: client closed 오류 수정 + SMART 실행계획 변환 추가…)
+  ⎿  [main 51ad4dc] 화면3 개선: client closed 오류 수정 + SMART 실행계획 변
+     환 추가
+      Committer: Mary_Shin <mary_shin@Mary-Shins-MacBook-Pro.local>
+     … +15 lines (ctrl+o to expand)
+
+⏺ 배포 완료됐습니다.
+
+  ---
+  작업 완료 보고
+
+  항목: 백업
+  원인: —
+  수정: screen3_plan.py → screen3_plan.py.bak
+  ────────────────────────────────────────
+  항목: 개선 1 (AI 평가 오류)
+  원인: _get_client().models.generate_content() 체인: 임시 client 객체가 요청 중
+
+    GC 소멸
+  수정: client = _get_client() 로컬 변수로 분리 → _call_eval_api,
+  _call_coach_api
+    2곳 모두 수정
+  ────────────────────────────────────────
+  항목: 개선 1 (AI 코치 오류)
+  원인: 동일 패턴
+  수정: 동일 수정
+  ────────────────────────────────────────
+  항목: 개선 2 (SMART 변환)
+  원인: 화면2 next_steps를 그대로 표시
+  수정: _call_smart_ns_api() 추가 — Gemini가 task/metric/deadline 형식으로
+  재작성
+  ────────────────────────────────────────
+  항목: 개선 2 (캐시)
+  원인: —
+  수정: s3_smart_ns session_state에 저장, 시나리오 변경 시만 재호출
+  ────────────────────────────────────────
+  항목: 개선 2 (렌더링)
+  원인: 단순 checkbox 텍스트
+  수정: is_week/month/3month 구간에서 metric 배지(초록) + deadline 배지(보라)
+    추가 표시
+  ────────────────────────────────────────
+  항목: 개선 2 (fallback)
+  원인: —
+  수정: API 실패 시 원본 next_steps 그대로 표시, 상단에 "🔄 재시도" 버튼
+  ────────────────────────────────────────
+  항목: 호환성
+  원인: —
+  수정: _item_text() 헬퍼로 eval·coach 완료항목 수집 시 dict/str 모두 처리
+
+✻ Brewed for 5m 56s
+
+❯ # 화면4(3년 후의 나를 설계하세요) PDF 저장 범위 수정                          
+  # 대상: screen4_career.py (필요 시 PDF 생성 함수가 있는 파일)                 
+  # 작업 전 해당 파일을 .bak 으로 백업하라.                                     
+                                                                                
+  ## 개선: 화면4 의 "PDF로 저장" 버튼은 화면4 내용만 PDF 에 포함                
+  현상: 화면4 의 "PDF로 저장" 클릭 시 인생 시나리오(화면2) 내용까지             
+        PDF 에 포함되어 출력된다.                                               
+  원인 진단:                                                                    
+  - 기존 PDF 생성 함수가 앱 전체 데이터(시나리오·체크리스트·화면4 등)를         
+    통합 출력하도록 설계되어 있을 가능성.                                       
+  - 화면4 버튼이 이 통합 함수를 그대로 호출하고 있을 가능성.                    
+  수정:                                                                         
+  - 화면4 의 "PDF로 저장" 은 화면4 데이터(섹션1 입력 / 구인공고 분석 /          
+    갭 분석 / 3년 로드맵 / 월별 36개월 계획·체크현황)만 PDF 에 포함하도록       
+    한다.                                                                       
+  - 구현 방법 중 하나를 선택하라:                                               
+    (a) 기존 통합 PDF 함수에 scope 인자를 추가(예: scope="screen4_only"         
+        또는 sections=["screen4"])하고 화면4 버튼은 이 인자를 넘긴다.           
+        다른 호출자(전체 PDF)는 인자 기본값으로 동작이 바뀌지 않게 한다.        
+    (b) 화면4 전용 PDF 함수(save_screen4_pdf) 를 신설해 화면4 버튼이            
+        이를 호출하게 한다.                                                     
+  - 화면2/화면3 의 PDF 저장 기능은 기존 동작을 그대로 유지해야 한다.            
+                                                                                
+  ## 절대 준수                                                                  
+  - 화면0·1·2·3 의 PDF 동작과 기존 PDF 함수의 하위 호환을 깨지 마라.            
+  - 화면4 내부 분석·갭·로드맵·월별 계획 데이터 구조는 건드리지 마라.            
+                                                                                
+  ## [확인]                                                                     
+  - 화면4 "PDF로 저장" 결과 파일에 인생 시나리오(화면2) 내용이 포함되지 않는다. 
+  - 결과 파일에 화면4 5개 섹션 내용이 모두 포함된다.                            
+  - 화면2·3 의 기존 PDF 저장은 작업 전과 동일하게 동작한다.                     
+  보고 후 작업을 마쳐라.                                                        
+
+⏺ 현재 구조를 파악합니다.
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+⏺ 화면4 PDF 호출 부분과 generate_pdf 시그니처를 자세히 확인합니다.
+
+  Read 2 files (ctrl+o to expand)
+⏺ 문제 파악 완료. generate_pdf가 result_data(화면2 전체)를 받아 통합 PDF를
+  만들고, 화면4가 이를 그대로 호출하는 구조입니다. 방법 (a)로 scope 파라미터를
+  추가합니다.
+
+  백업부터 시작합니다.
+
+⏺ Bash(cp /Users/mary_shin/Desktop/VibeCoding/Final/screen4_career.py
+      /Users/mary_shin/Desktop/VibeCoding/Final/screen4_career.py.bak && echo
+      "screen4_career.py 백업 완료")
+  ⎿  screen4_career.py 백업 완료
+
+⏺ generate_pdf 함수의 섹션 경계를 정확히 확인합니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 구조 완전 파악. generate_pdf에 scope 파라미터 추가(기본값 "full" → 하위 호환
+  유지), 화면4 버튼은 scope="screen4_only" 전달.
+
+  ① app.py — generate_pdf 시그니처 수정
+
+⏺ Update(app.py)
+  ⎿  Added 1 line, removed 1 line
+      934      return None
+      935  
+      936  
+      937 -def generate_pdf(result: dict, inputs: dict, screen3_data: dic
+          -t = None, screen4_data: dict = None) -> bytes:                
+      937 +def generate_pdf(result: dict, inputs: dict, screen3_data: dic
+          +t = None, screen4_data: dict = None, scope: str = "full") -> b
+          +ytes:                                                         
+      938      """Gemini 결과를 fpdf2로 PDF 변환. 한국어 폰트 자동 적용."
+           ""
+      939      from fpdf import FPDF
+      940  
+
+⏺ ② app.py — 표지+요약 블록에 scope 분기 추가
+
+⏺ Update(app.py)
+  ⎿  Added 41 lines, removed 28 lines
+       989      final_msg = result.get("final_message", "")
+       990      color_rgb = {"blue": (59, 130, 246), "green": (16, 185, 1
+            29), "purple": (139, 92, 246)}
+       991  
+       992 -    # ── 표지 + 요약                                         
+       993 -    pdf.add_page()                                           
+       994 -    sfb(20)                                                  
+       995 -    pdf.set_text_color(30, 30, 30)                           
+       996 -    pdf.cell(0, 12, "AI 인생 시나리오 리포트", new_x="LMARGIN
+           -", new_y="NEXT", align="C")                                  
+       997 -    pdf.ln(2)                                                
+       998 -    sf(10)                                                   
+       999 -    pdf.set_text_color(120, 120, 120)                        
+      1000 -    pdf.cell(0, 6, datetime.date.today().strftime("%Y년 %m월 
+           -%d일"), new_x="LMARGIN", new_y="NEXT", align="C")            
+      1001 -    pdf.ln(8)                                                
+       992 +    if scope == "screen4_only":                              
+       993 +        # ── 화면4 전용 표지                                 
+       994 +        pdf.add_page()                                       
+       995 +        sfb(20)                                              
+       996 +        pdf.set_text_color(108, 99, 255)                     
+       997 +        pdf.cell(0, 12, "3년 후 커리어 설계 리포트", new_x="L
+           +MARGIN", new_y="NEXT", align="C")                            
+       998 +        pdf.ln(2)                                            
+       999 +        sf(10)                                               
+      1000 +        pdf.set_text_color(120, 120, 120)                    
+      1001 +        pdf.cell(0, 6, datetime.date.today().strftime("%Y년 %
+           +m월 %d일"), new_x="LMARGIN", new_y="NEXT", align="C")        
+      1002 +        pdf.ln(8)                                            
+      1003 +        pdf.set_text_color(30, 30, 30)                       
+      1004 +    else:                                                    
+      1005 +        # ── 표지 + 요약                                     
+      1006 +        pdf.add_page()                                       
+      1007 +        sfb(20)                                              
+      1008 +        pdf.set_text_color(30, 30, 30)                       
+      1009 +        pdf.cell(0, 12, "AI 인생 시나리오 리포트", new_x="LMA
+           +RGIN", new_y="NEXT", align="C")                              
+      1010 +        pdf.ln(2)                                            
+      1011 +        sf(10)                                               
+      1012 +        pdf.set_text_color(120, 120, 120)                    
+      1013 +        pdf.cell(0, 6, datetime.date.today().strftime("%Y년 %
+           +m월 %d일"), new_x="LMARGIN", new_y="NEXT", align="C")        
+      1014 +        pdf.ln(8)                                            
+      1015  
+      1003 -    section("입력 정보 요약")                                
+      1004 -    for key, label in [("job","직업·역할"),("satisfaction"," 
+           -현 상황 만족도"),("age","연령대"),("gender","성별"),("free_ti
+           -me","하루 평균 여유시간")]:                                  
+      1005 -        val = inputs.get(key, "")                            
+      1006 -        if val and val != "입력 없음":                       
+      1007 -            suffix = "/10" if key == "Q2" else ""            
+      1008 -            wl(f"  {label}: {val}{suffix}")                  
+      1009 -    income_sel = inputs.get("INCOME_SELECT", "")             
+      1010 -    income_txt = inputs.get("INCOME_TEXT", "")               
+      1011 -    if income_sel == "직접 입력" and income_txt:             
+      1012 -        wl(f"  현재 소득: {income_txt}")                     
+      1013 -    elif income_sel not in ("선택", "직접 입력", "", None):  
+      1014 -        wl(f"  현재 소득: {income_sel}")                     
+      1016 +        section("입력 정보 요약")                            
+      1017 +        for key, label in [("job","직업·역할"),("satisfaction
+           +","현 상황 만족도"),("age","연령대"),("gender","성별"),("free
+           +_time","하루 평균 여유시간")]:                               
+      1018 +            val = inputs.get(key, "")                        
+      1019 +            if val and val != "입력 없음":                   
+      1020 +                suffix = "/10" if key == "Q2" else ""        
+      1021 +                wl(f"  {label}: {val}{suffix}")              
+      1022 +        income_sel = inputs.get("INCOME_SELECT", "")         
+      1023 +        income_txt = inputs.get("INCOME_TEXT", "")           
+      1024 +        if income_sel == "직접 입력" and income_txt:         
+      1025 +            wl(f"  현재 소득: {income_txt}")                 
+      1026 +        elif income_sel not in ("선택", "직접 입력", "", None
+           +):                                                           
+      1027 +            wl(f"  현재 소득: {income_sel}")                 
+      1028  
+      1016 -    section("핵심 인사이트")                                 
+      1017 -    wl(summary.get("insight", ""), lh=7)                     
+      1018 -    pdf.ln(2)                                                
+      1019 -    wl(f"핵심 갈등: {summary.get('conflict','')}", color=(160
+           -, 90, 0), lh=7)                                              
+      1029 +        section("핵심 인사이트")                             
+      1030 +        wl(summary.get("insight", ""), lh=7)                 
+      1031 +        pdf.ln(2)                                            
+      1032 +        wl(f"핵심 갈등: {summary.get('conflict','')}", color=
+           +(160, 90, 0), lh=7)                                          
+      1033  
+      1021 -    # ── 시나리오별 페이지                                   
+      1022 -    for sc in scenarios:                                     
+      1034 +    # ── 시나리오별 페이지 (scope=="full" 일 때만)           
+      1035 +    for sc in scenarios if scope == "full" else []:          
+      1036          pdf.add_page()
+      1037          sc_type = sc.get("type", "")
+      1038          c_rgb   = color_rgb.get(sc.get("color", "blue"), (60,
+             60, 60))
+
+⏺ ③ app.py — 추천이유+최종메시지 블록에 scope 조건 추가
+
+⏺ Update(app.py)
+  ⎿  Added 10 lines, removed 9 lines
+      1099                  pdf.set_text_color(60, 60, 100); sf(10)
+      1100                  pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.e
+            pw, 6, coach)
+      1101  
+      1102 -    # ── 마지막 페이지: 추천 이유 + 최종 메시지              
+      1103 -    pdf.add_page()                                           
+      1104 -    section("AI 추천 이유", color=(16, 185, 129))            
+      1105 -    sfb(11); pdf.set_text_color(16, 185, 129)                
+      1106 -    pdf.cell(0, 7, f"추천 시나리오: {rec_type}", new_x="LMARG
+           -IN", new_y="NEXT")                                           
+      1107 -    pdf.set_text_color(30, 30, 30); sf(10)                   
+      1108 -    pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, rec.g
+           -et("reason", ""))                                            
+      1102 +    # ── 마지막 페이지: 추천 이유 + 최종 메시지 (scope=="full
+           +" 일 때만)                                                   
+      1103 +    if scope == "full":                                      
+      1104 +        pdf.add_page()                                       
+      1105 +        section("AI 추천 이유", color=(16, 185, 129))        
+      1106 +        sfb(11); pdf.set_text_color(16, 185, 129)            
+      1107 +        pdf.cell(0, 7, f"추천 시나리오: {rec_type}", new_x="L
+           +MARGIN", new_y="NEXT")                                       
+      1108 +        pdf.set_text_color(30, 30, 30); sf(10)               
+      1109 +        pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 7, r
+           +ec.get("reason", ""))                                        
+      1110  
+      1110 -    section("AI 최종 메시지")                                
+      1111 -    sf(10); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.epw, 
+           -7, final_msg)                                                
+      1111 +        section("AI 최종 메시지")                            
+      1112 +        sf(10); pdf.set_x(pdf.l_margin); pdf.multi_cell(pdf.e
+           +pw, 7, final_msg)                                            
+      1113  
+      1114      # ── 화면3 실행 계획 페이지 (screen3_data 있을 때만)
+      1115      if screen3_data:
+
+⏺ ④ screen4_career.py — PDF 호출에 scope="screen4_only" 추가
+
+⏺ Update(screen4_career.py)
+  ⎿  Added 1 line, removed 1 line
+      973          result_data = st.session_state.get("result") or {}
+      974          inputs_data = st.session_state.get("inputs") or {}
+      975          try:
+      976 -            pdf_bytes = pdf_fn(result_data, inputs_data, scree
+          -n4_data=screen4_data)                                         
+      976 +            pdf_bytes = pdf_fn(result_data, inputs_data, scree
+          +n4_data=screen4_data, scope="screen4_only")                   
+      977              fname = f"career_report_{datetime.date.today().str
+           ftime('%Y%m%d')}.pdf"
+      978              st.download_button(
+      979                  label="📄 PDF로 저장",
+
+⏺ 구문 검증 후 최종 확인합니다.
+
+⏺ Bash(python3 -c "import ast; ast.parse(open('/Users/mary_shin/Desktop/VibeCodi
+      ng/Final/app.py').read()); print('app.py OK')" 2>&1
+      python3 -c "import ast; ast.parse(o…)
+  ⎿  app.py OK
+     screen4_career.py OK
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ 배포합니다.
+
+⏺ Bash(git add app.py screen4_career.py && git commit -m "$(cat <<'EOF'
+      화면4 PDF: 화면4 전용 PDF 출력(scope=screen4_only) 적용…)
+  ⎿  [main 3bd4f39] 화면4 PDF: 화면4 전용 PDF 출력(scope=screen4_only) 적용
+      Committer: Mary_Shin <mary_shin@Mary-Shins-MacBook-Pro.local>
+     Your name and email address were configured automatically based
+     … +14 lines (ctrl+o to expand)
+
+⏺ 배포 완료됐습니다.
+
+  ---
+  작업 완료 보고
+
+  ┌───────────────────┬──────────────────────────────────────────────────────┐
+  │       항목        │                         변경                         │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ 백업              │ screen4_career.py → screen4_career.py.bak            │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ app.py            │ generate_pdf 시그니처에 scope: str = "full" 추가     │
+  │                   │ (기본값 → 화면2/3 동작 불변)                         │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │                   │ scope == "screen4_only" 시:                          │
+  │ app.py            │ 표지·요약·시나리오·추천이유·최종메시지 섹션 전체     │
+  │                   │ 스킵, 화면4 전용 표지 출력                           │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ app.py            │ scope == "full" 시: 기존과 100% 동일하게 전체 통합   │
+  │                   │ PDF 출력                                             │
+  ├───────────────────┼──────────────────────────────────────────────────────┤
+  │ screen4_career.py │ PDF 버튼 호출에 scope="screen4_only" 추가            │
+  └───────────────────┴──────────────────────────────────────────────────────┘
+
+  화면4 PDF 결과물: "3년 후 커리어 설계 리포트" 표지 → 목표 입력 / 구인공고 분석
+  / 갭 분석 / 3년 로드맵 / 월별 36개월 체크현황만 포함
+
+  화면2/3 PDF: 기존과 동일 (scope 기본값 "full" 유지)
+
+✻ Churned for 2m 2s
+
+❯ # 다크/라이트 모드 토글 재추가 작업                                           
+  # 대상: app.py + 화면0~4 코드(필요 시 각 화면 모듈 파일)                      
+  # 작업 전 app.py 를 app.py.bak_theme 로 백업하라.                             
+                                                                                
+  ## 0. 사전 진단                                                               
+  1. 과거에 다크/라이트 토글 코드가 있었던 흔적이 남아 있는지 확인하라          
+     (주석 처리된 코드·미사용 함수·st.session_state.theme 등).                  
+     잔재가 있으면 위치를 보고하라(이번 작업에서 통일된 구현으로 교체한다).     
+  2. 화면4 원본 HTML(screen4_template.html)과 화면0 HTML(screen0.html)에        
+     자체 테마 버튼(🌙/☀️ 등)이 들어 있는지 확인하라.                           
+     들어 있으면 위치를 보고하라(자체 버튼은 비활성화/제거하고                  
+     Streamlit 토글로 통합한다).                                                
+  3. 화면별로 적용 중인 CSS 클래스(.screen3-wrap, .screen4-wrap 등)를           
+     목록으로 보고하라.                                                         
+                                                                                
+  ## 1. 전역 테마 상태 관리                                                     
+  - st.session_state.theme 을 도입한다. 값은 "dark" 또는 "light".               
+  - 앱 시작 시 기본값은 "dark" 로 초기화하라.                                   
+  - 사이드바(st.sidebar)에 토글 위젯을 둔다:                                    
+      st.sidebar.toggle("🌙 다크 모드", value=(st.session_state.theme=="dark"), 
+                        key="theme_toggle", on_change=...)                      
+    on_change 콜백에서 theme 값을 갱신하고 st.rerun() 한다.                     
+  - 토글 위치를 변경하고 싶으면 추후 헤더로 옮길 수 있도록 위젯을 함수로        
+  분리하라.                                                                     
+    예: render_theme_toggle() — 호출 위치만 바꾸면 되게.                        
+                                                                                
+  ## 2. 공통 테마 적용 함수                                                     
+  - 공통 함수 apply_theme() 을 정의하라(파일 위치: app.py 상단 또는 theme.py    
+  신설).                                                                        
+  - 함수는 st.session_state.theme 값에 따라 아래 CSS 를 st.markdown 으로        
+  주입한다.                                                                     
+  - CSS 는 다크/라이트 양쪽에 대해 동일한 변수명(--bg, --card, --card2,         
+  --border,                                                                     
+    --text, --text2, --text3, --accent, --blue, --green, --red, --purple,       
+    --shadow, --radius, --radius-sm 등)을 정의하라.                             
+  - 다크/라이트 값은 원본 화면4 HTML(screen4_template.html) 안의                
+    :root / body.light 정의를 참고해 동일한 팔레트로 통일하라.                  
+  - 변수 적용 스코프:                                                           
+    · 가능하면 body 또는 .stApp 루트에 적용해 모든 화면에 자동 반영되게 한다.   
+    · 단 화면별 .screenN-wrap 스코프가 이미 있는 곳은 그 스코프에서도           
+      같은 변수를 그대로 상속하도록 작성하라.                                   
+  - 토글 상태 표시: 다크일 때는 "🌙 다크 모드", 라이트일 때는 "☀️ 라이트 모드"  
+    로 라벨이 바뀌게 하라.                                                      
+                                                                                
+  ## 3. 모든 화면에서 일관 적용                                                 
+  - app.py 의 page 분기 "최상단"에서 매 rerun마다 apply_theme() 을 1회          
+  호출하라.                                                                     
+  - 화면0~4 의 어느 화면에 들어가도 동일한 테마가 적용되어야 한다.              
+  - 화면별 모듈(screen3_plan.py, screen4_career.py 등)이 자체적으로 CSS 를      
+    주입하고 있다면, 그 CSS 의 색상 하드코딩을 제거하고 위 공통 변수            
+    (var(--bg), var(--text) 등)를 사용하도록 바꿔라.                            
+                                                                                
+  ## 4. HTML 템플릿 충돌 방지                                                   
+  - screen0.html, screen4_template.html 등에 자체 다크/라이트 토글 버튼이       
+    들어 있으면 비활성화하거나 제거하라(중복 토글 방지).                        
+  - HTML 내부 CSS 가 자체 :root / body.light 를 정의하는 경우,                  
+    Streamlit 측 변수와 충돌하지 않게 하라:                                     
+    · 가장 간단한 방법: HTML 내부 :root / body.light 정의를 그대로 두고,        
+      Streamlit 에서 body 에 class="light" 또는 data-theme 속성을               
+      apply_theme() 시점에 부여하는 JS 한 줄 주입.                              
+    · 또는 HTML 내부 색상 정의를 제거하고 외부 변수를 상속하도록 통일.          
+    둘 중 안정적인 방법을 선택해 적용하라.                                      
+                                                                                
+  ## 절대 준수                                                                  
+  - 화면별 기능 로직(시나리오 생성·체크리스트·AI 평가·코치·구인공고 분석·PDF    
+    저장 등)은 수정하지 마라. 이번 작업은 테마 관련 코드에만 한정한다.          
+  - 새 토글 외에 다른 토글을 만들지 마라(자체 HTML 토글은 제거 대상).           
+                                                                                
+  ## 에러 처리                                                                  
+  - session_state.theme 미설정 상태에서 토글이 호출돼도 기본값("dark")으로      
+    안전히 동작하게 하라.                                                       
+  - CSS 주입 실패해도 앱은 정상 동작해야 한다.                                  
+                                                                                
+  ## [확인]                                                                     
+  - 사이드바에 토글이 보이고, 클릭 시 라벨이 🌙/☀️ 로 즉시 바뀐다.              
+  - 화면0·1·2·3·4 모두에서 토글이 작동하고, 테마가 일관되게 적용된다.           
+  - 화면을 이동해도 테마 상태가 유지된다.                                       
+  - screen0.html / screen4_template.html 내부의 자체 테마 버튼이                
+    더 이상 보이지 않거나, 클릭해도 Streamlit 토글에 영향을 주지 않는다.        
+  - 라이트 모드에서 배경·텍스트·카드 색이 가독성 있게 표시된다(대비 충분).      
+  보고 후 작업을 마쳐라.                                                        
+
+⏺ 먼저 사전 진단을 진행합니다.
+
+  Searched for 7 patterns, read 2 files, listed 1 directory (ctrl+o to expand)
+
+⏺ 構造を完全에 把握했습니다. 이제 백업 후 구현을 시작합니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 전체 구조 파악 완료. 백업하고 구현 시작합니다.
+
+⏺ Bash(cp /Users/mary_shin/Desktop/VibeCoding/Final/app.py
+      /Users/mary_shin/Desktop/VibeCoding/Final/app.py.bak_theme && echo "백업
+      완료")  ⎿  백업 완료
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ build_home_html 함수는 정의만 되어 있고 실제로 호출되지 않음을 확인했습니다.
+  render_home_page()는 순수 Streamlit native 위젯으로 렌더링합니다. 따라서
+  screen0.html의 themeBtn은 현재 실행에 영향 없습니다.
+
+  이제 전체 변경을 순서대로 진행합니다.
+
+  ① app.py — apply_theme() + render_theme_toggle() 추가 (PROFILE_PATH 직후)
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(app.py)
+  ⎿  Added 49 lines
+      381  
+      382  PROFILE_PATH = "profile.json"
+      383  
+      384 +# ── 다크/라이트 테마 공통 CSS 변수 ──────────────────────────
+          +──────────────────                                            
+      385 +_THEME_DARK_CSS = """<style>                                  
+      386 +:root{                                                        
+      387 +  --bg:#0d1117;--surface:#161b27;--card:#1a1a2e;--card2:#16213
+          +e;                                                            
+      388 +  --border:#2a2a4a;--text:#e8e8f0;--text2:#a0a0c0;--text3:#606
+          +0a0;                                                          
+      389 +  --accent:#6c63ff;--blue:#4a7fff;--green:#2ecc71;--red:#e74c3
+          +c;                                                            
+      390 +  --purple:#9b59b6;--shadow:0 4px 20px rgba(0,0,0,.35);       
+      391 +  --radius:12px;--radius-sm:8px;                              
+      392 +}                                                             
+      393 +</style>"""                                                   
+      394 +                                                              
+      395 +_THEME_LIGHT_CSS = """<style>                                 
+      396 +:root{                                                        
+      397 +  --bg:#f8f9ff;--surface:#ffffff;--card:#ffffff;--card2:#f0f2f
+          +f;                                                            
+      398 +  --border:#dde0f0;--text:#1a1a2e;--text2:#4a4a7a;--text3:#909
+          +0b0;                                                          
+      399 +  --accent:#6c63ff;--blue:#2255cc;--green:#1a7a45;--red:#dc262
+          +6;                                                            
+      400 +  --purple:#5b21b6;--shadow:0 2px 12px rgba(0,0,0,.08);       
+      401 +  --radius:12px;--radius-sm:8px;                              
+      402 +}                                                             
+      403 +.stApp,[data-testid="stAppViewContainer"]{background-color:#f8
+          +f9ff!important}                                               
+      404 +section[data-testid="stSidebar"]{background-color:#eef0fa!impo
+          +rtant}                                                        
+      405 +</style>"""                                                   
+      406 +                                                              
+      407 +                                                              
+      408 +def apply_theme() -> None:                                    
+      409 +    """st.session_state.theme 값에 따라 공통 CSS 변수를 Stream
+          +lit에 주입한다."""                                            
+      410 +    try:                                                      
+      411 +        theme = st.session_state.get("theme", "dark")         
+      412 +        st.markdown(_THEME_LIGHT_CSS if theme == "light" else 
+          +_THEME_DARK_CSS,                                              
+      413 +                    unsafe_allow_html=True)                   
+      414 +    except Exception:                                         
+      415 +        pass                                                  
+      416 +                                                              
+      417 +                                                              
+      418 +def render_theme_toggle() -> None:                            
+      419 +    """사이드바에 다크/라이트 모드 토글을 렌더링한다. 위치 이 
+          +동 시 이 함수만 재배치."""                                    
+      420 +    theme = st.session_state.get("theme", "dark")             
+      421 +    is_dark = (theme == "dark")                               
+      422 +    with st.sidebar:                                          
+      423 +        new_is_dark = st.toggle(                              
+      424 +            "🌙 다크 모드" if is_dark else "☀️ 라이트 모드",  
+      425 +            value=is_dark,                                    
+      426 +            key="theme_sidebar_toggle",                       
+      427 +        )                                                     
+      428 +        if new_is_dark != is_dark:                            
+      429 +            st.session_state.theme = "dark" if new_is_dark els
+          +e "light"                                                     
+      430 +            st.rerun()                                        
+      431 +                                                              
+      432 +                                                              
+      433  # ── Google 로그인 (임시 비활성화) ───────────────────────────
+           ─────────────────
+      434  # 아래 플래그를 True 로 바꾸면 로그인 기능이 다시 활성화됩니다
+           .
+      435  _LOGIN_ENABLED = False
+  ⎿  Context limit reached · /compact or /clear to continue
+
+✻ Sautéed for 3m 37s

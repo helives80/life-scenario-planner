@@ -294,7 +294,7 @@ def load_latest_quarterly_plan(scenario_type: str) -> dict:
         return {}
 
 
-_FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash"]
 
 
 def _quota_msg(err: Exception) -> str:
@@ -318,12 +318,12 @@ def _quota_msg(err: Exception) -> str:
         wait = "잠시"
     return (
         f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요.\n"
-        "(무료 티어: gemini-2.5-flash 20회/일, gemini-2.0-flash 200회/일)"
+        "(무료 티어: gemini-2.0-flash 20회/일, gemini-2.0-flash 200회/일)"
     )
 
 
 def _genai_generate(contents: str, config) -> str:
-    """gemini-2.5-flash → gemini-2.0-flash 순으로 폴백. 429 시 다음 모델 시도."""
+    """gemini-2.0-flash → gemini-2.0-flash 순으로 폴백. 429 시 다음 모델 시도."""
     api_key = os.getenv("GEMINI_API_KEY", "")
     last_err = None
     for model in _FALLBACK_MODELS:

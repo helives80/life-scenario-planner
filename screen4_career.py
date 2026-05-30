@@ -282,7 +282,7 @@ def _generate_gap_analysis(inputs: dict, goal_info: dict, scenario: dict = None)
         )
         _client_grounding = _get_client()
         resp = _client_grounding.models.generate_content(
-            model="gemini-2.5-flash", contents=query, config=grounding_config,
+            model="gemini-2.0-flash", contents=query, config=grounding_config,
         )
         job_text       = resp.text or ""
         grounding_used = bool(job_text.strip())
@@ -307,7 +307,7 @@ def _generate_gap_analysis(inputs: dict, goal_info: dict, scenario: dict = None)
     prompt_text  = _build_gap_prompt(inputs, goal_info, job_text, scenario)
     _client_gap  = _get_client()
     response     = _client_gap.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=prompt_text,
         config=gtypes.GenerateContentConfig(
             system_instruction=GAP_SYSTEM_PROMPT,
@@ -367,7 +367,7 @@ def _generate_roadmap(inputs: dict, goal_info: dict, gap_result: dict, scenario:
     prompt_text    = _build_roadmap_prompt(inputs, goal_info, gap_result, scenario)
     _client_roadmap = _get_client()
     response        = _client_roadmap.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=prompt_text,
         config=gtypes.GenerateContentConfig(
             system_instruction=ROADMAP_SYSTEM_PROMPT,

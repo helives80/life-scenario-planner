@@ -26,10 +26,10 @@ SYSTEM_PROMPT = """
 
 <context>
 - 제품: 사용자 15개 항목 입력 → 현실형/도전형/파격형 3가지 인생 시나리오 + 선택 시나리오의 실행 계획 생성
-- 호출 환경: Python Streamlit 앱에서 Google Gemini API(gemini-2.5-flash)로 호출, 응답은 json.loads()로 즉시 파싱
+- 호출 환경: Python Streamlit 앱에서 Google Gemini API(gemini-2.0-flash)로 호출, 응답은 json.loads()로 즉시 파싱
 - 입력 전달 방식: 사용자 응답 15개가 user 메시지에 키-값 형태(Q1~Q15)로 포함되어 들어옵니다. 누락된 항목이 있으면 해당 항목을 명시적으로 "입력 없음"으로 처리하고 그 항목은 시나리오 근거로 사용하지 마십시오.
 - 운영 제약: API 응답은 반드시 단일 JSON 객체 한 개. 다른 문자(코드펜스, 설명, 주석, BOM, 공백 줄바꿈 외 텍스트) 절대 금지.
-- 모델: gemini-2.5-flash (무료 티어 우선). 시나리오 품질이 부족할 경우 gemini-2.5-pro로 교체 가능(무료 한도 상이, 동일 프롬프트 호환).
+- 모델: gemini-2.0-flash (무료 티어 우선). 시나리오 품질이 부족할 경우 gemini-2.5-pro로 교체 가능(무료 한도 상이, 동일 프롬프트 호환).
 - JSON 안정성: Python 호출 시 response_mime_type="application/json" 및 temperature=0.7 설정 권장 (아래 implementation_note 참조).
 </context>
 
@@ -797,7 +797,7 @@ OLD_KEY_MIGRATION = {
 }
 
 
-_APP_FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+_APP_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash"]
 
 
 def _app_quota_msg(err: Exception) -> str:
@@ -820,7 +820,7 @@ def _app_quota_msg(err: Exception) -> str:
         wait = "잠시"
     return (
         f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요.\n"
-        "(무료 티어: gemini-2.5-flash 20회/일, gemini-2.0-flash 200회/일)"
+        "(무료 티어: gemini-2.0-flash 20회/일, gemini-2.0-flash 200회/일)"
     )
 
 
@@ -835,7 +835,7 @@ def get_model():
         temperature=0.7
     )
     return genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-2.0-flash",
         system_instruction=SYSTEM_PROMPT,
         generation_config=generation_config
     )
@@ -1017,7 +1017,7 @@ def get_compare_model():
         temperature=0.7,
     )
     return genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-2.0-flash",
         system_instruction=COMPARE_SYSTEM_PROMPT,
         generation_config=generation_config,
     )

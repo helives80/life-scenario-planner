@@ -797,7 +797,7 @@ OLD_KEY_MIGRATION = {
 }
 
 
-_APP_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"]
+_APP_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
 _APP_WAIT_RETRY_MAX = 90  # 이 초 이하의 429 대기시간은 sleep 후 재시도
 
 

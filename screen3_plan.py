@@ -295,7 +295,7 @@ def load_latest_quarterly_plan(scenario_type: str) -> dict:
         return {}
 
 
-_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"]
+_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
 _WAIT_RETRY_MAX = 90  # 이 초 이하의 429 대기시간은 sleep 후 재시도
 
 

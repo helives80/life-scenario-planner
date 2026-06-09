@@ -208,34 +208,38 @@ ROADMAP_SCHEMA = {
 
 # ── 공통 헬퍼 ─────────────────────────────────────────────────────────────────
 
-_ID_TO_Q = {
-    "job": 1, "satisfaction": 2, "endurance": 3, "skill": 4,
-    "saving": 5, "family_support": 6, "priority": 7, "fear": 8,
-    "rolemodel": 9, "goal": 10, "bucketlist": 11, "change_5y": 12,
-    "worry": 13, "changeable": 14,
-}
+_Q_LABELS_S4 = [
+    ("job_title",          "Q1(직책·업무)"),
+    ("retirement_type",    "Q2(퇴직유형)"),
+    ("retirement_timing",  "Q3(퇴직시점)"),
+    ("retirement_feeling", "Q4(퇴직감정)"),
+    ("age",                "Q5(연령대)"),
+    ("industry_skills",    "Q6(직종·역량)"),
+    ("credentials",        "Q7(자격증·학력)"),
+    ("prep_time",          "Q8(준비시간)"),
+    ("salary_current",     "Q9a(현재연봉)"),
+    ("salary_min",         "Q9b(최소수용연봉)"),
+    ("family_support",     "Q10(가족지지)"),
+    ("career_path",        "Q11(희망커리어)"),
+    ("non_negotiable",     "Q12(포기불가)"),
+    ("fear",               "Q13(두려움)"),
+    ("goal",               "Q14(목표)"),
+    ("prep_stage",         "Q15(준비단계)"),
+    ("worry",              "Q16(고민)"),
+    ("first_action",       "Q17(첫행동)"),
+    ("service_goal",       "Q18(서비스기대)"),
+]
 
 
 def _inputs_to_q_lines(inputs: dict) -> list:
     lines = []
-    for id_key, q_num in sorted(_ID_TO_Q.items(), key=lambda x: x[1]):
-        value = inputs.get(id_key, inputs.get(f"Q{q_num}", "입력 없음"))
-        lines.append(f"Q{q_num}: {value}")
-        if q_num == 1:
-            inc_sel = inputs.get("INCOME_SELECT", "직접 입력 안 함")
-            inc_txt = inputs.get("INCOME_TEXT", "")
-            if inc_sel == "직접 입력" and inc_txt:
-                lines.append(f"현재 소득: {inc_txt}")
-            elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""):
-                lines.append(f"현재 소득: {inc_sel}")
-    lines.append("Q15: 입력 없음")
-    for id_key, old_key, label in [
-        ("age", "AGE", "연령대"), ("gender", "GENDER", "성별"),
-        ("free_time", "TIME", "하루 평균 여유시간"),
-    ]:
-        val = inputs.get(id_key, inputs.get(old_key, ""))
-        if val:
-            lines.append(f"{label}: {val}")
+    for id_key, label in _Q_LABELS_S4:
+        value = inputs.get(id_key, "입력 없음")
+        if isinstance(value, list):
+            value = ", ".join(value) if value else "입력 없음"
+        if not value or value == "입력 없음":
+            value = "입력 없음"
+        lines.append(f"{label}: {value}")
     return lines
 
 # ── 갭 분석 API ───────────────────────────────────────────────────────────────
@@ -764,7 +768,7 @@ def render(pdf_fn=None):
             st.write("")
             goal_skills = st.text_area(
                 "핵심 보유 예정 기술 · 경력",
-                value=st.session_state.get("s4_goal_skills", inputs.get("skill", "")),
+                value=st.session_state.get("s4_goal_skills", inputs.get("industry_skills", "")),
                 placeholder="AI 진단 SaaS 운영, MBA 졸업, 컨설팅 고객 10곳",
                 height=90,
                 key="s4_skills_direct",

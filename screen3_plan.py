@@ -109,9 +109,9 @@ EVAL_SYSTEM_PROMPT = """
     }
     ... Q2, Q3, Q4 동일 구조
   ],
-  "overall_message": "Q8(두려움)·Q13(고민)을 큰따옴표로 직접 인용한 전체 평가 메시지 2~3문장",
+  "overall_message": "Q13(두려움)·Q16(고민)을 큰따옴표로 직접 인용한 전체 평가 메시지 2~3문장",
   "suggestions": ["미완료 항목 중 우선순위 높은 조정 제안 1", "제안 2"],
-  "encouragement": "Q10(목표) 또는 Q11(버킷리스트) 직접 인용한 1~2문장 격려"
+  "encouragement": "Q14(목표) 또는 Q11(희망커리어) 직접 인용한 1~2문장 격려"
 }
 
 quarters: 입력으로 받은 분기(Q1~Q4)마다 하나씩 반드시 생성.
@@ -119,7 +119,7 @@ grade 기준 — A: 80%↑ 완료, B: 60~79%, C: 40~59%, D: 20~39%, F: 20% 미�
 summary: 완료된 항목 수와 미완료 항목 수를 구체적으로 언급.
 key_achievement: 완료 항목이 없으면 "아직 시작 전" 으로 기재.
 next_focus: 미완료 항목 중 가장 임팩트 높은 것 1개 지목.
-overall_message: Q8·Q13 반드시 큰따옴표 인용.
+overall_message: Q13·Q16 반드시 큰따옴표 인용.
 """
 
 _Q_EVAL_ITEM_SCHEMA = {
@@ -349,19 +349,13 @@ def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
 
     lines = ["=== 사용자 정보 ==="]
     for id_key, label in [
-        ("job", "직업"), ("skill", "기술"), ("saving", "자금"),
-        ("fear", "두려움"), ("goal", "목표"), ("satisfaction", "만족도"),
-        ("family_support", "가족지지"),
+        ("job_title", "직책·업무"), ("industry_skills", "직종·역량"),
+        ("salary_current", "현재연봉"), ("salary_min", "수용최소연봉"),
+        ("fear", "두려움"), ("goal", "목표"), ("family_support", "가족지지"),
     ]:
         val = inputs.get(id_key, "")
         if val and val != "입력 없음":
             lines.append(f"  {label}: {val}")
-    inc_sel = inputs.get("INCOME_SELECT", "")
-    inc_txt = inputs.get("INCOME_TEXT", "")
-    if inc_sel == "직접 입력" and inc_txt:
-        lines.append(f"  현재 소득: {inc_txt}")
-    elif inc_sel not in ("선택", "직접 입력", "", None):
-        lines.append(f"  현재 소득: {inc_sel}")
 
     lines += [
         "",
@@ -474,8 +468,8 @@ def _call_smart_ns_api(inputs: dict, scenario: dict, original_ns: dict) -> dict:
 
     lines = ["=== 사용자 입력값 ==="]
     for id_key, label in [
-        ("job", "직업"), ("satisfaction", "만족도"), ("skill", "기술"),
-        ("saving", "자금"), ("family_support", "가족지지"),
+        ("job_title", "직책·업무"), ("industry_skills", "직종·역량"),
+        ("salary_current", "현재연봉"), ("family_support", "가족지지"),
         ("fear", "두려움"), ("goal", "목표"),
     ]:
         val = inputs.get(id_key, "")
@@ -535,22 +529,32 @@ def _init_checks(scenario_type: str, ns: dict):
 def _build_eval_prompt(inputs: dict, scenario: dict, quarter_items: list) -> str:
     """quarter_items: [{"quarter":"Q1","done":[...],"undone":[...],"pct":int}, ...]"""
     id_to_q = {
-        "job": "Q1(직업)", "satisfaction": "Q2(만족도)", "endurance": "Q3(버틸기간)",
-        "skill": "Q4(기술)", "saving": "Q5(저축)", "family_support": "Q6(가족지지)",
-        "priority": "Q7(포기불가)", "fear": "Q8(두려움)", "rolemodel": "Q9(롤모델)",
-        "goal": "Q10(목표)", "bucketlist": "Q11(버킷리스트)", "change_5y": "Q12(5년전)",
-        "worry": "Q13(고민)", "changeable": "Q14(바꿀수있는것)",
+        "job_title":          "Q1(직책·업무)",
+        "retirement_type":    "Q2(퇴직유형)",
+        "retirement_timing":  "Q3(퇴직시점)",
+        "retirement_feeling": "Q4(퇴직감정)",
+        "age":                "Q5(연령대)",
+        "industry_skills":    "Q6(직종·역량)",
+        "credentials":        "Q7(자격증·학력)",
+        "prep_time":          "Q8(준비시간)",
+        "salary_current":     "Q9a(현재연봉)",
+        "salary_min":         "Q9b(최소수용연봉)",
+        "family_support":     "Q10(가족지지)",
+        "career_path":        "Q11(희망커리어)",
+        "non_negotiable":     "Q12(포기불가)",
+        "fear":               "Q13(두려움)",
+        "goal":               "Q14(목표)",
+        "prep_stage":         "Q15(준비단계)",
+        "worry":              "Q16(고민)",
+        "first_action":       "Q17(첫행동)",
+        "service_goal":       "Q18(서비스기대)",
     }
     lines = ["=== 원본 입력값 ==="]
     for id_key, label in id_to_q.items():
         val = inputs.get(id_key, "입력 없음")
+        if isinstance(val, list):
+            val = ", ".join(val) if val else "입력 없음"
         lines.append(f"{label}: {val}")
-    inc_sel = inputs.get("INCOME_SELECT", "")
-    inc_txt = inputs.get("INCOME_TEXT", "")
-    if inc_sel == "직접 입력" and inc_txt:
-        lines.append(f"소득: {inc_txt}")
-    elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""):
-        lines.append(f"소득: {inc_sel}")
 
     lines += [
         "",
@@ -775,29 +779,34 @@ def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: di
 
 def _build_coach_system_prompt(inputs: dict, all_checks: dict, ns: dict, scenario: dict) -> str:
     id_to_label = {
-        "job": "직업", "satisfaction": "만족도", "endurance": "버틸기간",
-        "skill": "기술", "saving": "저축", "family_support": "가족지지",
-        "priority": "포기불가", "fear": "두려움(Q8)", "rolemodel": "롤모델",
-        "goal": "목표(Q10)", "bucketlist": "버킷리스트", "change_5y": "5년전변화",
-        "worry": "고민(Q13)", "changeable": "바꿀수있는것",
+        "job_title":          "직책·업무",
+        "retirement_type":    "퇴직유형",
+        "retirement_timing":  "퇴직시점",
+        "age":                "연령대",
+        "industry_skills":    "직종·역량",
+        "salary_current":     "현재연봉",
+        "salary_min":         "수용최소연봉",
+        "family_support":     "가족지지(Q10)",
+        "career_path":        "희망커리어(Q11)",
+        "non_negotiable":     "포기불가(Q12)",
+        "fear":               "두려움(Q13)",
+        "goal":               "목표(Q14)",
+        "worry":              "고민(Q16)",
+        "first_action":       "첫행동(Q17)",
     }
     lines = [
-        "당신은 인생 코치입니다. 사용자의 15개 입력값과 현재 실행 현황을 알고 있습니다.",
+        "당신은 퇴직 후 전직 코치입니다. 사용자의 18개 입력값과 현재 실행 현황을 알고 있습니다.",
         "직설적이지만 따뜻한 코치 톤으로 한국어 존댓말로 답변하세요.",
         "막연한 격려나 클리셰('열심히 하세요', '할 수 있습니다') 대신 입력값을 직접 인용해 구체적으로 답변하세요.",
         "",
-        "[15개 입력값 요약]",
+        "[18개 입력값 요약]",
     ]
     for id_key, label in id_to_label.items():
         val = inputs.get(id_key, "")
+        if isinstance(val, list):
+            val = ", ".join(val) if val else ""
         if val and val != "입력 없음":
             lines.append(f"  {label}: {val}")
-    inc_sel = inputs.get("INCOME_SELECT", "")
-    inc_txt = inputs.get("INCOME_TEXT", "")
-    if inc_sel == "직접 입력" and inc_txt:
-        lines.append(f"  소득: {inc_txt}")
-    elif inc_sel not in ("직접 입력 안 함", "직접 입력", ""):
-        lines.append(f"  소득: {inc_sel}")
 
     lines += [
         "",

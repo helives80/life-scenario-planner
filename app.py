@@ -27,7 +27,7 @@ SYSTEM_PROMPT = """
 <context>
 - 제품: 사용자 15개 항목 입력 → 현실형/도전형/파격형 3가지 인생 시나리오 + 선택 시나리오의 실행 계획 생성
 - 호출 환경: Python Streamlit 앱에서 Google Gemini API(gemini-2.0-flash)로 호출, 응답은 json.loads()로 즉시 파싱
-- 입력 전달 방식: 사용자 응답 15개가 user 메시지에 키-값 형태(Q1~Q15)로 포함되어 들어옵니다. 누락된 항목이 있으면 해당 항목을 명시적으로 "입력 없음"으로 처리하고 그 항목은 시나리오 근거로 사용하지 마십시오.
+- 입력 전달 방식: 사용자 응답 18개가 user 메시지에 키-값 형태(Q1~Q18)로 포함되어 들어옵니다. 누락된 항목이 있으면 해당 항목을 명시적으로 "입력 없음"으로 처리하고 그 항목은 시나리오 근거로 사용하지 마십시오.
 - 운영 제약: API 응답은 반드시 단일 JSON 객체 한 개. 다른 문자(코드펜스, 설명, 주석, BOM, 공백 줄바꿈 외 텍스트) 절대 금지.
 - 모델: gemini-2.0-flash (무료 티어 우선). 시나리오 품질이 부족할 경우 gemini-2.5-pro로 교체 가능(무료 한도 상이, 동일 프롬프트 호환).
 - JSON 안정성: Python 호출 시 response_mime_type="application/json" 및 temperature=0.7 설정 권장 (아래 implementation_note 참조).
@@ -35,61 +35,64 @@ SYSTEM_PROMPT = """
 
 <input_schema>
 전달 형식: user 메시지는 아래 평문 형태로 전달됩니다.
-  Q1: [값]
-  Q2: [값]
+  Q1(직책·업무): [값]
+  Q2(퇴직유형): [값]
   ...
-  Q15: [값]
+  Q18(서비스기대): [값]
 
 income 기준: 모든 수입 수치는 만원/년(연소득) 기준 정수. 월소득이 아님에 주의.
 
 누락 처리: 항목 값이 비어있거나 "입력 없음"이면 해당 항목은 시나리오 근거에서
 제외하고 그 항목을 출력 JSON 근거로 반영하지 않음.
 
-입력 15개 항목 정의:
-- Q1 현재 직업·역할 (text)
-- Q2 현 상황 만족도 1~10 (int)
-- Q3 버틸 수 있는 기간 ∈ {3개월 미만, 6개월, 1년, 1년 이상}
-- Q4 돈 받고 팔 수 있는 기술 (text)
-- Q5 매달 저축 가능 금액 ∈ {없음, 50만 미만, 50~150만, 150만 이상}
-- Q6 가족의 지지 ∈ {강하게 반대, 중립, 지지, 적극 응원}
-- Q7 절대 포기할 수 없는 것 (text)
-- Q8 가장 두려운 것 (text) ← 시나리오마다 반드시 직접 인용
-- Q9 롤모델·닮고 싶은 삶 (text)
-- Q10 10년 후 목표 (text)
-- Q11 죽기 전 반드시 할 일 (text)
-- Q12 5년 전과 달라진 점 (text)
-- Q13 현재 가장 큰 고민 (text) ← 최종 메시지에 반드시 직접 인용
-- Q14 지금 바꿀 수 있는 것 (text)
-- Q15 리포트 보고 첫 행동 (text)
+입력 18개 항목 정의:
+- Q1 현재(또는 직전) 직책·부서·담당 업무 (text)
+- Q2 퇴직 유형 ∈ {정년퇴직, 희망퇴직(위로금 수령), 권고사직, 자발적 퇴사, 계약 만료}
+- Q3 퇴직 예정 시점 ∈ {이미 퇴직함, 1개월 이내, 1~3개월, 3~6개월, 6개월~1년 이상}
+- Q4 퇴직에 대한 감정 1~5 (1=매우 두렵고 불안, 5=기대되고 긍정적)
+- Q5 연령대 ∈ {40대 초반, 40대 후반, 50대 초반, 50대 후반, 60대 이상}
+- Q6 가장 오래 종사한 직종·산업 + 핵심 전문 역량 3가지 (text)
+- Q7 보유 자격증 + 최종 학력 (text)
+- Q8 전직 준비 투자 가능 시간 ∈ {주 5시간 미만, 주 5~10시간, 주 10~20시간, 주 20시간 이상}
+- Q9a 현재 연봉 구간 ∈ {4천만원대 이하, 5~6천만원대, 7~9천만원대, 1억 이상}
+- Q9b 재취업 시 수용 가능한 최소 연봉 ∈ {현재 수준 유지 필요, 20% 감소까지 허용, 30% 이상 감소도 가능, 상관없음}
+- Q10 가족·주변 지지 정도 1~5 (1=전혀 지지받지 못함, 5=전적으로 지지)
+- Q11 희망 커리어 경로 (복수 선택 가능, text)
+- Q12 직업적으로 절대 포기할 수 없는 것 (text)
+- Q13 전직 과정에서 가장 두려운 것 (text) ← 시나리오마다 반드시 직접 인용
+- Q14 3~5년 내 구체적 목표 (text)
+- Q15 현재 전직 준비 단계 ∈ {이력서·포트폴리오 없음, 이력서는 있으나 미완성, 이력서 완성 지원 경험 없음, 현재 구직 활동 중}
+- Q16 지금 가장 큰 고민 (text) ← 최종 메시지에 반드시 직접 인용
+- Q17 지금 당장 시작할 수 있는 구체적인 행동 (text)
+- Q18 이 서비스를 통해 얻고 싶은 것 (복수 선택 가능, text)
 </input_schema>
 
 <task>
 다음 순서로 처리합니다.
 
 1단계: 입력 분석
-- Q1·Q4(직업/기술)에서 현실적 수입 베이스라인을 추정합니다 (아래 income_rules 참조)
-- Q3·Q5·Q6(시간/돈/가족) 3개 변수로 리스크 허용 범위를 결정합니다
-- Q8(두려움), Q13(고민)을 시나리오 갈등 축으로 삼습니다
-- Q7(포기 불가), Q10(목표), Q11(버킷리스트)을 보상 축으로 삼습니다
+- Q1·Q6(직책/역량)에서 현실적 수입 베이스라인을 추정합니다 (아래 income_rules 참조)
+- Q3·Q8·Q10(퇴직시점/준비시간/가족지지) 3개 변수로 리스크 허용 범위를 결정합니다
+- Q4(퇴직감정), Q13(두려움), Q16(고민)을 시나리오 갈등 축으로 삼습니다
+- Q12(포기불가), Q14(목표), Q11(희망커리어)를 보상 축으로 삼습니다
 
-2단계: 3가지 시나리오 생성
-- 현실형(color: blue): 현 직업 유지·점진 성장. 리스크 최소.
-- 도전형(color: green): 부업·이직·소규모 전환. 중간 리스크.
-- 파격형(color: purple): 창업·업종 전환·이주. 고리스크 고보상.
+2단계: 3가지 시나리오 생성 (모두 퇴직 후 전직 맥락에서 작성)
+- 현실형(color: blue): 동종업계 재취업·점진적 경력 전환. 리스크 최소.
+- 도전형(color: green): 타업종 전환 또는 프리랜서·독립 컨설턴트. 중간 리스크.
+- 파격형(color: purple): 창업·프랜차이즈·업종 완전 전환. 고리스크 고보상.
 각 시나리오는 아래 scenario_requirements를 빠짐없이 충족해야 합니다.
 
 3단계: 추천 산정
-- 1차 기준: Q3·Q5·Q6의 안전마진과 Q8 두려움의 강도를 비교해 한 시나리오를 추천합니다.
-- 2차 기준(보조): Q10(목표)이 각 시나리오에서 도달 가능한 정도를 보조 지표로 사용합니다
-  (목표 도달 가능성이 높은 시나리오에 가중치 부여).
+- 1차 기준: Q3(퇴직시점)·Q9b(수용최소연봉)·Q10(가족지지)의 안전마진과 Q13(두려움) 강도를 비교해 한 시나리오를 추천합니다.
+- 2차 기준(보조): Q14(목표)·Q11(희망커리어)가 각 시나리오에서 도달 가능한 정도를 보조 지표로 사용합니다.
 - 두 기준이 충돌할 경우 1차 기준(안전마진)을 우선합니다.
-- 추천 이유 3문장은 반드시 Q3·Q5·Q6·Q8 중 ***최소 3개를 명시적으로 인용***합니다.
+- 추천 이유 3문장은 반드시 Q3·Q9b·Q10·Q13 중 ***최소 3개를 명시적으로 인용***합니다.
 
 4단계: 자가 검증(출력 직전)
-- 두려움(Q8)이 3개 시나리오 fear_response에 모두 직접 인용되었는가?
-- 직업(Q1) 또는 기술(Q4) 명사가 3개 시나리오 description에 모두 등장하는가?
-- income 배열이 5개 정수이고, 1년→10년 사이 단조 비현실적 변동(예: 10배 점프)이 없는가?
-- next_steps의 must_prepare가 Q5(자금)·Q4(기술)·Q6(가족) 중 최소 2개를 반영했는가?
+- 두려움(Q13)이 3개 시나리오 fear_response에 모두 직접 인용되었는가?
+- 직책(Q1) 또는 역량(Q6) 명사가 3개 시나리오 description에 모두 등장하는가?
+- income 배열이 5개 정수이고, 비현실적 변동(10배 이상 점프)이 없는가?
+- next_steps의 must_prepare가 연봉(Q9a/Q9b)·역량(Q6)·가족지지(Q10) 중 최소 2개를 반영했는가?
 - JSON 구조가 schema와 일치하는가?
 하나라도 위반이면 내부적으로 재작성한 뒤 통과한 결과만 출력합니다.
 </task>
@@ -97,18 +100,18 @@ income 기준: 모든 수입 수치는 만원/년(연소득) 기준 정수. 월�
 <scenario_requirements>
 각 시나리오는 다음을 ***모두*** 포함합니다.
 1. title: 드라마틱하지만 직군 정체성이 드러나는 6~12자 한국어 제목
-2. description: 정확히 2문장. ***Q1 직업 또는 Q4 기술을 1개 이상 직접 언급***.
+2. description: 정확히 2문장. ***Q1 직책 또는 Q6 역량을 1개 이상 직접 언급***.
 3. milestones: 1y/3y/5y/10y 각 한 문장. 각 문장에 ***구체 숫자***(금액·인원·횟수·% 중 하나) 1개 이상 포함.
 4. income: [현재, 1년, 3년, 5년, 10년] 정수 5개(단위: 만원/년). income_rules 준수.
-5. fear_response: Q8 원문을 큰따옴표로 직접 인용한 뒤, 이 시나리오에서 그 두려움이 어떻게 다뤄지는지 2문장 분석.
-6. tradeoff: gain 1문장 / lose 1문장. 추상어 금지(예: "성장" X → "주말 사용 가능 시간 8시간 감소" O).
-7. tags: 2~3개. 명사형 짧은 태그(예: "안정", "스킬 레버리지", "고변동").
+5. fear_response: Q13(두려움) 원문을 큰따옴표로 직접 인용한 뒤, 이 시나리오에서 그 두려움이 어떻게 다뤄지는지 2문장 분석.
+6. tradeoff: gain 1문장 / lose 1문장. 추상어 금지(예: "성장" X → "월 수입 200만원 감소 후 3년 내 회복" O).
+7. tags: 2~3개. 명사형 짧은 태그(예: "안정 재취업", "독립 컨설팅", "창업 도전").
 </scenario_requirements>
 
 <income_rules>
-- 현재값: Q1 직업·연차 기반 한국 시장 평균 범위로 추정. 명시된 연차/규모 단서가 없으면 보수적 중앙값 사용.
-- 변동폭 가이드: 현실형은 연 3~8% 상승, 도전형은 1~2년 정체 또는 감소 후 회복, 파격형은 1~2년 큰 하락 후 5년 차에 현재 대비 ±50% 범위.
-- Q5(저축 가능액)가 "없음" 또는 "50만 미만"인 경우 파격형 income 1년 차에 30% 이상 하락 금지(생존 불가 시나리오 회피).
+- 현재값: Q9a(현재 연봉 구간) 기준으로 해당 구간 중앙값 사용. Q9a가 없으면 Q1 직책·연차 기반 추정.
+- 변동폭 가이드: 현실형은 재취업 후 현재 대비 ±10% 범위에서 점진 상승, 도전형은 1~2년 소득 공백 또는 감소 후 회복, 파격형은 1~2년 큰 하락 후 5년 차에 현재 대비 ±50% 범위.
+- Q9b(수용 최소 연봉)가 "현재 수준 유지 필요"인 경우 파격형 income 1년 차에 30% 이상 하락 금지(생존 불가 시나리오 회피).
 - 비현실적 점프(10배 이상) 절대 금지. 모든 값은 만원 단위 정수.
 </income_rules>
 
@@ -116,11 +119,11 @@ income 기준: 모든 수입 수치는 만원/년(연소득) 기준 정수. 월�
 선택 시나리오의 next_steps는 ***해당 시나리오 1개에 대해서만*** 생성하는 것이 아니라, 3개 시나리오 모두에 대해 각각 채워둡니다(사용자가 어느 것을 선택해도 즉시 표시 가능하도록).
 
 - this_week: 2개. 오늘·이번 주 안에 완료 가능한 동사형 행동.
-- one_month: 3개. Q5(자금)·Q4(기술)·Q6(가족) 중 최소 2개 변수를 반영.
-- three_months: 2개. 측정 가능한 결과물 포함(예: "포트폴리오 3건 완성").
+- one_month: 3개. Q9a/Q9b(연봉)·Q6(역량)·Q10(가족지지) 중 최소 2개 변수를 반영.
+- three_months: 2개. 측정 가능한 결과물 포함(예: "이력서 완성 + 채용공고 20개 지원").
 - must_prepare: 3개. 자금/스킬/관계/시간 중에서 균형 있게.
-- must_avoid: 2개. 이 시나리오 유형에서 실제로 흔한 실패 패턴.
-- coach_message: 2~3문장. Q13(고민) 또는 Q8(두려움) 또는 Q10(목표) 중 ***최소 2개를 직접 인용***.
+- must_avoid: 2개. 이 시나리오 유형에서 퇴직자에게 실제로 흔한 실패 패턴.
+- coach_message: 2~3문장. Q16(고민) 또는 Q13(두려움) 또는 Q14(목표) 중 ***최소 2개를 직접 인용***.
 </next_steps_requirements>
 
 <output_format>
@@ -129,7 +132,7 @@ income 기준: 모든 수입 수치는 만원/년(연소득) 기준 정수. 월�
 
 {
   "summary": {
-    "insight": "15개 입력 종합 핵심 인사이트 2문장. 입력값 명사를 2개 이상 직접 언급.",
+    "insight": "18개 입력 종합 핵심 인사이트 2문장. 입력값 명사를 2개 이상 직접 언급.",
     "conflict": "사용자가 직면한 핵심 갈등 1문장."
   },
   "scenarios": [
@@ -709,72 +712,64 @@ _COMPASS_SVG = (
     '</defs></svg>'
 )
 
-Q3_OPTIONS = ["3개월 미만", "6개월", "1년", "1년 이상"]
-Q5_OPTIONS = ["없음", "50만 미만", "50~150만", "150만 이상"]
-Q6_OPTIONS = ["강하게 반대", "중립", "지지", "적극 응원"]
-INCOME_OPTIONS = [
-    "선택",
-    "연봉 3천만원 미만",
-    "연봉 3천~5천만원",
-    "연봉 5천만원~1억원",
-    "연봉 1억원 이상",
-    "월급 200만원 미만",
-    "월급 200~400만원",
-    "월급 400~600만원",
-    "월급 600만원 이상",
-    "직접 입력",
-]
-AGE_OPTIONS    = ["20대 초반", "20대 후반", "30대 초반", "30대 후반", "40대 초반", "40대 후반", "50대 초반", "50대 후반", "60대 이상"]
-GENDER_OPTIONS = ["남성", "여성", "선택 안 함"]
-TIME_OPTIONS   = ["1시간 미만", "1~2시간", "2~3시간", "3시간 이상"]
+RETIREMENT_TYPE_OPTIONS  = ["정년퇴직", "희망퇴직(위로금 수령)", "권고사직", "자발적 퇴사", "계약 만료"]
+RETIREMENT_TIMING_OPTIONS = ["이미 퇴직함", "1개월 이내", "1~3개월", "3~6개월", "6개월~1년 이상"]
+AGE_OPTIONS              = ["40대 초반(40~44세)", "40대 후반(45~49세)", "50대 초반(50~54세)", "50대 후반(55~59세)", "60대 이상"]
+PREP_TIME_OPTIONS        = ["주 5시간 미만", "주 5~10시간", "주 10~20시간", "주 20시간 이상(전업 준비 가능)"]
+SALARY_CURRENT_OPTIONS   = ["4천만원대 이하", "5~6천만원대", "7~9천만원대", "1억 이상"]
+SALARY_MIN_OPTIONS       = ["현재 수준 유지 필요", "20% 감소까지 허용", "30% 이상 감소도 가능", "상관없음"]
+CAREER_PATH_OPTIONS      = ["동종업계 재취업", "타업종 전환 재취업", "창업 / 프랜차이즈", "프리랜서 / 독립 컨설턴트", "아직 결정하지 못했다"]
+PREP_STAGE_OPTIONS       = ["이력서·포트폴리오 없음", "이력서는 있으나 미완성", "이력서 완성, 지원 경험 없음", "현재 구직 활동 중"]
+SERVICE_GOAL_OPTIONS     = ["명확한 커리어 방향", "단계별 구체적 실행 계획", "내 역량의 시장 가치 파악", "심리적 안정감과 자신감 회복", "재취업·창업 관련 최신 정보"]
 
 SECTIONS = [
     {
-        "title": "현재 상황",
-        "desc": "지금 어디에 있나요? 현재 직업·재정·환경을 파악합니다",
+        "title": "퇴직 상황 진단",
+        "desc": "현재 퇴직 상황과 감정을 파악합니다",
         "questions": [
-            {"id": "job",           "label": "현재 직업·역할",        "type": "text",         "placeholder": "예) 중소기업 영업부장 15년차, 프리랜서 디자이너"},
-            {"id": "satisfaction",  "label": "현 상황 만족도",         "type": "slider"},
-            {"id": "endurance",     "label": "버틸 수 있는 기간",      "type": "select",       "options": Q3_OPTIONS},
-            {"id": "saving",        "label": "매달 저축 가능 금액",    "type": "select",       "options": Q5_OPTIONS},
-            {"id": "family_support","label": "가족의 지지 여부",       "type": "select",       "options": Q6_OPTIONS},
+            {"id": "job_title",          "label": "Q1. 현재(또는 직전) 직책·부서·담당 업무",  "type": "text",     "placeholder": "예) K사 마케팅팀 팀장 / 브랜드기획 총괄 / 재직기간 12년"},
+            {"id": "retirement_type",    "label": "Q2. 퇴직 유형",                            "type": "select",   "options": RETIREMENT_TYPE_OPTIONS},
+            {"id": "retirement_timing",  "label": "Q3. 퇴직 예정 시점",                       "type": "select",   "options": RETIREMENT_TIMING_OPTIONS},
+            {"id": "retirement_feeling", "label": "Q4. 퇴직에 대한 감정 (1=매우 불안 ↔ 5=매우 긍정적)", "type": "slider5"},
         ],
     },
     {
-        "title": "내 자산·역량",
-        "desc": "무엇을 가지고 있나요? 활용 가능한 기술과 자원을 확인합니다",
+        "title": "경력·역량 진단",
+        "desc": "보유 경력과 전문 역량을 확인합니다",
         "questions": [
-            {"id": "age",       "label": "연령대",                    "type": "select",        "options": AGE_OPTIONS},
-            {"id": "gender",    "label": "성별",                      "type": "select",        "options": GENDER_OPTIONS},
-            {"id": "skill",     "label": "돈 받고 팔 수 있는 기술",   "type": "text",          "placeholder": "예) 영업·협상 경험, 엑셀 분석, 콘텐츠 기획"},
-            {"id": "income",    "label": "현재 연봉 또는 월급",       "type": "income_select", "options": INCOME_OPTIONS},
-            {"id": "free_time", "label": "하루 평균 여유시간",        "type": "select",        "options": TIME_OPTIONS},
+            {"id": "age",             "label": "Q5. 연령대",                                "type": "select",   "options": AGE_OPTIONS},
+            {"id": "industry_skills", "label": "Q6. 가장 오래 종사한 직종·산업 + 핵심 전문 역량 3가지", "type": "text",  "placeholder": "예) 제조업 SCM 분야 / 구매 협상, 원가 절감, ERP(SAP) 운영"},
+            {"id": "credentials",     "label": "Q7. 보유 자격증 + 최종 학력",               "type": "text",     "placeholder": "예) 공인회계사(CPA), 경영학 석사(MBA) / 자격증 없으면 '없음'"},
+            {"id": "prep_time",       "label": "Q8. 전직 준비를 위해 투자할 수 있는 시간 (주 기준)", "type": "select", "options": PREP_TIME_OPTIONS},
+        ],
+    },
+    {
+        "title": "재무·생활 기반 진단",
+        "desc": "재무 상황과 주변 지지 환경을 파악합니다",
+        "questions": [
+            {"id": "salary_current", "label": "Q9-1. 현재 연봉 구간",                         "type": "select",      "options": SALARY_CURRENT_OPTIONS},
+            {"id": "salary_min",     "label": "Q9-2. 재취업 시 수용 가능한 최소 연봉 수준",   "type": "select",      "options": SALARY_MIN_OPTIONS},
+            {"id": "family_support", "label": "Q10. 가족·주변의 지지 정도 (1=전혀 없음 ↔ 5=전적으로 지지)", "type": "slider5"},
+            {"id": "career_path",    "label": "Q11. 희망 커리어 경로 (복수 선택 가능)",       "type": "multiselect", "options": CAREER_PATH_OPTIONS},
         ],
     },
     {
         "title": "가치관·두려움",
-        "desc": "무엇이 중요한가요? 포기할 수 없는 것과 두려움을 솔직하게 적어주세요",
+        "desc": "직업적 가치관과 두려움을 솔직하게 적어주세요",
         "questions": [
-            {"id": "priority",  "label": "절대 포기할 수 없는 것", "type": "text", "placeholder": "예) 가족과의 저녁 시간, 주말 취미 생활, 건강 관리"},
-            {"id": "fear",      "label": "가장 두려운 것",         "type": "text", "placeholder": "예) 50대에 직장 잃는 것, 노후 준비 없이 나이 드는 것"},
-            {"id": "rolemodel", "label": "롤모델·닮고 싶은 삶",    "type": "text", "placeholder": "예) 자기 회사 차린 선배, 자유롭게 일하는 프리랜서 지인"},
+            {"id": "non_negotiable", "label": "Q12. 직업적으로 절대 포기할 수 없는 것", "type": "text",     "placeholder": "예) 안정적인 수입, 리더로서의 역할과 사회적 인정, 자율적인 시간 관리"},
+            {"id": "fear",           "label": "Q13. 전직 과정에서 가장 두려운 것",      "type": "text",     "placeholder": "예) 수입 공백 기간, 나이 차별로 인한 재취업 실패, 20년 경력이 시장에서 안 통할까봐"},
+            {"id": "goal",           "label": "Q14. 3~5년 내 가장 이루고 싶은 구체적인 목표", "type": "text", "placeholder": "예) 3년 안에 연봉 5천 이상의 안정적 재취업, 5년 내 본인 명의 컨설팅 법인 설립"},
         ],
     },
     {
-        "title": "미래 비전",
-        "desc": "어디로 가고 싶나요? 10년 후 모습과 인생에서 반드시 이룰 것을 적어주세요",
+        "title": "행동·실행 준비도",
+        "desc": "현재 준비 단계와 당장 할 수 있는 행동을 확인합니다",
         "questions": [
-            {"id": "goal",       "label": "10년 후 목표",              "type": "textarea", "placeholder": "예) 내 회사 운영, 안정적인 부업 수입 월 300만"},
-            {"id": "bucketlist", "label": "죽기 전 반드시 하고 싶은 일", "type": "text",  "placeholder": "예) 세계여행, 책 한 권 출판, 자녀 결혼 다 시키기"},
-        ],
-    },
-    {
-        "title": "변화·행동",
-        "desc": "무엇을 바꿀 건가요? 현재 고민과 지금 당장 실행 가능한 것을 적어주세요",
-        "questions": [
-            {"id": "change_5y",  "label": "5년 전과 달라진 점",    "type": "textarea", "placeholder": "예) 이직 2번 했음, 아이가 생겼음, 부모님 간병 시작"},
-            {"id": "worry",      "label": "현재 가장 큰 고민",     "type": "textarea", "placeholder": "예) 지금 직장 계속 다닐지 이직할지 모르겠다"},
-            {"id": "changeable", "label": "지금 바꿀 수 있는 것",  "type": "text",     "placeholder": "예) 퇴근 후 유튜브 2시간을 자기계발로 바꾸기"},
+            {"id": "prep_stage",   "label": "Q15. 현재 전직 준비 단계",                          "type": "select",      "options": PREP_STAGE_OPTIONS},
+            {"id": "worry",        "label": "Q16. 전직과 관련해 지금 가장 큰 고민",              "type": "text",         "placeholder": "예) 내 경력을 어떻게 어필해야 할지 모르겠다, 창업과 재취업 사이에서 결정을 못 하고 있다"},
+            {"id": "first_action", "label": "Q17. 지금 당장 시작할 수 있는 구체적인 행동 한 가지", "type": "text",      "placeholder": "예) 링크드인 프로필 업데이트, 관심 업종 채용공고 10개 수집, 전 직장 동문에게 연락"},
+            {"id": "service_goal", "label": "Q18. 이 서비스를 통해 가장 얻고 싶은 것 (복수 선택 가능)", "type": "multiselect", "options": SERVICE_GOAL_OPTIONS},
         ],
     },
 ]
@@ -782,18 +777,23 @@ SECTIONS = [
 QUESTIONS = [q for s in SECTIONS for q in s["questions"]]
 
 ID_TO_Q = {
-    "job": 1, "satisfaction": 2, "endurance": 3, "skill": 4,
-    "saving": 5, "family_support": 6, "priority": 7, "fear": 8,
-    "rolemodel": 9, "goal": 10, "bucketlist": 11, "change_5y": 12,
-    "worry": 13, "changeable": 14,
+    "job_title": 1, "retirement_type": 2, "retirement_timing": 3, "retirement_feeling": 4,
+    "age": 5, "industry_skills": 6, "credentials": 7, "prep_time": 8,
+    "salary_current": "9a", "salary_min": "9b",
+    "family_support": 10, "career_path": 11,
+    "non_negotiable": 12, "fear": 13, "goal": 14,
+    "prep_stage": 15, "worry": 16, "first_action": 17, "service_goal": 18,
 }
 
 OLD_KEY_MIGRATION = {
-    "Q1": "job", "Q2": "satisfaction", "Q3": "endurance", "Q4": "skill",
-    "Q5": "saving", "Q6": "family_support", "Q7": "priority", "Q8": "fear",
-    "Q9": "rolemodel", "Q10": "goal", "Q11": "bucketlist", "Q12": "change_5y",
-    "Q13": "worry", "Q14": "changeable",
-    "AGE": "age", "GENDER": "gender", "TIME": "free_time",
+    "Q1": "job_title", "Q2": "retirement_type", "Q3": "retirement_timing",
+    "Q4": "retirement_feeling", "Q5": "age", "Q6": "industry_skills",
+    "Q7": "credentials", "Q8": "prep_time",
+    "Q10": "family_support", "Q11": "career_path",
+    "Q12": "non_negotiable", "Q13": "fear", "Q14": "goal",
+    "Q15": "prep_stage", "Q16": "worry", "Q17": "first_action", "Q18": "service_goal",
+    "job": "job_title", "skill": "industry_skills", "fear": "fear",
+    "goal": "goal", "worry": "worry",
 }
 
 
@@ -842,26 +842,36 @@ def get_model():
 
 
 def _inputs_to_q_lines(inputs: dict) -> list:
-    """inputs dict(id 기반 또는 구형 Q번호 기반) → Q1~Q15 형식 라인 목록."""
+    """inputs dict → Q1~Q18 형식 라인 목록."""
+    _Q_LABELS = [
+        ("job_title",          "Q1(직책·업무)"),
+        ("retirement_type",    "Q2(퇴직유형)"),
+        ("retirement_timing",  "Q3(퇴직시점)"),
+        ("retirement_feeling", "Q4(퇴직감정)"),
+        ("age",                "Q5(연령대)"),
+        ("industry_skills",    "Q6(직종·역량)"),
+        ("credentials",        "Q7(자격증·학력)"),
+        ("prep_time",          "Q8(준비시간)"),
+        ("salary_current",     "Q9a(현재연봉)"),
+        ("salary_min",         "Q9b(최소수용연봉)"),
+        ("family_support",     "Q10(가족지지)"),
+        ("career_path",        "Q11(희망커리어)"),
+        ("non_negotiable",     "Q12(포기불가)"),
+        ("fear",               "Q13(두려움)"),
+        ("goal",               "Q14(목표)"),
+        ("prep_stage",         "Q15(준비단계)"),
+        ("worry",              "Q16(고민)"),
+        ("first_action",       "Q17(첫행동)"),
+        ("service_goal",       "Q18(서비스기대)"),
+    ]
     lines = []
-    for id_key, q_num in sorted(ID_TO_Q.items(), key=lambda x: x[1]):
-        value = inputs.get(id_key, inputs.get(f"Q{q_num}", "입력 없음"))
-        lines.append(f"Q{q_num}: {value}")
-        if q_num == 1:
-            income_sel = inputs.get("INCOME_SELECT", "선택")
-            income_txt = inputs.get("INCOME_TEXT", "")
-            if income_sel == "직접 입력" and income_txt:
-                lines.append(f"현재 소득: {income_txt}")
-            elif income_sel not in ("선택", "직접 입력", ""):
-                lines.append(f"현재 소득: {income_sel}")
-    lines.append("Q15: 입력 없음")
-    for id_key, old_key, label in [
-        ("age", "AGE", "연령대"), ("gender", "GENDER", "성별"),
-        ("free_time", "TIME", "하루 평균 여유시간"),
-    ]:
-        val = inputs.get(id_key, inputs.get(old_key, ""))
-        if val:
-            lines.append(f"{label}: {val}")
+    for id_key, label in _Q_LABELS:
+        value = inputs.get(id_key, "입력 없음")
+        if isinstance(value, list):
+            value = ", ".join(value) if value else "입력 없음"
+        if not value or value == "입력 없음":
+            value = "입력 없음"
+        lines.append(f"{label}: {value}")
     return lines
 
 
@@ -1207,17 +1217,14 @@ def generate_pdf(result: dict, inputs: dict, screen3_data: dict = None, screen4_
         pdf.ln(8)
 
         section("입력 정보 요약")
-        for key, label in [("job","직업·역할"),("satisfaction","현 상황 만족도"),("age","연령대"),("gender","성별"),("free_time","하루 평균 여유시간")]:
+        for key, label in [
+            ("job_title", "직책·업무"), ("retirement_type", "퇴직 유형"),
+            ("retirement_timing", "퇴직 시점"), ("age", "연령대"),
+            ("salary_current", "현재 연봉"), ("salary_min", "수용 최소 연봉"),
+        ]:
             val = inputs.get(key, "")
             if val and val != "입력 없음":
-                suffix = "/10" if key == "Q2" else ""
-                wl(f"  {label}: {val}{suffix}")
-        income_sel = inputs.get("INCOME_SELECT", "")
-        income_txt = inputs.get("INCOME_TEXT", "")
-        if income_sel == "직접 입력" and income_txt:
-            wl(f"  현재 소득: {income_txt}")
-        elif income_sel not in ("선택", "직접 입력", "", None):
-            wl(f"  현재 소득: {income_sel}")
+                wl(f"  {label}: {val}")
 
         section("핵심 인사이트")
         wl(summary.get("insight", ""), lh=7)
@@ -1497,14 +1504,14 @@ def build_result_html(result: dict, inputs: dict, theme: str = "dark") -> str:
 
     # ── badges
     badges = ""
-    if inputs.get("job") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">직업 <b>{_e(inputs["job"])}</b></div>'
-    if inputs.get("satisfaction") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">만족도 <b>{_e(inputs["satisfaction"])} / 10</b></div>'
-    if inputs.get("endurance") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">버틸 수 있는 기간 <b>{_e(inputs["endurance"])}</b></div>'
-    if inputs.get("family_support") not in (None, "입력 없음"):
-        badges += f'<div class="bdg">가족 지지 <b>{_e(inputs["family_support"])}</b></div>'
+    if inputs.get("job_title") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">직책 <b>{_e(inputs["job_title"])}</b></div>'
+    if inputs.get("retirement_type") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">퇴직 유형 <b>{_e(inputs["retirement_type"])}</b></div>'
+    if inputs.get("age") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">연령대 <b>{_e(inputs["age"])}</b></div>'
+    if inputs.get("salary_current") not in (None, "입력 없음"):
+        badges += f'<div class="bdg">현재 연봉 <b>{_e(inputs["salary_current"])}</b></div>'
 
     # ── cards + panels (card-wrap 단위로 합쳐서 세로 스택)
     cards_html = ""
@@ -1926,14 +1933,11 @@ def render_compare_page():
 
 
 def _migrate_profile(profile: dict) -> dict:
-    """구형(Q1-Q15/AGE/GENDER/TIME 키) 프로필을 id 기반 키로 변환."""
+    """구형 키 프로필을 새 id 기반 키로 변환."""
     migrated = {}
     for old_key, new_key in OLD_KEY_MIGRATION.items():
         if old_key in profile:
             migrated[new_key] = profile[old_key]
-    for k in ("INCOME_SELECT", "INCOME_TEXT"):
-        if k in profile:
-            migrated[k] = profile[k]
     for q in QUESTIONS:
         id_key = q["id"]
         if id_key in profile and id_key not in migrated:
@@ -1967,12 +1971,28 @@ def _render_question(q: dict, inputs: dict) -> None:
         st.caption(f"현재 선택: **{val} / 10**")
         inputs[qid] = str(val)
 
+    elif q["type"] == "slider5":
+        default = int(saved) if saved and str(saved).isdigit() else 3
+        if wkey not in st.session_state:
+            st.session_state[wkey] = default
+        val = st.slider(q["label"], min_value=1, max_value=5, key=wkey)
+        st.caption(f"현재 선택: **{val} / 5**")
+        inputs[qid] = str(val)
+
     elif q["type"] == "select":
         options = q["options"]
         if wkey not in st.session_state:
             st.session_state[wkey] = saved if saved in options else options[0]
         val = st.selectbox(q["label"], options=options, key=wkey)
         inputs[qid] = val
+
+    elif q["type"] == "multiselect":
+        options = q["options"]
+        default_val = saved if isinstance(saved, list) else []
+        if wkey not in st.session_state:
+            st.session_state[wkey] = [v for v in default_val if v in options]
+        val = st.multiselect(q["label"], options=options, key=wkey)
+        inputs[qid] = val if val else "입력 없음"
 
     elif q["type"] == "income_select":
         options = q["options"]
@@ -2326,11 +2346,12 @@ def render_input_page():
                         options = q["options"]
                         raw = profile.get(qid, options[0])
                         st.session_state[wkey] = raw if raw in options else options[0]
-                    elif q["type"] == "income_select":
-                        options = q["options"]
-                        raw_sel = profile.get("INCOME_SELECT", "선택")
-                        st.session_state["input_INCOME_SELECT"] = raw_sel if raw_sel in options else "선택"
-                        st.session_state["input_INCOME_TEXT"] = profile.get("INCOME_TEXT", "")
+                    elif q["type"] == "slider5":
+                        raw = profile.get(qid, "3")
+                        st.session_state[wkey] = int(raw) if str(raw).isdigit() else 3
+                    elif q["type"] == "multiselect":
+                        raw = profile.get(qid, [])
+                        st.session_state[wkey] = raw if isinstance(raw, list) else []
                 st.success("프로필을 불러왔습니다.")
                 st.rerun()
             else:

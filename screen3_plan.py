@@ -3,6 +3,7 @@ import json
 import os
 import glob
 import datetime
+import time
 
 try:
     from google import genai as genai_v2
@@ -294,51 +295,59 @@ def load_latest_quarterly_plan(scenario_type: str) -> dict:
         return {}
 
 
-_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash"]
+_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"]
+_WAIT_RETRY_MAX = 90  # 이 초 이하의 429 대기시간은 sleep 후 재시도
+
+
+def _parse_retry_sec(err: Exception) -> int:
+    """429 오류에서 초 단위 재시도 대기 시간 파싱. 못 찾으면 0."""
+    import re
+    s = str(err)
+    m = (re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
+         or re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", s)
+         or re.search(r"retry in (\d+)", s, re.IGNORECASE))
+    return int(m.group(1)) if m else 0
 
 
 def _quota_msg(err: Exception) -> str:
-    """429 오류에서 대기 시간을 파싱해 사용자 친화적 메시지를 반환."""
-    import re
-    s = str(err)
-    # 'retryDelay': '36s' 형식 우선 탐색
-    m = re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
-    # 없으면 'retry in 36.2s' 형식
-    if not m:
-        m = re.search(r"retry in (\d+)", s, re.IGNORECASE)
-    if m:
-        sec = min(int(m.group(1)), 86400)  # 최대 24시간으로 클램프
-        if sec >= 3600:
-            wait = f"{sec // 3600}시간"
-        elif sec >= 60:
-            wait = f"{sec // 60}분"
-        else:
-            wait = f"{sec}초"
+    """429 오류 종류(RPM vs 일일)에 따라 사용자 친화적 메시지 반환."""
+    sec = _parse_retry_sec(err)
+    sec = min(sec, 86400)
+    if sec == 0:
+        return "Gemini API 한도를 초과했습니다. 잠시 후 다시 시도하세요."
+    if sec <= 120:
+        return f"Gemini API 분당 요청 한도 초과. {sec}초 후 다시 시도하세요."
+    if sec >= 3600:
+        wait = f"{sec // 3600}시간"
+    elif sec >= 60:
+        wait = f"{sec // 60}분"
     else:
-        wait = "잠시"
-    return (
-        f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요.\n"
-        "(무료 티어: gemini-2.0-flash 20회/일, gemini-2.0-flash 200회/일)"
-    )
+        wait = f"{sec}초"
+    return f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요."
 
 
 def _genai_generate(contents: str, config) -> str:
-    """gemini-2.0-flash → gemini-2.0-flash 순으로 폴백. 429 시 다음 모델 시도."""
+    """gemini-2.0-flash → gemini-1.5-flash 순으로 폴백.
+    짧은 429(≤90s)는 sleep 후 동일 모델 1회 재시도 후 다음 모델 시도."""
     api_key = os.getenv("GEMINI_API_KEY", "")
     last_err = None
     for model in _FALLBACK_MODELS:
-        try:
-            client = genai_v2.Client(api_key=api_key)
-            resp = client.models.generate_content(
-                model=model, contents=contents, config=config
-            )
-            return resp.text
-        except Exception as e:
-            last_err = e
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                continue
-            raise
-    # 모든 모델 429 소진
+        for attempt in range(2):
+            try:
+                client = genai_v2.Client(api_key=api_key)
+                resp = client.models.generate_content(
+                    model=model, contents=contents, config=config
+                )
+                return resp.text
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    last_err = e
+                    delay = _parse_retry_sec(e)
+                    if attempt == 0 and 0 < delay <= _WAIT_RETRY_MAX:
+                        time.sleep(delay + 2)
+                        continue
+                    break  # 재시도 실패 또는 대기 너무 길면 다음 모델
+                raise
     raise RuntimeError(_quota_msg(last_err)) from last_err
 
 
@@ -850,16 +859,21 @@ def _call_coach_api(system_prompt: str, history: list, user_msg: str) -> str:
     api_key = os.getenv("GEMINI_API_KEY", "")
     last_err = None
     for model in _FALLBACK_MODELS:
-        try:
-            client = genai_v2.Client(api_key=api_key)
-            return client.models.generate_content(
-                model=model, contents=contents, config=config
-            ).text
-        except Exception as e:
-            last_err = e
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                continue
-            raise
+        for attempt in range(2):
+            try:
+                client = genai_v2.Client(api_key=api_key)
+                return client.models.generate_content(
+                    model=model, contents=contents, config=config
+                ).text
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    last_err = e
+                    delay = _parse_retry_sec(e)
+                    if attempt == 0 and 0 < delay <= _WAIT_RETRY_MAX:
+                        time.sleep(delay + 2)
+                        continue
+                    break
+                raise
     raise RuntimeError(_quota_msg(last_err)) from last_err
 
 

@@ -797,31 +797,34 @@ OLD_KEY_MIGRATION = {
 }
 
 
-_APP_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash"]
+_APP_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"]
+_APP_WAIT_RETRY_MAX = 90  # 이 초 이하의 429 대기시간은 sleep 후 재시도
+
+
+def _app_parse_retry_sec(err: Exception) -> int:
+    import re
+    s = str(err)
+    m = (re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", s)
+         or re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
+         or re.search(r"retry in (\d+)", s, re.IGNORECASE))
+    return int(m.group(1)) if m else 0
 
 
 def _app_quota_msg(err: Exception) -> str:
-    import re
-    s = str(err)
-    m = re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", s)
-    if not m:
-        m = re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
-    if not m:
-        m = re.search(r"retry in (\d+)", s, re.IGNORECASE)
-    if m:
-        sec = min(int(m.group(1)), 86400)
-        if sec >= 3600:
-            wait = f"{sec // 3600}시간"
-        elif sec >= 60:
-            wait = f"{sec // 60}분"
-        else:
-            wait = f"{sec}초"
+    import time as _time  # noqa — time 이미 임포트됐으면 무시
+    sec = _app_parse_retry_sec(err)
+    sec = min(sec, 86400)
+    if sec == 0:
+        return "Gemini API 한도를 초과했습니다. 잠시 후 다시 시도하세요."
+    if sec <= 120:
+        return f"Gemini API 분당 요청 한도 초과. {sec}초 후 다시 시도하세요."
+    if sec >= 3600:
+        wait = f"{sec // 3600}시간"
+    elif sec >= 60:
+        wait = f"{sec // 60}분"
     else:
-        wait = "잠시"
-    return (
-        f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요.\n"
-        "(무료 티어: gemini-2.0-flash 20회/일, gemini-2.0-flash 200회/일)"
-    )
+        wait = f"{sec}초"
+    return f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요."
 
 
 def get_model():
@@ -900,24 +903,29 @@ def generate_scenarios(inputs: dict, correction: str = "") -> dict:
     genai.configure(api_key=api_key)
     last_err = None
     for model_name in _APP_FALLBACK_MODELS:
-        try:
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=SYSTEM_PROMPT,
-                generation_config=generation_config,
-            )
-            response = model.generate_content(user_message)
+        for attempt in range(2):
             try:
-                return json.loads(response.text)
-            except json.JSONDecodeError as e:
-                raise ValueError(
-                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
-                ) from e
-        except Exception as e:
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                last_err = e
-                continue
-            raise
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=SYSTEM_PROMPT,
+                    generation_config=generation_config,
+                )
+                response = model.generate_content(user_message)
+                try:
+                    return json.loads(response.text)
+                except json.JSONDecodeError as e:
+                    raise ValueError(
+                        f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+                    ) from e
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    last_err = e
+                    delay = _app_parse_retry_sec(e)
+                    if attempt == 0 and 0 < delay <= _APP_WAIT_RETRY_MAX:
+                        import time as _t; _t.sleep(delay + 2)
+                        continue
+                    break
+                raise
     raise ValueError(_app_quota_msg(last_err))
 
 
@@ -1084,24 +1092,29 @@ def generate_comparison(old_data: dict, new_inputs: dict) -> dict:
     genai.configure(api_key=api_key)
     last_err = None
     for model_name in _APP_FALLBACK_MODELS:
-        try:
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=COMPARE_SYSTEM_PROMPT,
-                generation_config=generation_config,
-            )
-            response = model.generate_content(msg)
+        for attempt in range(2):
             try:
-                return json.loads(response.text)
-            except json.JSONDecodeError as e:
-                raise ValueError(
-                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
-                ) from e
-        except Exception as e:
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                last_err = e
-                continue
-            raise
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=COMPARE_SYSTEM_PROMPT,
+                    generation_config=generation_config,
+                )
+                response = model.generate_content(msg)
+                try:
+                    return json.loads(response.text)
+                except json.JSONDecodeError as e:
+                    raise ValueError(
+                        f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+                    ) from e
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    last_err = e
+                    delay = _app_parse_retry_sec(e)
+                    if attempt == 0 and 0 < delay <= _APP_WAIT_RETRY_MAX:
+                        import time as _t; _t.sleep(delay + 2)
+                        continue
+                    break
+                raise
     raise ValueError(_app_quota_msg(last_err))
 
 

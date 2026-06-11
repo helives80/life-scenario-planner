@@ -4,6 +4,7 @@ import os
 import glob
 import datetime
 import time
+from config import get_gemini_api_key
 
 try:
     from google import genai as genai_v2
@@ -329,7 +330,7 @@ def _quota_msg(err: Exception) -> str:
 def _genai_generate(contents: str, config) -> str:
     """gemini-2.0-flash → gemini-1.5-flash 순으로 폴백.
     짧은 429(≤90s)는 sleep 후 동일 모델 1회 재시도 후 다음 모델 시도."""
-    api_key = os.getenv("GEMINI_API_KEY", "")
+    api_key = get_gemini_api_key()
     last_err = None
     for model in _FALLBACK_MODELS:
         for attempt in range(2):
@@ -761,9 +762,7 @@ def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: di
     if not _GENAI_OK:
         st.error("google-genai SDK가 설치되지 않았습니다. `pip install google-genai --upgrade`를 실행하세요.")
         return
-    if not os.environ.get("GEMINI_API_KEY", ""):
-        st.warning("GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
-        return
+    get_gemini_api_key()
 
     quarter_items = _collect_quarter_items(all_checks)
 
@@ -880,7 +879,7 @@ def _call_coach_api(system_prompt: str, history: list, user_msg: str) -> str:
         system_instruction=system_prompt,
         temperature=0.8,
     )
-    api_key = os.getenv("GEMINI_API_KEY", "")
+    api_key = get_gemini_api_key()
     last_err = None
     for model in _FALLBACK_MODELS:
         for attempt in range(2):
@@ -908,9 +907,7 @@ def _render_chat(inputs: dict, scenario: dict, ns: dict, all_checks: dict):
     if not _GENAI_OK:
         st.error("google-genai SDK가 설치되지 않았습니다. `pip install google-genai --upgrade`를 실행하세요.")
         return
-    if not os.environ.get("GEMINI_API_KEY", ""):
-        st.warning("GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
-        return
+    get_gemini_api_key()
 
     # 이전 대화 히스토리 표시
     for msg in st.session_state.coach_chat:
@@ -1052,7 +1049,7 @@ def render():
     _qplan_failed = st.session_state.get("s3_qplan_failed", False)
 
     if _cached_qtype != scenario_type or not _cached_qplan:
-        if not _qplan_failed and _GENAI_OK and os.environ.get("GEMINI_API_KEY", ""):
+        if not _qplan_failed and _GENAI_OK:
             with st.spinner("AI가 분기별 실행 계획을 작성 중입니다... (15~40초)"):
                 try:
                     _new_qplan = _call_quarterly_plan_api(inputs, scenario)

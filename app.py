@@ -6,11 +6,9 @@ import os
 import html as _html
 import datetime
 import urllib.request
-from dotenv import load_dotenv
 import screen3_plan
 import screen4_career
-
-load_dotenv()
+from config import get_gemini_api_key
 
 SCREEN3_ENABLED = True
 
@@ -874,9 +872,7 @@ def _app_quota_msg(err: Exception) -> str:
 
 
 def get_model():
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return None
+    api_key = get_gemini_api_key()
     genai.configure(api_key=api_key)
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",
@@ -946,9 +942,7 @@ def build_user_message(inputs: dict, correction: str = "") -> str:
 
 
 def generate_scenarios(inputs: dict, correction: str = "") -> dict:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
+    api_key = get_gemini_api_key()
     user_message = build_user_message(inputs, correction)
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",
@@ -1080,9 +1074,7 @@ def _load_latest_career_checklist() -> dict:
 
 
 def get_compare_model():
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return None
+    api_key = get_gemini_api_key()
     genai.configure(api_key=api_key)
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",
@@ -1135,9 +1127,7 @@ def build_compare_message(old_data: dict, new_inputs: dict) -> str:
 
 
 def generate_comparison(old_data: dict, new_inputs: dict) -> dict:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
+    api_key = get_gemini_api_key()
     msg = build_compare_message(old_data, new_inputs)
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",
@@ -2594,18 +2584,16 @@ def render_input_page():
 
     with col3:
         if st.button("시나리오 생성", type="primary", use_container_width=True):
-            if not os.environ.get("GEMINI_API_KEY"):
-                st.error(".env 파일에 GEMINI_API_KEY를 설정해 주세요.")
-            else:
-                with st.spinner("AI가 시나리오를 분석 중입니다... (30초~1분 소요)"):
-                    try:
-                        result = generate_scenarios(inputs)
-                        st.session_state.inputs = inputs
-                        st.session_state.result = result
-                        st.session_state.page = "result"
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"오류가 발생했습니다: {e}")
+            get_gemini_api_key()
+            with st.spinner("AI가 시나리오를 분석 중입니다... (30초~1분 소요)"):
+                try:
+                    result = generate_scenarios(inputs)
+                    st.session_state.inputs = inputs
+                    st.session_state.result = result
+                    st.session_state.page = "result"
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"오류가 발생했습니다: {e}")
 
 
 def render_result_page():

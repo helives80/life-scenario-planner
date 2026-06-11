@@ -5,6 +5,7 @@ import io
 import html as _html
 import glob
 import datetime
+from config import get_gemini_api_key
 
 try:
     from google import genai as genai_v2
@@ -15,7 +16,7 @@ except ImportError:
 
 
 def _get_client():
-    return genai_v2.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+    return genai_v2.Client(api_key=get_gemini_api_key())
 
 # ── 화면4 CSS (screen4_template.html 기반, s4- 스코프) ──────────────────────────
 S4_CSS = """<style>
@@ -278,8 +279,7 @@ def _generate_gap_analysis(inputs: dict, goal_info: dict, scenario: dict = None)
     """갭 분석 수행. (gap_dict, grounding_used_bool) 반환."""
     if not _GENAI_OK:
         raise RuntimeError("google-genai SDK를 불러오지 못했습니다.")
-    if not os.environ.get("GEMINI_API_KEY", ""):
-        raise RuntimeError("GEMINI_API_KEY가 설정되지 않았습니다.")
+    get_gemini_api_key()
 
     job_text = ""
     sources  = []
@@ -374,8 +374,7 @@ def _generate_roadmap(inputs: dict, goal_info: dict, gap_result: dict, scenario:
     """3년 로드맵 + 36개월 실행 계획 생성."""
     if not _GENAI_OK:
         raise RuntimeError("google-genai SDK를 불러오지 못했습니다.")
-    if not os.environ.get("GEMINI_API_KEY", ""):
-        raise RuntimeError("GEMINI_API_KEY가 설정되지 않았습니다.")
+    get_gemini_api_key()
 
     prompt_text    = _build_roadmap_prompt(inputs, goal_info, gap_result, scenario)
     _client_roadmap = _get_client()
@@ -720,9 +719,7 @@ def render(pdf_fn=None):
             "`pip install google-genai --upgrade` 를 실행한 뒤 앱을 재시작하세요."
         )
         return
-    if not os.environ.get("GEMINI_API_KEY", ""):
-        st.warning("GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
-        return
+    get_gemini_api_key()
 
     # ── 기반 시나리오 표시 ───────────────────────────────────────────────────
     inputs   = st.session_state.get("inputs") or {}

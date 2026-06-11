@@ -2024,7 +2024,7 @@ def _migrate_profile(profile: dict) -> dict:
 
 
 
-def _render_question(q: dict, inputs: dict) -> None:
+def _render_question(q: dict, inputs: dict, inside_form: bool = False) -> None:
     """단일 질문 위젯을 렌더링하고 inputs 딕셔너리를 채운다."""
     qid  = q["id"]
     wkey = f"input_{qid}"
@@ -2065,14 +2065,17 @@ def _render_question(q: dict, inputs: dict) -> None:
     elif q["type"] == "text_with_chips":
         if wkey not in st.session_state:
             st.session_state[wkey] = "" if (not saved or saved == "입력 없음") else saved
-        # 예시 칩 버튼들
         chips = q.get("chips", [])
-        if chips:
+        if chips and not inside_form:
+            # form 밖: 클릭 시 자동 입력 버튼
             st.caption("예시 클릭 시 자동 입력:")
             chip_cols = st.columns(min(len(chips), 3))
             for ci, chip in enumerate(chips):
                 if chip_cols[ci % 3].button(chip.split(" / ")[0], key=f"{wkey}_chip_{ci}", use_container_width=True):
                     st.session_state[wkey] = chip
+        elif chips and inside_form:
+            # form 안: st.button 불가 → 텍스트 힌트로 대체
+            st.caption("💡 예시 (복사해서 입력): " + " · ".join(c.split(" / ")[0] for c in chips))
         val = st.text_area(q["label"], placeholder=q.get("placeholder", ""), height=80, key=wkey)
         inputs[qid] = val.strip() if val.strip() else "입력 없음"
         if q.get("note"):
@@ -2129,24 +2132,30 @@ def _render_question(q: dict, inputs: dict) -> None:
             max_selections=max_sel,
             key=wkey,
         )
-        # 기타 체크박스
         other_wkey = f"input_{other_id}"
         saved_other = st.session_state.inputs.get(other_id, "")
         has_other_saved = bool(saved_other and saved_other != "입력 없음")
-        if f"cb_{other_id}" not in st.session_state:
-            st.session_state[f"cb_{other_id}"] = has_other_saved
-        show_other = st.checkbox("기타 (직접 입력)", key=f"cb_{other_id}")
-        if show_other:
+        if inside_form:
+            # form 안: st.checkbox 동적 숨김 불가 → 텍스트 입력을 항상 노출
             if other_wkey not in st.session_state:
                 st.session_state[other_wkey] = saved_other if has_other_saved else ""
-            other_val = st.text_input("기타 내용을 입력해 주세요", key=other_wkey)
-            inputs[other_id] = other_val.strip()
-            if other_val.strip():
-                inputs[qid] = selected + [f"기타: {other_val.strip()}"]
-            else:
-                inputs[qid] = selected if selected else "입력 없음"
+            other_val = st.text_input("기타 내용 (있으면 직접 입력)", key=other_wkey,
+                                      placeholder="기타 내용을 입력해 주세요")
         else:
-            inputs[other_id] = ""
+            # form 밖: 체크박스로 동적 표시
+            if f"cb_{other_id}" not in st.session_state:
+                st.session_state[f"cb_{other_id}"] = has_other_saved
+            show_other = st.checkbox("기타 (직접 입력)", key=f"cb_{other_id}")
+            if show_other:
+                if other_wkey not in st.session_state:
+                    st.session_state[other_wkey] = saved_other if has_other_saved else ""
+                other_val = st.text_input("기타 내용을 입력해 주세요", key=other_wkey)
+            else:
+                other_val = ""
+        inputs[other_id] = other_val.strip()
+        if other_val.strip():
+            inputs[qid] = selected + [f"기타: {other_val.strip()}"]
+        else:
             inputs[qid] = selected if selected else "입력 없음"
         if q.get("note"):
             st.caption(q["note"])
@@ -2579,39 +2588,44 @@ def render_input_page():
                         except Exception as e:
                             st.error(f"비교 분석 오류: {e}")
 
+    # ── 입력 폼 (st.form: submit 버튼 클릭 시에만 리런 → API 중복 호출 차단) ──
     inputs = {}
+    with st.form("input_form", clear_on_submit=False):
+        for sec in SECTIONS:
+            st.divider()
+            st.subheader(sec["title"])
+            st.caption(sec["desc"])
+            for q in sec["questions"]:
+                _render_question(q, inputs, inside_form=True)
+                st.write("")
 
-    for sec in SECTIONS:
         st.divider()
-        st.subheader(sec["title"])
-        st.caption(sec["desc"])
-        for q in sec["questions"]:
-            _render_question(q, inputs)
-            st.write("")
+        col1, col2, col3 = st.columns([1, 1, 2])
+        with col1:
+            save_clicked = st.form_submit_button("내 정보 저장", use_container_width=True)
+        with col3:
+            generate_clicked = st.form_submit_button(
+                "시나리오 생성", type="primary", use_container_width=True
+            )
 
-    st.divider()
+    # ── 폼 제출 처리 (form 컨텍스트 밖 → API는 여기서 단 1회만 호출) ──
+    if save_clicked:
+        save_profile(inputs)
+        st.success("저장 완료")
 
-    col1, col2, col3 = st.columns([1, 1, 2])
-
-    with col1:
-        if st.button("내 정보 저장", use_container_width=True):
-            save_profile(inputs)
-            st.success("저장 완료")
-
-    with col3:
-        if st.button("시나리오 생성", type="primary", use_container_width=True):
-            get_gemini_api_key()
-            try:
-                result = _run_with_429_retry(
-                    generate_scenarios, inputs,
-                    spinner_msg="AI가 시나리오를 분석 중입니다... (30초~1분 소요)",
-                )
-                st.session_state.inputs = inputs
-                st.session_state.result = result
-                st.session_state.page = "result"
-                st.rerun()
-            except Exception as e:
-                st.error(f"오류가 발생했습니다: {e}")
+    if generate_clicked:
+        get_gemini_api_key()
+        try:
+            result = _run_with_429_retry(
+                generate_scenarios, inputs,
+                spinner_msg="AI가 시나리오를 분석 중입니다... (30초~1분 소요)",
+            )
+            st.session_state.inputs = inputs
+            st.session_state.result = result
+            st.session_state.page = "result"
+            st.rerun()
+        except Exception as e:
+            st.error(f"오류가 발생했습니다: {e}")
 
 
 def render_result_page():

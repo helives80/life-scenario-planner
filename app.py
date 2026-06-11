@@ -3,6 +3,8 @@ import streamlit.components.v1 as components
 import google.generativeai as genai
 import json
 import os
+import re
+import time
 import html as _html
 import datetime
 import urllib.request
@@ -952,29 +954,24 @@ def generate_scenarios(inputs: dict, correction: str = "") -> dict:
     genai.configure(api_key=api_key)
     last_err = None
     for model_name in _APP_FALLBACK_MODELS:
-        for attempt in range(2):
+        try:
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=SYSTEM_PROMPT,
+                generation_config=generation_config,
+            )
+            response = model.generate_content(user_message)
             try:
-                model = genai.GenerativeModel(
-                    model_name=model_name,
-                    system_instruction=SYSTEM_PROMPT,
-                    generation_config=generation_config,
-                )
-                response = model.generate_content(user_message)
-                try:
-                    return json.loads(response.text)
-                except json.JSONDecodeError as e:
-                    raise ValueError(
-                        f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
-                    ) from e
-            except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    last_err = e
-                    delay = _app_parse_retry_sec(e)
-                    if attempt == 0 and 0 < delay <= _APP_WAIT_RETRY_MAX:
-                        import time as _t; _t.sleep(delay + 2)
-                        continue
-                    break
-                raise
+                return json.loads(response.text)
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+                ) from e
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                last_err = e
+                continue
+            raise
     raise ValueError(_app_quota_msg(last_err))
 
 
@@ -1137,30 +1134,47 @@ def generate_comparison(old_data: dict, new_inputs: dict) -> dict:
     genai.configure(api_key=api_key)
     last_err = None
     for model_name in _APP_FALLBACK_MODELS:
-        for attempt in range(2):
+        try:
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=COMPARE_SYSTEM_PROMPT,
+                generation_config=generation_config,
+            )
+            response = model.generate_content(msg)
             try:
-                model = genai.GenerativeModel(
-                    model_name=model_name,
-                    system_instruction=COMPARE_SYSTEM_PROMPT,
-                    generation_config=generation_config,
-                )
-                response = model.generate_content(msg)
-                try:
-                    return json.loads(response.text)
-                except json.JSONDecodeError as e:
-                    raise ValueError(
-                        f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
-                    ) from e
-            except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    last_err = e
-                    delay = _app_parse_retry_sec(e)
-                    if attempt == 0 and 0 < delay <= _APP_WAIT_RETRY_MAX:
-                        import time as _t; _t.sleep(delay + 2)
-                        continue
-                    break
-                raise
+                return json.loads(response.text)
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+                ) from e
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                last_err = e
+                continue
+            raise
     raise ValueError(_app_quota_msg(last_err))
+
+
+def _run_with_429_retry(fn, *args, spinner_msg="AI가 분석 중입니다...", **kwargs):
+    """fn(*args, **kwargs) 실행.
+    429 발생 시 에러 메시지에서 대기 시간을 파싱해 카운트다운을 보여준 뒤 1회 재시도."""
+    for attempt in range(2):
+        try:
+            with st.spinner(spinner_msg if attempt == 0 else "재시도 중..."):
+                return fn(*args, **kwargs)
+        except Exception as e:
+            err_str = str(e)
+            is_429 = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "분당 요청 한도" in err_str
+            if attempt == 0 and is_429:
+                m = re.search(r"(\d+)초", err_str)
+                wait = int(m.group(1)) + 5 if m else 65
+                ph = st.empty()
+                for remaining in range(wait, 0, -1):
+                    ph.warning(f"⏳ API 분당 요청 한도 초과 — {remaining}초 후 자동 재시도합니다...")
+                    time.sleep(1)
+                ph.empty()
+                continue
+            raise
 
 
 def get_korean_font_path():
@@ -2552,16 +2566,18 @@ def render_input_page():
                     if not any(cur_inputs.get(k) for k in ("job", "satisfaction", "endurance", "skill", "saving")):
                         st.warning("먼저 현재 입력값을 작성해 주세요.")
                     else:
-                        with st.spinner("AI가 비교 분석 중입니다... (30초~1분 소요)"):
-                            try:
-                                comp_result = generate_comparison(selected_data, cur_inputs)
-                                st.session_state.compare_result = comp_result
-                                st.session_state.compare_old_data = selected_data
-                                st.session_state.compare_mode = False
-                                st.session_state.page = "compare"
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"비교 분석 오류: {e}")
+                        try:
+                            comp_result = _run_with_429_retry(
+                                generate_comparison, selected_data, cur_inputs,
+                                spinner_msg="AI가 비교 분석 중입니다... (30초~1분 소요)",
+                            )
+                            st.session_state.compare_result = comp_result
+                            st.session_state.compare_old_data = selected_data
+                            st.session_state.compare_mode = False
+                            st.session_state.page = "compare"
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"비교 분석 오류: {e}")
 
     inputs = {}
 
@@ -2585,15 +2601,17 @@ def render_input_page():
     with col3:
         if st.button("시나리오 생성", type="primary", use_container_width=True):
             get_gemini_api_key()
-            with st.spinner("AI가 시나리오를 분석 중입니다... (30초~1분 소요)"):
-                try:
-                    result = generate_scenarios(inputs)
-                    st.session_state.inputs = inputs
-                    st.session_state.result = result
-                    st.session_state.page = "result"
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"오류가 발생했습니다: {e}")
+            try:
+                result = _run_with_429_retry(
+                    generate_scenarios, inputs,
+                    spinner_msg="AI가 시나리오를 분석 중입니다... (30초~1분 소요)",
+                )
+                st.session_state.inputs = inputs
+                st.session_state.result = result
+                st.session_state.page = "result"
+                st.rerun()
+            except Exception as e:
+                st.error(f"오류가 발생했습니다: {e}")
 
 
 def render_result_page():
@@ -2694,13 +2712,15 @@ def render_result_page():
         if not correction.strip():
             st.warning("수정할 내용을 입력해주세요.")
         else:
-            with st.spinner("AI가 수정된 시나리오를 생성 중입니다... (30초~1분 소요)"):
-                try:
-                    result = generate_scenarios(st.session_state.inputs, correction)
-                    st.session_state.result = result
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"오류가 발생했습니다: {e}")
+            try:
+                result = _run_with_429_retry(
+                    generate_scenarios, st.session_state.inputs, correction,
+                    spinner_msg="AI가 수정된 시나리오를 생성 중입니다... (30초~1분 소요)",
+                )
+                st.session_state.result = result
+                st.rerun()
+            except Exception as e:
+                st.error(f"오류가 발생했습니다: {e}")
 
 
 def main():

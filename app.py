@@ -1167,7 +1167,7 @@ def _run_with_429_retry(fn, *args, spinner_msg="AI가 분석 중입니다...", *
             is_429 = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "분당 요청 한도" in err_str
             if attempt == 0 and is_429:
                 m = re.search(r"(\d+)초", err_str)
-                wait = int(m.group(1)) + 5 if m else 65
+                wait = int(m.group(1)) + 10 if m else 70
                 ph = st.empty()
                 for remaining in range(wait, 0, -1):
                     ph.warning(f"⏳ API 분당 요청 한도 초과 — {remaining}초 후 자동 재시도합니다...")

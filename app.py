@@ -539,7 +539,7 @@ def render_login_page() -> None:
         </style>
         <div class="login-wrap">
           <div class="login-icon">🧭</div>
-          <div class="login-title">AI 인생 시나리오 플래너</div>
+          <div class="login-title">AI 커리어 전환 코치</div>
           <div class="login-sub">Google 계정으로 로그인하여 나만의 시나리오를 시작하세요</div>
         </div>
         """,
@@ -2272,7 +2272,7 @@ def render_home_page():
     st.markdown(
         f'<div class="home-brand">'
         f'  {_COMPASS_SVG}'
-        f'  <h1>AI 인생 시나리오 플래너</h1>'
+        f'  <h1>AI 커리어 전환 코치</h1>'
         f'  <p>당신의 다음 10년을 설계하세요</p>'
         f'</div>',
         unsafe_allow_html=True,
@@ -2336,7 +2336,7 @@ def render_input_page():
         st.session_state.page = "home"
         st.rerun()
 
-    st.title("AI 인생 시나리오 플래너")
+    st.title("AI 커리어 전환 코치")
     st.caption("18개 질문에 답하면 AI가 현실형·도전형·파격형 3가지 인생 시나리오를 분석해 드립니다.")
 
     col_load, col_compare = st.columns([1, 1])
@@ -2548,7 +2548,7 @@ def render_result_page():
 
 def main():
     st.set_page_config(
-        page_title="AI 인생 시나리오 플래너",
+        page_title="AI 커리어 전환 코치",
         page_icon="🧭",
         layout="wide"
     )

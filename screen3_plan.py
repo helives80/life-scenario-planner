@@ -358,12 +358,20 @@ def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
 
     lines = ["=== 사용자 정보 ==="]
     for id_key, label in [
-        ("job_title", "직책·업무"), ("industry_skills", "직종·역량"),
-        ("salary_current", "현재연봉"), ("salary_min", "수용최소연봉"),
-        ("fear", "두려움"), ("goal", "목표"), ("family_support", "가족지지"),
+        ("position",       "직책"),
+        ("main_work",      "담당업무"),
+        ("industry_skills","직종·역량"),
+        ("salary_current", "현재연봉"),
+        ("salary_min",     "수용최소연봉"),
+        ("runway",         "생활가능기간"),
+        ("fears",          "두려움"),
+        ("goal_3to5yr",    "목표"),
+        ("family_support", "가족지지"),
     ]:
         val = inputs.get(id_key, "")
-        if val and val != "입력 없음":
+        if isinstance(val, list):
+            val = ", ".join(val) if val else ""
+        if val and val not in ("입력 없음", "해당 없음"):
             lines.append(f"  {label}: {val}")
 
     lines += [
@@ -477,12 +485,17 @@ def _call_smart_ns_api(inputs: dict, scenario: dict, original_ns: dict) -> dict:
 
     lines = ["=== 사용자 입력값 ==="]
     for id_key, label in [
-        ("job_title", "직책·업무"), ("industry_skills", "직종·역량"),
-        ("salary_current", "현재연봉"), ("family_support", "가족지지"),
-        ("fear", "두려움"), ("goal", "목표"),
+        ("position",       "직책"),
+        ("industry_skills","직종·역량"),
+        ("salary_current", "현재연봉"),
+        ("family_support", "가족지지"),
+        ("fears",          "두려움"),
+        ("goal_3to5yr",    "목표"),
     ]:
         val = inputs.get(id_key, "")
-        if val and val != "입력 없음":
+        if isinstance(val, list):
+            val = ", ".join(val) if val else ""
+        if val and val not in ("입력 없음", "해당 없음"):
             lines.append(f"  {label}: {val}")
 
     lines += [
@@ -538,25 +551,34 @@ def _init_checks(scenario_type: str, ns: dict):
 def _build_eval_prompt(inputs: dict, scenario: dict, quarter_items: list) -> str:
     """quarter_items: [{"quarter":"Q1","done":[...],"undone":[...],"pct":int}, ...]"""
     id_to_q = {
-        "job_title":          "Q1(직책·업무)",
-        "retirement_type":    "Q2(퇴직유형)",
-        "retirement_timing":  "Q3(퇴직시점)",
-        "retirement_feeling": "Q4(퇴직감정)",
-        "age":                "Q5(연령대)",
-        "industry_skills":    "Q6(직종·역량)",
-        "credentials":        "Q7(자격증·학력)",
-        "prep_time":          "Q8(준비시간)",
-        "salary_current":     "Q9a(현재연봉)",
-        "salary_min":         "Q9b(최소수용연봉)",
-        "family_support":     "Q10(가족지지)",
-        "career_path":        "Q11(희망커리어)",
-        "non_negotiable":     "Q12(포기불가)",
-        "fear":               "Q13(두려움)",
-        "goal":               "Q14(목표)",
-        "prep_stage":         "Q15(준비단계)",
-        "worry":              "Q16(고민)",
-        "first_action":       "Q17(첫행동)",
-        "service_goal":       "Q18(서비스기대)",
+        "position":          "Q1-1(직책)",
+        "tenure":            "Q1-2(재직기간)",
+        "main_work":         "Q1-3(담당업무)",
+        "exit_type":         "Q2(퇴직유형)",
+        "exit_timing":       "Q3(퇴직시점)",
+        "emotion_score":     "Q4(감정강도)",
+        "emotion_cause":     "Q4-후속(불안원인)",
+        "age_group":         "Q5(연령대)",
+        "industry_skills":   "Q6(직종·역량)",
+        "region":            "Q7-1(거주지역)",
+        "mobility":          "Q7-2(이동범위)",
+        "credentials":       "Q8(자격증·학력)",
+        "prep_time":         "Q9(준비시간)",
+        "salary_current":    "Q10-1(현재연봉)",
+        "salary_min":        "Q10-2(최소수용연봉)",
+        "runway":            "Q11(런웨이)",
+        "fixed_burden":      "Q12(고정지출)",
+        "family_support":    "Q13(가족지지)",
+        "career_path_1st":   "Q14-1순위(희망경로)",
+        "career_path_2nd":   "Q14-2순위(희망경로)",
+        "non_negotiables":   "Q15(포기불가)",
+        "fears":             "Q16(두려움)",
+        "goal_3to5yr":       "Q17(목표)",
+        "prep_stage":        "Q18(준비단계)",
+        "biggest_concern":   "Q19(최대고민)",
+        "first_action":      "Q20(첫행동)",
+        "digital_level":     "Q21(디지털수준)",
+        "expected_outcome":  "Q22(기대결과)",
     }
     lines = ["=== 원본 입력값 ==="]
     for id_key, label in id_to_q.items():
@@ -788,27 +810,29 @@ def _render_ai_evaluation(inputs: dict, scenario: dict, ns: dict, all_checks: di
 
 def _build_coach_system_prompt(inputs: dict, all_checks: dict, ns: dict, scenario: dict) -> str:
     id_to_label = {
-        "job_title":          "직책·업무",
-        "retirement_type":    "퇴직유형",
-        "retirement_timing":  "퇴직시점",
-        "age":                "연령대",
-        "industry_skills":    "직종·역량",
-        "salary_current":     "현재연봉",
-        "salary_min":         "수용최소연봉",
-        "family_support":     "가족지지(Q10)",
-        "career_path":        "희망커리어(Q11)",
-        "non_negotiable":     "포기불가(Q12)",
-        "fear":               "두려움(Q13)",
-        "goal":               "목표(Q14)",
-        "worry":              "고민(Q16)",
-        "first_action":       "첫행동(Q17)",
+        "position":        "직책(Q1-1)",
+        "main_work":       "담당업무(Q1-3)",
+        "exit_type":       "퇴직유형(Q2)",
+        "exit_timing":     "퇴직시점(Q3)",
+        "age_group":       "연령대(Q5)",
+        "industry_skills": "직종·역량(Q6)",
+        "salary_current":  "현재연봉(Q10-1)",
+        "salary_min":      "수용최소연봉(Q10-2)",
+        "runway":          "생활가능기간(Q11)",
+        "family_support":  "가족지지(Q13)",
+        "career_path_1st": "희망경로1순위(Q14)",
+        "non_negotiables": "포기불가(Q15)",
+        "fears":           "두려움(Q16)",
+        "goal_3to5yr":     "목표(Q17)",
+        "biggest_concern": "고민(Q19)",
+        "first_action":    "첫행동(Q20)",
     }
     lines = [
-        "당신은 퇴직 후 전직 코치입니다. 사용자의 18개 입력값과 현재 실행 현황을 알고 있습니다.",
+        "당신은 퇴직 후 전직 코치입니다. 사용자의 22개 입력값과 현재 실행 현황을 알고 있습니다.",
         "직설적이지만 따뜻한 코치 톤으로 한국어 존댓말로 답변하세요.",
         "막연한 격려나 클리셰('열심히 하세요', '할 수 있습니다') 대신 입력값을 직접 인용해 구체적으로 답변하세요.",
         "",
-        "[18개 입력값 요약]",
+        "[22개 입력값 요약]",
     ]
     for id_key, label in id_to_label.items():
         val = inputs.get(id_key, "")

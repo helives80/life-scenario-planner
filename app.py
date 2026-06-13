@@ -318,6 +318,15 @@ hr{border-color:#dde0f0!important}
 [data-testid="stButton"]>button[disabled]{
   background:rgba(200,200,220,.4)!important;
   border-color:#c0c0d8!important;color:#8888aa!important}
+/* [수정 3] 라이트: 드롭다운(selectbox) 배경·텍스트 */
+[data-baseweb="select"]>div{background-color:#ffffff!important;border-color:#dde0f0!important}
+[data-baseweb="popover"] ul,[data-baseweb="popover"] [role="listbox"]{background-color:#ffffff!important}
+[data-baseweb="popover"] li,[data-baseweb="option"]{color:#1a1a2e!important;background-color:#ffffff!important}
+[data-baseweb="popover"] li:hover,[data-baseweb="option"]:hover{background-color:#f0f2ff!important}
+[data-baseweb="select"] [aria-selected="true"]{background-color:#eff0ff!important}
+/* [수정 3] 라이트: 채팅 입력창 텍스트 */
+[data-testid="stChatInputContainer"] textarea{color:#1a1a2e!important;background-color:#ffffff!important}
+[data-testid="stChatInputContainer"]{background-color:#ffffff!important}
 </style>"""
 
 
@@ -541,6 +550,14 @@ body [data-testid="stButton"]>button[disabled]{
 .home-cp-todo{color:#ffb450!important}
 .home-cp-meta{color:rgba(255,255,255,.55)!important}
 .home-cp-pct{color:#c3b8ff!important}
+/* [수정 1] 라이트: 로고 아이콘 그림자 강화 + 타이틀 그라디언트 진하게 */
+.home-brand-icon{filter:drop-shadow(0 0 20px rgba(55,48,163,.65))!important}
+.home-brand h1{
+  background:linear-gradient(135deg,#3730a3 0%,#1a6b3c 100%)!important;
+  -webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important;
+  background-clip:text!important}
+/* [수정 2] 라이트: 설명 문구 bold + white */
+.home-brand p{font-weight:bold!important;color:#ffffff!important}
 </style>"""
 
 _COMPASS_SVG = (

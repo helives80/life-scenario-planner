@@ -90,6 +90,10 @@ S3_CSS_LIGHT_OVERRIDE = """<style>
 .s3-badge-month{background:#fff7ed!important;border-color:#fdba74!important;color:#9a3412!important}
 .s3-badge-3m{background:#f0fdf4!important;border-color:#86efac!important;color:#166534!important}
 .s3-badge-res{background:#eff6ff!important;border-color:#93c5fd!important;color:#1e40af!important}
+/* [수정 4] 라이트: 완료율 st.progress 트랙·바 */
+[data-testid="stProgress"]>div{background-color:#e0e0f4!important;border-radius:99px!important}
+[data-testid="stProgress"] [role="progressbar"]{background-color:#6c63ff!important}
+[data-testid="stProgress"] p{color:#1a1a2e!important}
 </style>"""
 
 # ── AI 평가 프롬프트 / 스키마 ────────────────────────────────────────────────

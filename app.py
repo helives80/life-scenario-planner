@@ -330,53 +330,61 @@ hr{border-color:#dde0f0!important}
 </style>"""
 
 
-_STREAMLIT_LIGHT_CSS = """<style>
-/* ═══ 라이트 모드 전용 ─ [data-theme="light"] 방식으로 항상 주입 ═══ */
+# JS: iframe 내에서 실행 → window.parent.document.body에 .light-mode 추가/제거
+# (st.markdown의 <script>는 React가 실행 안 함 — components.html로 주입)
+_JS_THEME_DETECTOR = """<script>
+(function(){
+  var pd=window.parent.document;
+  function isLight(c){
+    var m=c.match(/\d+/g);
+    return m&&(+m[0]*299+ +m[1]*587+ +m[2]*114)/1000>128;
+  }
+  function apply(){
+    var el=pd.querySelector('.stApp');
+    if(!el)return;
+    var bg=window.parent.getComputedStyle(el).backgroundColor;
+    pd.body.classList.toggle('light-mode',isLight(bg));
+  }
+  apply();
+  setTimeout(apply,200);
+  setTimeout(apply,700);
+  new MutationObserver(apply).observe(pd.documentElement,
+    {attributes:true,attributeFilter:['style','class'],subtree:false});
+})();
+</script>"""
 
-/* [수정 1] 화면0 — 로고 아이콘 그림자 강화 */
-[data-theme="light"] .home-brand-icon {
-  filter: drop-shadow(0 0 20px rgba(55,48,163,.7)) !important;
-}
-/* [수정 1] 화면0 — 타이틀 그라디언트를 진한 인디고→다크그린으로 */
-[data-theme="light"] .home-brand h1 {
-  background: linear-gradient(135deg, #3730a3 0%, #1a6b3c 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-}
-
-/* [수정 2] 화면0 — 버튼 위 설명 문구: bold + white */
-[data-theme="light"] .home-brand p {
-  color: #ffffff !important;
-  font-weight: bold !important;
-}
-
-/* [수정 3] 화면1~4 — 텍스트 입력창 */
-[data-theme="light"] .stTextInput input,
-[data-theme="light"] div[data-baseweb="input"] input {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1.5px solid #6c63ff !important;
-}
-/* [수정 3] 화면1~4 — 텍스트 영역 */
-[data-theme="light"] .stTextArea textarea {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1.5px solid #6c63ff !important;
-}
-/* [수정 3] 화면1~4 — selectbox / 드롭다운 */
-[data-theme="light"] .stSelectbox select,
-[data-theme="light"] div[data-baseweb="select"] div {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1.5px solid #6c63ff !important;
-}
-/* [수정 3] 화면1~4 — 채팅 입력창 */
-[data-theme="light"] div[data-testid="stChatInput"] textarea {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1.5px solid #6c63ff !important;
-}
+# CSS: .light-mode 클래스 기반 — 항상 주입, JS가 클래스를 추가하면 자동 활성화
+_LIGHT_MODE_CSS = """<style>
+/* ── 입력창 / 텍스트영역 ── */
+.light-mode .stTextInput input,
+.light-mode div[data-baseweb="input"] input {
+  background-color:#ffffff!important;color:#000000!important;
+  border:1.5px solid #6c63ff!important}
+.light-mode .stTextArea textarea {
+  background-color:#ffffff!important;color:#000000!important;
+  border:1.5px solid #6c63ff!important}
+/* ── 드롭다운 ── */
+.light-mode .stSelectbox select,
+.light-mode div[data-baseweb="select"] div {
+  background-color:#ffffff!important;color:#000000!important;
+  border:1.5px solid #6c63ff!important}
+/* ── 채팅 입력창 ── */
+.light-mode div[data-testid="stChatInput"] textarea,
+.light-mode div[data-testid="stChatInputContainer"] textarea {
+  background-color:#ffffff!important;color:#000000!important;
+  border:1.5px solid #6c63ff!important}
+/* ── 화면0 로고 아이콘 ── */
+.light-mode .home-brand-icon {
+  filter:drop-shadow(0 0 20px rgba(55,48,163,.7))!important}
+/* ── 화면0 타이틀 그라디언트 ── */
+.light-mode .home-brand h1 {
+  background:linear-gradient(135deg,#3730a3 0%,#1a6b3c 100%)!important;
+  -webkit-background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+  background-clip:text!important}
+/* ── 화면0 설명 문구 굵게·흰색 ── */
+.light-mode .home-brand p {
+  color:#ffffff!important;font-weight:bold!important}
 </style>"""
 
 
@@ -386,8 +394,10 @@ def apply_theme() -> None:
         theme = st.session_state.get("theme", "dark")
         st.markdown(_THEME_LIGHT_CSS if theme == "light" else _THEME_DARK_CSS,
                     unsafe_allow_html=True)
-        # [data-theme="light"] 방식 — Streamlit DOM 속성 기반, 항상 주입
-        st.markdown(_STREAMLIT_LIGHT_CSS, unsafe_allow_html=True)
+        # .light-mode CSS 항상 주입 (JS가 body에 클래스 추가 시 자동 활성화)
+        st.markdown(_LIGHT_MODE_CSS, unsafe_allow_html=True)
+        # JS: iframe → window.parent.document.body.classList에 .light-mode 토글
+        components.html(_JS_THEME_DETECTOR, height=0)
     except Exception:
         pass
 

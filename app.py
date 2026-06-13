@@ -715,12 +715,22 @@ def generate_scenarios(inputs: dict, correction: str = "") -> dict:
         generation_config=generation_config,
     )
     response = model.generate_content(user_message)
+    # 디버그: Streamlit Cloud 로그에서 응답 확인 가능
+    raw = getattr(response, "text", None)
+    print(f"[generate_scenarios] raw={repr(raw)[:300] if raw else repr(raw)}")
+    # 케이스 B: 빈 응답 → 재호출 가능하도록 ValueError raise
+    if not raw:
+        raise ValueError("AI 응답이 비어 있습니다. 잠시 후 다시 시도해 주세요.")
     try:
-        return json.loads(response.text)
-    except json.JSONDecodeError as e:
+        result = json.loads(raw)
+    except (json.JSONDecodeError, TypeError) as e:
         raise ValueError(
             f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
         ) from e
+    # 케이스 C 전처리: scenarios 키가 없거나 빈 리스트면 실패로 처리
+    if not isinstance(result, dict) or not result.get("scenarios"):
+        raise ValueError("AI가 시나리오를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    return result
 
 
 def save_profile(inputs: dict):
@@ -2435,6 +2445,15 @@ def render_input_page():
 
 
 def render_result_page():
+    # 케이스 C: result가 None이거나 scenarios가 없으면 빈 화면 대신 안내 표시
+    _result_raw = st.session_state.get("result")
+    if not _result_raw or not isinstance(_result_raw, dict) or not _result_raw.get("scenarios"):
+        st.error("시나리오 생성에 실패했습니다. 다시 시도해 주세요.")
+        if st.button("← 다시 시도하기", type="primary"):
+            st.session_state.page = "input"
+            st.rerun()
+        return
+
     # PDF 미리 생성 (버튼 렌더링에 필요)
     pdf_bytes = None
     try:

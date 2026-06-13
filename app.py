@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import google.generativeai as genai
+import hashlib
 import json
 import os
 import re
@@ -1155,6 +1156,11 @@ def generate_comparison(old_data: dict, new_inputs: dict) -> dict:
     raise ValueError(_app_quota_msg(last_err))
 
 
+def _make_cache_key(inputs: dict, correction: str = "") -> str:
+    raw = json.dumps(inputs, sort_keys=True, ensure_ascii=False) + correction
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
 def _run_with_429_retry(fn, *args, spinner_msg="AI가 분석 중입니다...", **kwargs):
     """fn(*args, **kwargs) 실행.
     429 발생 시 에러 메시지에서 대기 시간을 파싱해 카운트다운을 보여준 뒤 1회 재시도."""
@@ -1550,6 +1556,10 @@ def init_session():
         st.session_state.coach_error = None
     if "coach_pending_msg" not in st.session_state:
         st.session_state.coach_pending_msg = None
+    if "_scenario_cache" not in st.session_state:
+        st.session_state._scenario_cache = {}
+    if "_cache_hit" not in st.session_state:
+        st.session_state._cache_hit = False
     if "career_result" not in st.session_state:
         st.session_state.career_result = None
     if "career_grounding_used" not in st.session_state:
@@ -2615,17 +2625,27 @@ def render_input_page():
 
     if generate_clicked:
         get_gemini_api_key()
-        try:
-            result = _run_with_429_retry(
-                generate_scenarios, inputs,
-                spinner_msg="AI가 시나리오를 분석 중입니다... (30초~1분 소요)",
-            )
+        cache_key = _make_cache_key(inputs)
+        if cache_key in st.session_state._scenario_cache:
             st.session_state.inputs = inputs
-            st.session_state.result = result
+            st.session_state.result = st.session_state._scenario_cache[cache_key]
+            st.session_state._cache_hit = True
             st.session_state.page = "result"
             st.rerun()
-        except Exception as e:
-            st.error(f"오류가 발생했습니다: {e}")
+        else:
+            try:
+                result = _run_with_429_retry(
+                    generate_scenarios, inputs,
+                    spinner_msg="AI가 시나리오를 분석 중입니다... (30초~1분 소요)",
+                )
+                st.session_state._scenario_cache[cache_key] = result
+                st.session_state.inputs = inputs
+                st.session_state.result = result
+                st.session_state._cache_hit = False
+                st.session_state.page = "result"
+                st.rerun()
+            except Exception as e:
+                st.error(f"오류가 발생했습니다: {e}")
 
 
 def render_result_page():
@@ -2642,6 +2662,8 @@ def render_result_page():
         'margin:0 0 12px;color:#f1f5f9">인생 시나리오</p>',
         unsafe_allow_html=True,
     )
+    if st.session_state.get("_cache_hit"):
+        st.caption("💾 (저장된 결과) — 동일한 입력값의 이전 생성 결과입니다.")
 
     col_home, col_back, col_save_hist, col_pdf = st.columns([2, 3, 2, 2])
     with col_home:
@@ -2726,15 +2748,23 @@ def render_result_page():
         if not correction.strip():
             st.warning("수정할 내용을 입력해주세요.")
         else:
-            try:
-                result = _run_with_429_retry(
-                    generate_scenarios, st.session_state.inputs, correction,
-                    spinner_msg="AI가 수정된 시나리오를 생성 중입니다... (30초~1분 소요)",
-                )
-                st.session_state.result = result
+            cache_key = _make_cache_key(st.session_state.inputs, correction)
+            if cache_key in st.session_state._scenario_cache:
+                st.session_state.result = st.session_state._scenario_cache[cache_key]
+                st.session_state._cache_hit = True
                 st.rerun()
-            except Exception as e:
-                st.error(f"오류가 발생했습니다: {e}")
+            else:
+                try:
+                    result = _run_with_429_retry(
+                        generate_scenarios, st.session_state.inputs, correction,
+                        spinner_msg="AI가 수정된 시나리오를 생성 중입니다... (30초~1분 소요)",
+                    )
+                    st.session_state._scenario_cache[cache_key] = result
+                    st.session_state.result = result
+                    st.session_state._cache_hit = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"오류가 발생했습니다: {e}")
 
 
 def main():

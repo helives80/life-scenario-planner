@@ -582,6 +582,14 @@ _HOME_PAGE_CSS = """<style>
   border:1px solid rgba(255,255,255,.06)!important;
   color:#5a5a7a!important;cursor:not-allowed!important;
   transform:none!important;box-shadow:none!important}
+/* ── 상태3 카드: 클릭 가능 시각 신호 ── */
+.home-card-progress{cursor:pointer;transition:filter .25s,transform .25s}
+.home-card-progress:hover{filter:brightness(1.14);transform:translateY(-2px)}
+/* 카드 하단 이어서 진행 힌트 */
+.home-cp-continue-bar{
+  display:flex;justify-content:flex-end;align-items:center;gap:6px;
+  font-size:.79rem;font-weight:700;color:rgba(255,255,255,.78);
+  padding-top:8px;border-top:1px solid rgba(255,255,255,.13);margin-top:6px}
 </style>"""
 
 _HOME_PAGE_CSS_LIGHT_OVERRIDE = """<style>
@@ -2245,6 +2253,7 @@ def _render_home_status_card(status: int, hist_data: dict, checklist_data: dict)
             f'      <div class="home-cp-fill" style="width:{pct}%"></div>'
             f'    </div>'
             f'  </div>'
+            f'  <div class="home-cp-continue-bar">▶ 이어서 진행하기 →</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -2272,6 +2281,7 @@ def _render_home_nav_buttons(status: int, hist_data: dict) -> None:
             use_container_width=True,
             key="hn_plan_locked",
         )
+        st.write("")
 
     elif status == 2:
         if st.button(
@@ -2292,19 +2302,9 @@ def _render_home_nav_buttons(status: int, hist_data: dict) -> None:
             _restore_session_from_history(hist_data)
             st.session_state.page = "plan"
             st.rerun()
+        st.write("")
 
-    else:  # status == 3
-        if st.button(
-            "▶  이어서 진행하기 →",
-            use_container_width=True,
-            type="secondary",
-            key="hn_continue",
-        ):
-            _restore_session_from_history(hist_data)
-            st.session_state.page = "plan"
-            st.rerun()
-
-    st.write("")
+    # status == 3: 버튼 없음 — 카드 클릭(render_home_page)으로 대체
 
     # ── 버튼 3: 커리어 설계 (항상) ──────────────────────────────────────────
     if st.button(
@@ -2369,6 +2369,17 @@ def render_home_page():
         # 상태 정보 카드 (status 2, 3)
         if status >= 2:
             _render_home_status_card(status, hist_data, checklist_data)
+            if status == 3:
+                # 카드 바로 아래: 이어서 진행하기 버튼 (기존 standalone 버튼 대체)
+                if st.button(
+                    "▶  이어서 진행하기 →",
+                    use_container_width=True,
+                    type="secondary",
+                    key="hn_continue",
+                ):
+                    _restore_session_from_history(hist_data)
+                    st.session_state.page = "plan"
+                    st.rerun()
             st.write("")
 
         # 네이티브 버튼

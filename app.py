@@ -2121,16 +2121,26 @@ def _render_question(q: dict, inputs: dict, inside_form: bool = False) -> None:
 
 def _restore_session_from_history(hist: dict):
     """history 데이터를 session_state에 복원해 화면2·3이 정상 동작하게 한다."""
-    result    = hist.get("result", {})
-    inputs    = hist.get("inputs", {})
-    scenarios = result.get("scenarios", [])
+    if not isinstance(hist, dict):
+        hist = {}
+    result    = hist.get("result") or {}
+    if not isinstance(result, dict):
+        result = {}
+    inputs    = hist.get("inputs") or {}
+    if not isinstance(inputs, dict):
+        inputs = {}
+    scenarios = result.get("scenarios") or []
+    if not isinstance(scenarios, list):
+        scenarios = []
     # 저장된 selected_scenario 우선 사용, 없으면 AI 추천 시나리오 fallback
-    saved_sel = hist.get("selected_scenario", {})
+    saved_sel  = hist.get("selected_scenario")
+    saved_sel  = saved_sel if isinstance(saved_sel, dict) else {}
     saved_type = saved_sel.get("type", "")
     if saved_type and any(s.get("type") == saved_type for s in scenarios):
         selected = next(s for s in scenarios if s.get("type") == saved_type)
     else:
-        rec_type = result.get("recommendation", {}).get("type", "")
+        rec      = result.get("recommendation")
+        rec_type = rec.get("type", "") if isinstance(rec, dict) else ""
         selected = next((s for s in scenarios if s.get("type") == rec_type),
                         scenarios[0] if scenarios else {})
     st.session_state.result            = result

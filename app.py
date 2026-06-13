@@ -2254,6 +2254,31 @@ def render_home_page():
     hist_data      = _load_latest_history() if status >= 2 else {}
     checklist_data = _load_latest_career_checklist() if status >= 3 else {}
 
+    # ── session_state 우선 반영 ───────────────────────────────────────────────
+    # 1) 최신 시나리오 결과: 디스크 저장 여부와 무관하게 session이 있으면 덮어쓰기
+    ss_result = st.session_state.get("result")
+    if ss_result is not None:
+        hist_data = {
+            "result":            ss_result,
+            "inputs":            st.session_state.get("inputs") or {},
+            "saved_at":          datetime.date.today().isoformat(),
+            "selected_scenario": st.session_state.get("selected_scenario"),
+        }
+        if status < 2:
+            status = 2
+
+    # 2) 진행률: check_* 키가 session에 살아있으면 파일보다 우선 적용
+    live_checks = {
+        k: v for k, v in st.session_state.items()
+        if isinstance(k, str) and k.startswith("check_") and isinstance(v, bool)
+    }
+    if live_checks:
+        merged = dict(checklist_data)
+        merged["checks"] = {**merged.get("checks", {}), **live_checks}
+        checklist_data = merged
+        if status < 3:
+            status = 3
+
     # ── CSS 주입 ─────────────────────────────────────────────────────────────
     st.markdown(_HOME_PAGE_CSS, unsafe_allow_html=True)
     if st.session_state.get("theme", "dark") == "light":

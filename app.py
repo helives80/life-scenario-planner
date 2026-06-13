@@ -255,149 +255,13 @@ _THEME_DARK_CSS = """<style>
 }
 </style>"""
 
-_THEME_LIGHT_CSS = """<style>
-:root{
-  --bg:#f8f9ff;--surface:#ffffff;--card:#ffffff;--card2:#f0f2ff;
-  --border:#dde0f0;--text:#1a1a2e;--text2:#4a4a7a;--text3:#9090b0;
-  --accent:#6c63ff;--blue:#2255cc;--green:#1a7a45;--red:#dc2626;
-  --purple:#5b21b6;--shadow:0 2px 12px rgba(0,0,0,.08);
-  --radius:12px;--radius-sm:8px;
-}
-/* ── 앱 전체 배경 ── */
-.stApp,[data-testid="stAppViewContainer"]{background-color:#f8f9ff!important}
-/* ── 상단 헤더 ── */
-[data-testid="stHeader"]{background-color:#f8f9ff!important;border-bottom:1px solid #dde0f0!important}
-[data-testid="stHeader"] *{color:#1a1a2e!important}
-[data-testid="stToolbar"] *{color:#1a1a2e!important}
-[data-testid="stDecoration"]{background:none!important}
-/* ── 사이드바 ── */
-section[data-testid="stSidebar"]{background-color:#eef0fa!important}
-section[data-testid="stSidebar"] *{color:#1a1a2e!important}
-section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p{color:#1a1a2e!important}
-/* ── 기본 텍스트·마크다운 ── */
-.stApp p,.stApp span,.stApp label,.stApp div{color:#1a1a2e}
-[data-testid="stMarkdownContainer"],[data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
-h1,h2,h3,h4,h5,h6{color:#1a1a2e!important}
-/* ── 체크박스 ── */
-[data-testid="stCheckbox"] label,[data-testid="stCheckbox"] span{color:#1a1a2e!important}
-/* ── 버튼 ── */
-button[kind="secondary"],button[kind="secondaryFormSubmit"]{
-  background-color:#ffffff!important;color:#1a1a2e!important;border-color:#dde0f0!important}
-button[kind="primary"]{color:#ffffff!important}
-/* ── 입력 필드 ── */
-[data-testid="stTextInput"] input,[data-testid="stTextArea"] textarea{
-  background-color:#ffffff!important;color:#1a1a2e!important;border-color:#dde0f0!important}
-[data-testid="stTextInput"] label,[data-testid="stTextArea"] label{color:#1a1a2e!important}
-/* ── expander ── */
-[data-testid="stExpander"]{background-color:#ffffff!important;border-color:#dde0f0!important}
-[data-testid="stExpander"] summary,[data-testid="stExpander"] summary *{color:#1a1a2e!important}
-[data-testid="stExpander"] [data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
-/* ── 알림 박스 ── */
-[data-testid="stInfo"]{background-color:#eff6ff!important}
-[data-testid="stInfo"] *{color:#1e40af!important}
-[data-testid="stWarning"]{background-color:#fffbeb!important}
-[data-testid="stWarning"] *{color:#92400e!important}
-[data-testid="stSuccess"]{background-color:#f0fdf4!important}
-[data-testid="stSuccess"] *{color:#166534!important}
-[data-testid="stError"]{background-color:#fef2f2!important}
-[data-testid="stError"] *{color:#991b1b!important}
-/* ── caption/subtext ── */
-[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *{color:#4a4a7a!important}
-/* ── 구분선 ── */
-hr{border-color:#dde0f0!important}
-/* ── 메트릭 ── */
-[data-testid="stMetric"] label,[data-testid="stMetric"] [data-testid="stMetricLabel"]{color:#4a4a7a!important}
-[data-testid="stMetric"] [data-testid="stMetricValue"]{color:#1a1a2e!important}
-/* ── select box ── */
-[data-testid="stSelectbox"] label{color:#1a1a2e!important}
-[data-baseweb="select"] [data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
-/* ── chat ── */
-[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] *{color:#1a1a2e!important}
-[data-testid="stChatInputContainer"]{background-color:#ffffff!important;border-color:#dde0f0!important}
-/* ── disabled 버튼 (라이트) ── */
-[data-testid="stButton"]>button[disabled]{
-  background:rgba(200,200,220,.4)!important;
-  border-color:#c0c0d8!important;color:#8888aa!important}
-/* [수정 3] 라이트: 드롭다운(selectbox) 배경·텍스트 */
-[data-baseweb="select"]>div{background-color:#ffffff!important;border-color:#dde0f0!important}
-[data-baseweb="popover"] ul,[data-baseweb="popover"] [role="listbox"]{background-color:#ffffff!important}
-[data-baseweb="popover"] li,[data-baseweb="option"]{color:#1a1a2e!important;background-color:#ffffff!important}
-[data-baseweb="popover"] li:hover,[data-baseweb="option"]:hover{background-color:#f0f2ff!important}
-[data-baseweb="select"] [aria-selected="true"]{background-color:#eff0ff!important}
-/* [수정 3] 라이트: 채팅 입력창 텍스트 */
-[data-testid="stChatInputContainer"] textarea{color:#1a1a2e!important;background-color:#ffffff!important}
-[data-testid="stChatInputContainer"]{background-color:#ffffff!important}
-</style>"""
-
-
-# JS: iframe 내에서 실행 → window.parent.document.body에 .light-mode 추가/제거
-# (st.markdown의 <script>는 React가 실행 안 함 — components.html로 주입)
-_JS_THEME_DETECTOR = """<script>
-(function(){
-  var pd=window.parent.document;
-  function isLight(c){
-    var m=c.match(/\d+/g);
-    return m&&(+m[0]*299+ +m[1]*587+ +m[2]*114)/1000>128;
-  }
-  function apply(){
-    var el=pd.querySelector('.stApp');
-    if(!el)return;
-    var bg=window.parent.getComputedStyle(el).backgroundColor;
-    pd.body.classList.toggle('light-mode',isLight(bg));
-  }
-  apply();
-  setTimeout(apply,200);
-  setTimeout(apply,700);
-  new MutationObserver(apply).observe(pd.documentElement,
-    {attributes:true,attributeFilter:['style','class'],subtree:false});
-})();
-</script>"""
-
-# CSS: .light-mode 클래스 기반 — 항상 주입, JS가 클래스를 추가하면 자동 활성화
-_LIGHT_MODE_CSS = """<style>
-/* ── 입력창 / 텍스트영역 ── */
-.light-mode .stTextInput input,
-.light-mode div[data-baseweb="input"] input {
-  background-color:#ffffff!important;color:#000000!important;
-  border:1.5px solid #6c63ff!important}
-.light-mode .stTextArea textarea {
-  background-color:#ffffff!important;color:#000000!important;
-  border:1.5px solid #6c63ff!important}
-/* ── 드롭다운 ── */
-.light-mode .stSelectbox select,
-.light-mode div[data-baseweb="select"] div {
-  background-color:#ffffff!important;color:#000000!important;
-  border:1.5px solid #6c63ff!important}
-/* ── 채팅 입력창 ── */
-.light-mode div[data-testid="stChatInput"] textarea,
-.light-mode div[data-testid="stChatInputContainer"] textarea {
-  background-color:#ffffff!important;color:#000000!important;
-  border:1.5px solid #6c63ff!important}
-/* ── 화면0 로고 아이콘 ── */
-.light-mode .home-brand-icon {
-  filter:drop-shadow(0 0 20px rgba(55,48,163,.7))!important}
-/* ── 화면0 타이틀 그라디언트 ── */
-.light-mode .home-brand h1 {
-  background:linear-gradient(135deg,#3730a3 0%,#1a6b3c 100%)!important;
-  -webkit-background-clip:text!important;
-  -webkit-text-fill-color:transparent!important;
-  background-clip:text!important}
-/* ── 화면0 설명 문구 굵게·흰색 ── */
-.light-mode .home-brand p {
-  color:#ffffff!important;font-weight:bold!important}
-</style>"""
 
 
 def apply_theme() -> None:
-    """st.session_state.theme 값에 따라 공통 CSS 변수를 Streamlit에 주입한다."""
+    """다크 모드 선택 시 CSS 변수를 주입한다. 라이트 모드는 config.toml이 처리."""
     try:
-        theme = st.session_state.get("theme", "dark")
-        st.markdown(_THEME_LIGHT_CSS if theme == "light" else _THEME_DARK_CSS,
-                    unsafe_allow_html=True)
-        # .light-mode CSS 항상 주입 (JS가 body에 클래스 추가 시 자동 활성화)
-        st.markdown(_LIGHT_MODE_CSS, unsafe_allow_html=True)
-        # JS: iframe → window.parent.document.body.classList에 .light-mode 토글
-        components.html(_JS_THEME_DETECTOR, height=0)
+        if st.session_state.get("theme", "dark") == "dark":
+            st.markdown(_THEME_DARK_CSS, unsafe_allow_html=True)
     except Exception:
         pass
 
@@ -614,33 +478,6 @@ _HOME_PAGE_CSS = """<style>
   box-shadow:0 10px 30px rgba(255,160,0,.4)!important}
 </style>"""
 
-_HOME_PAGE_CSS_LIGHT_OVERRIDE = """<style>
-/* 화면0 라이트: 퍼플/그린 버튼 배경·흰 글씨 유지 */
-body [data-testid="stButton"]>button[kind="primary"]{
-  background:linear-gradient(135deg,#0F6E56,#0d5c47)!important;
-  color:#fff!important}
-body [data-testid="stButton"]>button[kind="secondary"]{
-  background:linear-gradient(135deg,#534AB7,#423b96)!important;
-  color:#fff!important}
-body [data-testid="stButton"]>button[disabled]{
-  background:rgba(200,200,220,.4)!important;
-  border-color:#c0c0d8!important;color:#8888aa!important}
-/* 화면0 카드 — 어두운 배경 위 흰 글씨 유지 */
-.home-cr-name,.home-cr-badge{color:#fff!important}
-.home-cr-date{color:rgba(255,255,255,.55)!important}
-.home-cp-name{color:#fff!important}
-.home-cp-todo{color:#ffb450!important}
-.home-cp-meta{color:rgba(255,255,255,.55)!important}
-.home-cp-pct{color:#c3b8ff!important}
-/* [수정 1] 라이트: 로고 아이콘 그림자 강화 + 타이틀 그라디언트 진하게 */
-.home-brand-icon{filter:drop-shadow(0 0 20px rgba(55,48,163,.65))!important}
-.home-brand h1{
-  background:linear-gradient(135deg,#3730a3 0%,#1a6b3c 100%)!important;
-  -webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important;
-  background-clip:text!important}
-/* [수정 2] 라이트: 설명 문구 bold + white */
-.home-brand p{font-weight:bold!important;color:#ffffff!important}
-</style>"""
 
 _COMPASS_SVG = (
     '<svg class="home-brand-icon" viewBox="0 0 72 72" fill="none" '
@@ -2368,8 +2205,13 @@ def render_home_page():
 
     # ── CSS 주입 ─────────────────────────────────────────────────────────────
     st.markdown(_HOME_PAGE_CSS, unsafe_allow_html=True)
-    if st.session_state.get("theme", "dark") == "light":
-        st.markdown(_HOME_PAGE_CSS_LIGHT_OVERRIDE, unsafe_allow_html=True)
+    # 첫 번째 버튼(시나리오 카드 or 인생 시나리오 시작) #FFB800 황금색 — STEP 3
+    st.markdown("""<style>
+div[data-testid="stButton"]:first-of-type > button {
+  background-color: #FFB800 !important;
+  color: #000000 !important;
+}
+</style>""", unsafe_allow_html=True)
 
     # ── 브랜드 헤더 ──────────────────────────────────────────────────────────
     st.markdown(

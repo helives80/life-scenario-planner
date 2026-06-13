@@ -582,14 +582,18 @@ _HOME_PAGE_CSS = """<style>
   border:1px solid rgba(255,255,255,.06)!important;
   color:#5a5a7a!important;cursor:not-allowed!important;
   transform:none!important;box-shadow:none!important}
-/* ── 상태3 카드: 클릭 가능 시각 신호 ── */
-.home-card-progress{cursor:pointer;transition:filter .25s,transform .25s}
-.home-card-progress:hover{filter:brightness(1.14);transform:translateY(-2px)}
-/* 카드 하단 이어서 진행 힌트 */
-.home-cp-continue-bar{
-  display:flex;justify-content:flex-end;align-items:center;gap:6px;
-  font-size:.79rem;font-weight:700;color:rgba(255,255,255,.78);
-  padding-top:8px;border-top:1px solid rgba(255,255,255,.13);margin-top:6px}
+/* ── 상태3: 카드 전체를 버튼으로 — :has(marker) 기반 CSS 타겟팅 ── */
+[data-testid="element-container"]:has(.home-card3-marker)+[data-testid="element-container"] [data-testid="stButton"]>button{
+  background:linear-gradient(135deg,#2a1e5c,#1f1848)!important;
+  border:1px solid rgba(107,98,212,.35)!important;border-radius:16px!important;
+  padding:18px 20px 16px!important;text-align:left!important;
+  white-space:pre-line!important;color:#fff!important;line-height:1.7!important;
+  font-size:.97rem!important;cursor:pointer!important;
+  min-height:0!important;box-shadow:none!important;
+  transition:filter .25s,transform .25s!important}
+[data-testid="element-container"]:has(.home-card3-marker)+[data-testid="element-container"] [data-testid="stButton"]>button:hover{
+  filter:brightness(1.14)!important;transform:translateY(-2px)!important;
+  box-shadow:0 10px 30px rgba(83,74,183,.45)!important}
 </style>"""
 
 _HOME_PAGE_CSS_LIGHT_OVERRIDE = """<style>
@@ -2198,8 +2202,8 @@ def build_home_html(status: int, hist_data: dict, checklist_data: dict, theme: s
     return html_content
 
 
-def _render_home_status_card(status: int, hist_data: dict, checklist_data: dict) -> None:
-    """상태2·3의 시각 정보 카드를 st.markdown으로 렌더링 (클릭 없음)."""
+def _render_home_status_card(status: int, hist_data: dict, checklist_data: dict):
+    """상태2 카드를 st.markdown으로 렌더링. 상태3는 버튼 생성 데이터를 반환(렌더링 없음)."""
     result    = hist_data.get("result", {})
     scenarios = result.get("scenarios", [])
     # 우선순위: 체크리스트 저장값(화면3 저장) > history 저장값 > AI 추천
@@ -2232,31 +2236,14 @@ def _render_home_status_card(status: int, hist_data: dict, checklist_data: dict)
             f'</div>',
             unsafe_allow_html=True,
         )
-    else:  # status == 3
+        return None
+    else:  # status == 3 — 렌더링 없이 버튼 생성용 데이터만 반환
         _cd       = checklist_data.get("checks", {})
         _tot      = max(len(_cd), 1)
         checked   = sum(1 for v in _cd.values() if v)
         pct       = int(checked / _tot * 100)
         unchecked = sum(1 for k, v in _cd.items() if k.startswith("check_week_") and not v)
-        st.markdown(
-            f'<div class="home-card-progress">'
-            f'  <div class="home-cp-top">'
-            f'    <div class="home-cp-name">{sc_disp}</div>'
-            f'    <div class="home-cp-todo">⚠️ 미완료 {unchecked}개</div>'
-            f'  </div>'
-            f'  <div>'
-            f'    <div class="home-cp-meta">'
-            f'      <span>전체 진행률</span>'
-            f'      <span class="home-cp-pct">{pct}%</span>'
-            f'    </div>'
-            f'    <div class="home-cp-bg">'
-            f'      <div class="home-cp-fill" style="width:{pct}%"></div>'
-            f'    </div>'
-            f'  </div>'
-            f'  <div class="home-cp-continue-bar">▶ 이어서 진행하기 →</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+        return {"sc_disp": sc_disp, "pct": pct, "unchecked": unchecked}
 
 
 def _render_home_nav_buttons(status: int, hist_data: dict) -> None:
@@ -2368,15 +2355,19 @@ def render_home_page():
     with col:
         # 상태 정보 카드 (status 2, 3)
         if status >= 2:
-            _render_home_status_card(status, hist_data, checklist_data)
-            if status == 3:
-                # 카드 바로 아래: 이어서 진행하기 버튼 (기존 standalone 버튼 대체)
-                if st.button(
-                    "▶  이어서 진행하기 →",
-                    use_container_width=True,
-                    type="secondary",
-                    key="hn_continue",
-                ):
+            card3_data = _render_home_status_card(status, hist_data, checklist_data)
+            if status == 3 and card3_data:
+                # 마커: CSS :has()로 아래 st.button을 카드 스타일로 타겟팅
+                st.markdown(
+                    '<span class="home-card3-marker" style="display:none"></span>',
+                    unsafe_allow_html=True,
+                )
+                btn_label = (
+                    f"{card3_data['sc_disp']}\n"
+                    f"전체 진행률 {card3_data['pct']}%  ·  "
+                    f"미완료 {card3_data['unchecked']}개   ▶"
+                )
+                if st.button(btn_label, use_container_width=True, key="hn_card3"):
                     _restore_session_from_history(hist_data)
                     st.session_state.page = "plan"
                     st.rerun()

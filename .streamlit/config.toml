@@ -2,8 +2,5 @@
 gatherUsageStats = false
 
 [theme]
-base = "light"
 primaryColor = "#6c63ff"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f6"
 textColor = "#1a1a1a"

@@ -582,18 +582,26 @@ _HOME_PAGE_CSS = """<style>
   border:1px solid rgba(255,255,255,.06)!important;
   color:#5a5a7a!important;cursor:not-allowed!important;
   transform:none!important;box-shadow:none!important}
-/* ── 상태3: 카드 전체를 버튼으로 — :has(marker) 기반 CSS 타겟팅 ── */
+/* ── 상태3: 시나리오 카드 버튼 — 황금색 ── */
 [data-testid="element-container"]:has(.home-card3-marker)+[data-testid="element-container"] [data-testid="stButton"]>button{
-  background:linear-gradient(135deg,#2a1e5c,#1f1848)!important;
-  border:1px solid rgba(107,98,212,.35)!important;border-radius:16px!important;
+  background:#FFB800!important;
+  border:1px solid rgba(255,184,0,.5)!important;border-radius:16px!important;
   padding:18px 20px 16px!important;text-align:left!important;
-  white-space:pre-line!important;color:#fff!important;line-height:1.7!important;
+  white-space:pre-line!important;color:#000000!important;line-height:1.7!important;
   font-size:.97rem!important;cursor:pointer!important;
   min-height:0!important;box-shadow:none!important;
-  transition:filter .25s,transform .25s!important}
+  transition:background .22s,transform .25s!important}
 [data-testid="element-container"]:has(.home-card3-marker)+[data-testid="element-container"] [data-testid="stButton"]>button:hover{
-  filter:brightness(1.14)!important;transform:translateY(-2px)!important;
-  box-shadow:0 10px 30px rgba(83,74,183,.45)!important}
+  background:#FFA000!important;transform:translateY(-2px)!important;
+  box-shadow:0 10px 30px rgba(255,160,0,.4)!important}
+/* ── 상태1·2: 인생 시나리오 시작 버튼 — 황금색 ── */
+[data-testid="element-container"]:has(.home-start-marker)+[data-testid="element-container"] [data-testid="stButton"]>button{
+  background:#FFB800!important;
+  border:1px solid rgba(255,184,0,.5)!important;
+  color:#000000!important}
+[data-testid="element-container"]:has(.home-start-marker)+[data-testid="element-container"] [data-testid="stButton"]>button:hover{
+  background:#FFA000!important;
+  box-shadow:0 10px 30px rgba(255,160,0,.4)!important}
 </style>"""
 
 _HOME_PAGE_CSS_LIGHT_OVERRIDE = """<style>
@@ -2249,6 +2257,9 @@ def _render_home_status_card(status: int, hist_data: dict, checklist_data: dict)
 def _render_home_nav_buttons(status: int, hist_data: dict) -> None:
     """상태별 네이티브 네비게이션 버튼."""
     # ── 버튼 1: 인생 시나리오 시작 (항상) ───────────────────────────────────
+    # status 3에서는 hn_card3가 첫 번째(황금색)이므로 마커 생략
+    if status != 3:
+        st.markdown('<span class="home-start-marker" style="display:none"></span>', unsafe_allow_html=True)
     if st.button(
         "🎯  인생 시나리오 시작",
         type="primary",

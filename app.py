@@ -690,34 +690,8 @@ OLD_KEY_MIGRATION = {
 }
 
 
-_APP_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
-_APP_WAIT_RETRY_MAX = 90  # 이 초 이하의 429 대기시간은 sleep 후 재시도
-
-
-def _app_parse_retry_sec(err: Exception) -> int:
-    import re
-    s = str(err)
-    m = (re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", s)
-         or re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
-         or re.search(r"retry in (\d+)", s, re.IGNORECASE))
-    return int(m.group(1)) if m else 0
-
-
-def _app_quota_msg(err: Exception) -> str:
-    import time as _time  # noqa — time 이미 임포트됐으면 무시
-    sec = _app_parse_retry_sec(err)
-    sec = min(sec, 86400)
-    if sec == 0:
-        return "Gemini API 한도를 초과했습니다. 잠시 후 다시 시도하세요."
-    if sec <= 120:
-        return f"Gemini API 분당 요청 한도 초과. {sec}초 후 다시 시도하세요."
-    if sec >= 3600:
-        wait = f"{sec // 3600}시간"
-    elif sec >= 60:
-        wait = f"{sec // 60}분"
-    else:
-        wait = f"{sec}초"
-    return f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요."
+_APP_MODEL = "gemini-2.5-flash"
+_APP_RETRY_DELAYS = [15, 30, 60]  # 429 발생 시 재시도 대기 시간(초): 3회
 
 
 def get_model():
@@ -729,7 +703,7 @@ def get_model():
         temperature=0.7
     )
     return genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+        model_name=_APP_MODEL,
         system_instruction=SYSTEM_PROMPT,
         generation_config=generation_config
     )
@@ -799,27 +773,18 @@ def generate_scenarios(inputs: dict, correction: str = "") -> dict:
         temperature=0.7,
     )
     genai.configure(api_key=api_key)
-    last_err = None
-    for model_name in _APP_FALLBACK_MODELS:
-        try:
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=SYSTEM_PROMPT,
-                generation_config=generation_config,
-            )
-            response = model.generate_content(user_message)
-            try:
-                return json.loads(response.text)
-            except json.JSONDecodeError as e:
-                raise ValueError(
-                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
-                ) from e
-        except Exception as e:
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                last_err = e
-                continue
-            raise
-    raise ValueError(_app_quota_msg(last_err))
+    model = genai.GenerativeModel(
+        model_name=_APP_MODEL,
+        system_instruction=SYSTEM_PROMPT,
+        generation_config=generation_config,
+    )
+    response = model.generate_content(user_message)
+    try:
+        return json.loads(response.text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+        ) from e
 
 
 def save_profile(inputs: dict):
@@ -926,7 +891,7 @@ def get_compare_model():
         temperature=0.7,
     )
     return genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+        model_name=_APP_MODEL,
         system_instruction=COMPARE_SYSTEM_PROMPT,
         generation_config=generation_config,
     )
@@ -979,27 +944,18 @@ def generate_comparison(old_data: dict, new_inputs: dict) -> dict:
         temperature=0.7,
     )
     genai.configure(api_key=api_key)
-    last_err = None
-    for model_name in _APP_FALLBACK_MODELS:
-        try:
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=COMPARE_SYSTEM_PROMPT,
-                generation_config=generation_config,
-            )
-            response = model.generate_content(msg)
-            try:
-                return json.loads(response.text)
-            except json.JSONDecodeError as e:
-                raise ValueError(
-                    f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
-                ) from e
-        except Exception as e:
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                last_err = e
-                continue
-            raise
-    raise ValueError(_app_quota_msg(last_err))
+    model = genai.GenerativeModel(
+        model_name=_APP_MODEL,
+        system_instruction=COMPARE_SYSTEM_PROMPT,
+        generation_config=generation_config,
+    )
+    response = model.generate_content(msg)
+    try:
+        return json.loads(response.text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"AI 응답을 파싱할 수 없습니다 (JSON 오류). 잠시 후 다시 시도해 주세요.\n상세: {e}"
+        ) from e
 
 
 def _make_cache_key(inputs: dict, correction: str = "") -> str:
@@ -1009,23 +965,32 @@ def _make_cache_key(inputs: dict, correction: str = "") -> str:
 
 def _run_with_429_retry(fn, *args, spinner_msg="AI가 분석 중입니다...", **kwargs):
     """fn(*args, **kwargs) 실행.
-    429 발생 시 에러 메시지에서 대기 시간을 파싱해 카운트다운을 보여준 뒤 1회 재시도."""
-    for attempt in range(2):
+    429 발생 시 15→30→60초 대기 후 동일 모델 재시도. 3회 실패 시 안내 메시지."""
+    delays = [0] + _APP_RETRY_DELAYS  # [0, 15, 30, 60]: 첫 시도 + 3회 재시도
+    total_retries = len(_APP_RETRY_DELAYS)
+    for attempt, wait in enumerate(delays):
+        if wait > 0:
+            ph = st.empty()
+            for remaining in range(wait, 0, -1):
+                ph.warning(
+                    f"⏳ API 한도 초과 — {remaining}초 후 재시도합니다... "
+                    f"({attempt}/{total_retries}회차)"
+                )
+                time.sleep(1)
+            ph.empty()
+        label = spinner_msg if attempt == 0 else f"재시도 중... ({attempt}/{total_retries}회차)"
         try:
-            with st.spinner(spinner_msg if attempt == 0 else "재시도 중..."):
+            with st.spinner(label):
                 return fn(*args, **kwargs)
         except Exception as e:
-            err_str = str(e)
-            is_429 = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "분당 요청 한도" in err_str
-            if attempt == 0 and is_429:
-                m = re.search(r"(\d+)초", err_str)
-                wait = int(m.group(1)) + 10 if m else 70
-                ph = st.empty()
-                for remaining in range(wait, 0, -1):
-                    ph.warning(f"⏳ API 분당 요청 한도 초과 — {remaining}초 후 자동 재시도합니다...")
-                    time.sleep(1)
-                ph.empty()
+            is_429 = "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
+            if is_429 and attempt < total_retries:
                 continue
+            if is_429:
+                raise ValueError(
+                    f"Gemini API 요청 한도를 {total_retries}회 재시도 후에도 초과했습니다. "
+                    "잠시 후 다시 시도해 주세요."
+                )
             raise
 
 

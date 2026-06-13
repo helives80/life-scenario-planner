@@ -296,60 +296,33 @@ def load_latest_quarterly_plan(scenario_type: str) -> dict:
         return {}
 
 
-_FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
-_WAIT_RETRY_MAX = 90  # 이 초 이하의 429 대기시간은 sleep 후 재시도
-
-
-def _parse_retry_sec(err: Exception) -> int:
-    """429 오류에서 초 단위 재시도 대기 시간 파싱. 못 찾으면 0."""
-    import re
-    s = str(err)
-    m = (re.search(r"retryDelay[^:]*:\s*['\"](\d+)s", s)
-         or re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", s)
-         or re.search(r"retry in (\d+)", s, re.IGNORECASE))
-    return int(m.group(1)) if m else 0
-
-
-def _quota_msg(err: Exception) -> str:
-    """429 오류 종류(RPM vs 일일)에 따라 사용자 친화적 메시지 반환."""
-    sec = _parse_retry_sec(err)
-    sec = min(sec, 86400)
-    if sec == 0:
-        return "Gemini API 한도를 초과했습니다. 잠시 후 다시 시도하세요."
-    if sec <= 120:
-        return f"Gemini API 분당 요청 한도 초과. {sec}초 후 다시 시도하세요."
-    if sec >= 3600:
-        wait = f"{sec // 3600}시간"
-    elif sec >= 60:
-        wait = f"{sec // 60}분"
-    else:
-        wait = f"{sec}초"
-    return f"Gemini API 일일 한도를 초과했습니다. {wait} 후 다시 시도하세요."
+_S3_MODEL = "gemini-2.5-flash"
+_S3_RETRY_DELAYS = [15, 30, 60]  # 429 발생 시 재시도 대기 시간(초): 3회
 
 
 def _genai_generate(contents: str, config) -> str:
-    """gemini-2.0-flash → gemini-1.5-flash 순으로 폴백.
-    짧은 429(≤90s)는 sleep 후 동일 모델 1회 재시도 후 다음 모델 시도."""
+    """gemini-2.5-flash 단일 모델. 429 발생 시 15→30→60초 대기 후 재시도."""
     api_key = get_gemini_api_key()
+    client = genai_v2.Client(api_key=api_key)
     last_err = None
-    for model in _FALLBACK_MODELS:
-        for attempt in range(2):
-            try:
-                client = genai_v2.Client(api_key=api_key)
-                resp = client.models.generate_content(
-                    model=model, contents=contents, config=config
-                )
-                return resp.text
-            except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    last_err = e
-                    delay = _parse_retry_sec(e)
-                    if attempt == 0 and 0 < delay <= _WAIT_RETRY_MAX:
-                        time.sleep(delay + 2)
-                        continue
-                    break  # 재시도 실패 또는 대기 너무 길면 다음 모델
-                raise
-    raise RuntimeError(_quota_msg(last_err)) from last_err
+    for attempt, delay in enumerate([0] + _S3_RETRY_DELAYS):
+        if delay > 0:
+            time.sleep(delay)
+        try:
+            resp = client.models.generate_content(
+                model=_S3_MODEL, contents=contents, config=config
+            )
+            return resp.text
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                last_err = e
+                if attempt < len(_S3_RETRY_DELAYS):
+                    continue
+                raise RuntimeError(
+                    f"Gemini API 요청 한도를 {len(_S3_RETRY_DELAYS)}회 재시도 후에도 초과했습니다. "
+                    "잠시 후 다시 시도해 주세요."
+                ) from last_err
+            raise
 
 
 def _call_quarterly_plan_api(inputs: dict, scenario: dict) -> dict:
@@ -880,24 +853,25 @@ def _call_coach_api(system_prompt: str, history: list, user_msg: str) -> str:
         temperature=0.8,
     )
     api_key = get_gemini_api_key()
+    client = genai_v2.Client(api_key=api_key)
     last_err = None
-    for model in _FALLBACK_MODELS:
-        for attempt in range(2):
-            try:
-                client = genai_v2.Client(api_key=api_key)
-                return client.models.generate_content(
-                    model=model, contents=contents, config=config
-                ).text
-            except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    last_err = e
-                    delay = _parse_retry_sec(e)
-                    if attempt == 0 and 0 < delay <= _WAIT_RETRY_MAX:
-                        time.sleep(delay + 2)
-                        continue
-                    break
-                raise
-    raise RuntimeError(_quota_msg(last_err)) from last_err
+    for attempt, delay in enumerate([0] + _S3_RETRY_DELAYS):
+        if delay > 0:
+            time.sleep(delay)
+        try:
+            return client.models.generate_content(
+                model=_S3_MODEL, contents=contents, config=config
+            ).text
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                last_err = e
+                if attempt < len(_S3_RETRY_DELAYS):
+                    continue
+                raise RuntimeError(
+                    f"Gemini API 요청 한도를 {len(_S3_RETRY_DELAYS)}회 재시도 후에도 초과했습니다. "
+                    "잠시 후 다시 시도해 주세요."
+                ) from last_err
+            raise
 
 
 def _render_chat(inputs: dict, scenario: dict, ns: dict, all_checks: dict):

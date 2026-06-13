@@ -461,7 +461,7 @@ _HOME_PAGE_CSS = """<style>
   background:#FFB800!important;
   border:1px solid rgba(255,184,0,.5)!important;border-radius:16px!important;
   padding:18px 20px 16px!important;text-align:left!important;
-  white-space:pre-line!important;color:#000000!important;line-height:1.7!important;
+  white-space:pre-line!important;color:#ffffff!important;line-height:1.7!important;
   font-size:.97rem!important;cursor:pointer!important;
   min-height:0!important;box-shadow:none!important;
   transition:background .22s,transform .25s!important}
@@ -472,7 +472,7 @@ _HOME_PAGE_CSS = """<style>
 [data-testid="element-container"]:has(.home-start-marker)+[data-testid="element-container"] [data-testid="stButton"]>button{
   background:#FFB800!important;
   border:1px solid rgba(255,184,0,.5)!important;
-  color:#000000!important}
+  color:#ffffff!important}
 [data-testid="element-container"]:has(.home-start-marker)+[data-testid="element-container"] [data-testid="stButton"]>button:hover{
   background:#FFA000!important;
   box-shadow:0 10px 30px rgba(255,160,0,.4)!important}
@@ -2205,11 +2205,17 @@ def render_home_page():
 
     # ── CSS 주입 ─────────────────────────────────────────────────────────────
     st.markdown(_HOME_PAGE_CSS, unsafe_allow_html=True)
-    # 첫 번째 버튼(시나리오 카드 or 인생 시나리오 시작) #FFB800 황금색 — STEP 3
     st.markdown("""<style>
+/* 화면0 버튼 전체 텍스트 흰색 */
+div[data-testid="stButton"] > button {
+  color: #ffffff !important;
+}
+div[data-testid="stButton"] > button * {
+  color: #ffffff !important;
+}
+/* 첫 번째 버튼(시나리오 카드 or 인생 시나리오 시작) #FFB800 황금색 */
 div[data-testid="stButton"]:first-of-type > button {
   background-color: #FFB800 !important;
-  color: #000000 !important;
 }
 </style>""", unsafe_allow_html=True)
 

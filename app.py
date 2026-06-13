@@ -330,12 +330,64 @@ hr{border-color:#dde0f0!important}
 </style>"""
 
 
+_STREAMLIT_LIGHT_CSS = """<style>
+/* ═══ 라이트 모드 전용 ─ [data-theme="light"] 방식으로 항상 주입 ═══ */
+
+/* [수정 1] 화면0 — 로고 아이콘 그림자 강화 */
+[data-theme="light"] .home-brand-icon {
+  filter: drop-shadow(0 0 20px rgba(55,48,163,.7)) !important;
+}
+/* [수정 1] 화면0 — 타이틀 그라디언트를 진한 인디고→다크그린으로 */
+[data-theme="light"] .home-brand h1 {
+  background: linear-gradient(135deg, #3730a3 0%, #1a6b3c 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* [수정 2] 화면0 — 버튼 위 설명 문구: bold + white */
+[data-theme="light"] .home-brand p {
+  color: #ffffff !important;
+  font-weight: bold !important;
+}
+
+/* [수정 3] 화면1~4 — 텍스트 입력창 */
+[data-theme="light"] .stTextInput input,
+[data-theme="light"] div[data-baseweb="input"] input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1.5px solid #6c63ff !important;
+}
+/* [수정 3] 화면1~4 — 텍스트 영역 */
+[data-theme="light"] .stTextArea textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1.5px solid #6c63ff !important;
+}
+/* [수정 3] 화면1~4 — selectbox / 드롭다운 */
+[data-theme="light"] .stSelectbox select,
+[data-theme="light"] div[data-baseweb="select"] div {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1.5px solid #6c63ff !important;
+}
+/* [수정 3] 화면1~4 — 채팅 입력창 */
+[data-theme="light"] div[data-testid="stChatInput"] textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1.5px solid #6c63ff !important;
+}
+</style>"""
+
+
 def apply_theme() -> None:
     """st.session_state.theme 값에 따라 공통 CSS 변수를 Streamlit에 주입한다."""
     try:
         theme = st.session_state.get("theme", "dark")
         st.markdown(_THEME_LIGHT_CSS if theme == "light" else _THEME_DARK_CSS,
                     unsafe_allow_html=True)
+        # [data-theme="light"] 방식 — Streamlit DOM 속성 기반, 항상 주입
+        st.markdown(_STREAMLIT_LIGHT_CSS, unsafe_allow_html=True)
     except Exception:
         pass
 

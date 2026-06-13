@@ -69,6 +69,29 @@ S3_CSS = """<style>
 </style>"""
 
 # ── 화면3 라이트 모드 override (screen4 방식과 동일) ───────────────────────────
+S3_LIGHT_CSS_V2 = """<style>
+/* ═══ 화면3 라이트 모드 ─ [data-theme="light"] 방식으로 항상 주입 ═══ */
+
+/* [수정 4] 완료율 카드 — 흰 배경 + 퍼플 테두리 */
+[data-theme="light"] .s3-card {
+  background-color: #ffffff !important;
+  border: 1.5px solid #6c63ff !important;
+}
+/* [수정 4] 완료율 st.progress 트랙 */
+[data-theme="light"] [data-testid="stProgress"] > div {
+  background-color: #e0e0f4 !important;
+  border-radius: 99px !important;
+}
+/* [수정 4] 완료율 st.progress 바 */
+[data-theme="light"] [data-testid="stProgress"] [role="progressbar"] {
+  background-color: #6c63ff !important;
+}
+/* [수정 4] 완료율 텍스트 */
+[data-theme="light"] [data-testid="stProgress"] p {
+  color: #1a1a2e !important;
+}
+</style>"""
+
 S3_CSS_LIGHT_OVERRIDE = """<style>
 .s3-card{background:#ffffff!important;border-color:#dde0f0!important;
   box-shadow:0 2px 8px rgba(0,0,0,.08)!important}
@@ -942,6 +965,7 @@ def _render_chat(inputs: dict, scenario: dict, ns: dict, all_checks: dict):
 def render():
     cleanup_old_checklists(days=30)
     st.markdown(S3_CSS, unsafe_allow_html=True)
+    st.markdown(S3_LIGHT_CSS_V2, unsafe_allow_html=True)  # [data-theme="light"] 방식, 항상 주입
     if st.session_state.get("theme", "dark") == "light":
         st.markdown(S3_CSS_LIGHT_OVERRIDE, unsafe_allow_html=True)
 
